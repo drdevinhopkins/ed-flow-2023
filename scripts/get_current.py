@@ -19,10 +19,10 @@ open('hourlyreport.pdf', 'wb').write(r.content)
 
 tables = camelot.read_pdf(
     'hourlyreport.pdf',
-    pages= '1', 
-    flavor='stream', 
+    pages='1',
+    flavor='stream',
     table_areas=['8,410,1000,50']
-    )
+)
 
 df = tables[0].df.reset_index(drop=True)
 df.columns = constants.column_names
@@ -34,7 +34,7 @@ for column in df.columns.tolist():
     df[column] = df[column].astype('float').astype('int')
 df["ds"] = pd.to_datetime(
     df["dateflg"] + " " + (df["timeflg"] - 1).astype(str) + ":00", format='mixed') + datetime.timedelta(hours=1)
-df = df.set_index('ds').reset_index().drop(['dateflg','timeflg'], axis=1)
+df = df.set_index('ds').reset_index().drop(['dateflg', 'timeflg'], axis=1)
 
 df.to_csv('current.csv', index=False)
 
