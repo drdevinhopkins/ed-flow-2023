@@ -3,3 +3,4 @@ PyPDF2<3.0
 opencv-python-headless
 deta
 python-dotenv
+requests

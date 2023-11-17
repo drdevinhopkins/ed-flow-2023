@@ -41,3 +41,18 @@ df.to_csv('current.csv', index=False)
 data.put(name='current.csv', path='current.csv')
 
 print(df.head())
+
+
+def test_process_hourly_report():
+    URL = 'https://www.dropbox.com/s/ckijmipu33z3feg/HourlyReport.pdf?dl=1'
+    r = requests.get(URL, allow_redirects=True)
+    open('hourlyreport.pdf', 'wb').write(r.content)
+
+    tables = camelot.read_pdf(
+        'hourlyreport.pdf',
+        pages='1',
+        flavor='stream',
+        table_areas=['8,410,1000,50']
+    )
+
+    assert len(tables[0].df.columns.tolist()) == 47
