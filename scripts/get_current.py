@@ -1,7 +1,7 @@
+import os
+import datetime
 import requests
 import camelot
-import datetime
-import os
 import pandas as pd
 from deta import Deta
 from dotenv import load_dotenv
@@ -13,11 +13,16 @@ deta = Deta(os.environ.get("DETA_PROJECT_KEY"))
 
 data = deta.Drive("data")
 
-url = 'https://www.dropbox.com/s/ckijmipu33z3feg/HourlyReport.pdf?dl=1'
-r = requests.get(url, allow_redirects=True)
+URL = 'https://www.dropbox.com/s/ckijmipu33z3feg/HourlyReport.pdf?dl=1'
+r = requests.get(URL, allow_redirects=True)
 open('hourlyreport.pdf', 'wb').write(r.content)
 
-tables = camelot.read_pdf('hourlyreport.pdf', pages= '1', flavor='stream', table_areas=['8,410,1000,50'])
+tables = camelot.read_pdf(
+    'hourlyreport.pdf',
+    pages= '1', 
+    flavor='stream', 
+    table_areas=['8,410,1000,50']
+    )
 
 df = tables[0].df.reset_index(drop=True)
 df.columns = constants.column_names
