@@ -53,4 +53,4 @@ allData.to_csv('allData.csv', index=False)
 
 drive.put(name='allData.csv', path='allData.csv')
 
-allData.tail(5)
+print(allData.tail(5))
