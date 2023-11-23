@@ -49,6 +49,8 @@ allData.ds = pd.to_datetime(allData.ds)
 allData = pd.concat([allData, df], ignore_index=True).drop_duplicates(
     keep='last').sort_values(by='ds', ascending=True)
 
+allData.to_csv('allData.csv', index=False)
+
 drive.put(name='allData.csv', path='allData.csv')
 
 allData.tail(5)
