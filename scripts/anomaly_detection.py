@@ -13,7 +13,7 @@ drive = deta.Drive("data")
 
 
 allData = pd.read_csv('https://drive.deta.sh/v1/b0x22rtxtdf/data/files/download?name=allData.csv',
-                      storage_options={'X-API-Key': 'b0x22rtxtdf_f8bXt7oLpBgNQ8Att6FeFfYNyFXgHxWc'})
+                      storage_options={'X-API-Key': os.environ.get("DETA_PROJECT_KEY")})
 allData.ds = pd.to_datetime(allData.ds)
 print(allData.tail(1))
 
