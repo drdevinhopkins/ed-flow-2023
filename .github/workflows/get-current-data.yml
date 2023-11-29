@@ -34,3 +34,7 @@ jobs:
       run: python scripts/get_current.py
       env:
           DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
+    - name: Anomaly detection
+      run: python scripts/anomaly_detection.py
+      env:
+          DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
