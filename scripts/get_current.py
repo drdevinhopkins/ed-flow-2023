@@ -55,17 +55,20 @@ allData.to_csv('allData.csv', index=False)
 
 drive.put(name='allData.csv', path='allData.csv')
 
-dropbox_access_token = os.environ.get("DROPBOX_ACCESS_TOKEN")
-print(dropbox_access_token)
-dbx = dropbox.Dropbox(oauth2_access_token=dropbox_access_token)
-
-upload(dbx, 'hourlyreport.pdf', '', '',
-           'hourlyreport.pdf', overwrite=True)
-
-upload(dbx, 'allData.csv', '', '',
-           'allData.csv', overwrite=True)
-
-upload(dbx, 'current.csv', '', '',
-           'current.csv', overwrite=True)
+try:
+    dropbox_access_token = os.environ.get("DROPBOX_ACCESS_TOKEN")
+    print(dropbox_access_token)
+    dbx = dropbox.Dropbox(oauth2_access_token=dropbox_access_token)
+    
+    upload(dbx, 'hourlyreport.pdf', '', '',
+               'hourlyreport.pdf', overwrite=True)
+    
+    upload(dbx, 'allData.csv', '', '',
+               'allData.csv', overwrite=True)
+    
+    upload(dbx, 'current.csv', '', '',
+               'current.csv', overwrite=True)
+except:
+    print('unable to upload to dropbox')
 
 print(allData.tail(5))
