@@ -65,4 +65,7 @@ upload(dbx, 'hourlyreport.pdf', '', '',
 upload(dbx, 'allData.csv', '', '',
            'allData.csv', overwrite=True)
 
+upload(dbx, 'current.csv', '', '',
+           'current.csv', overwrite=True)
+
 print(allData.tail(5))
