@@ -4,6 +4,8 @@ from prophet import Prophet
 from tqdm import tqdm
 from deta import Deta
 from dotenv import load_dotenv
+from utils import upload
+import dropbox
 
 load_dotenv()
 
@@ -48,5 +50,11 @@ output.to_csv('anomaly_detection_ranges.csv', index=False)
 
 drive.put(name='anomaly_detection_ranges.csv',
           path='anomaly_detection_ranges.csv')
+
+dropbox_access_token = os.environ.get("DROPBOX_ACCESS_TOKEN")
+dbx = dropbox.Dropbox(dropbox_access_token)
+
+upload(dbx, 'anomaly_detection_ranges.csv', '', '',
+           'anomaly_detection_ranges.csv', overwrite=True)
 
 print(allData.tail(5))

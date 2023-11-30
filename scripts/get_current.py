@@ -6,6 +6,8 @@ import pandas as pd
 from deta import Deta
 from dotenv import load_dotenv
 import constants
+from utils import upload
+import dropbox
 
 load_dotenv()
 
@@ -52,5 +54,14 @@ allData = pd.concat([allData, df], ignore_index=True).drop_duplicates(
 allData.to_csv('allData.csv', index=False)
 
 drive.put(name='allData.csv', path='allData.csv')
+
+dropbox_access_token = os.environ.get("DROPBOX_ACCESS_TOKEN")
+dbx = dropbox.Dropbox(dropbox_access_token)
+
+upload(dbx, 'hourlyreport.pdf', '', '',
+           'hourlyreport.pdf', overwrite=True)
+
+upload(dbx, 'allData.csv', '', '',
+           'allData.csv', overwrite=True)
 
 print(allData.tail(5))

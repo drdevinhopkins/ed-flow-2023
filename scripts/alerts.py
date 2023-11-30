@@ -2,6 +2,8 @@ import os
 import pandas as pd
 from deta import Deta
 from dotenv import load_dotenv
+from utils import upload
+import dropbox
 
 load_dotenv()
 
@@ -80,5 +82,11 @@ alerts_df.to_csv('alerts.csv', index=False)
 
 drive.put(name='alerts.csv',
           path='alerts.csv')
+
+dropbox_access_token = os.environ.get("DROPBOX_ACCESS_TOKEN")
+dbx = dropbox.Dropbox(dropbox_access_token)
+
+upload(dbx, 'alerts.csv', '', '',
+           'alerts.csv', overwrite=True)
 
 print(alerts_df)
