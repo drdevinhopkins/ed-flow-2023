@@ -51,10 +51,13 @@ output.to_csv('anomaly_detection_ranges.csv', index=False)
 drive.put(name='anomaly_detection_ranges.csv',
           path='anomaly_detection_ranges.csv')
 
-dropbox_access_token = os.environ.get("DROPBOX_ACCESS_TOKEN")
-dbx = dropbox.Dropbox(dropbox_access_token)
-
-upload(dbx, 'anomaly_detection_ranges.csv', '', '',
-           'anomaly_detection_ranges.csv', overwrite=True)
+try:
+    dropbox_access_token = os.environ.get("DROPBOX_ACCESS_TOKEN")
+    dbx = dropbox.Dropbox(dropbox_access_token)
+    
+    upload(dbx, 'anomaly_detection_ranges.csv', '', '',
+               'anomaly_detection_ranges.csv', overwrite=True)
+except:
+    print('unable to upload to dropbox')
 
 print(allData.tail(5))
