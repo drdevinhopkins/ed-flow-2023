@@ -82,11 +82,13 @@ alerts_df.to_csv('alerts.csv', index=False)
 
 drive.put(name='alerts.csv',
           path='alerts.csv')
-
-dropbox_access_token = os.environ.get("DROPBOX_ACCESS_TOKEN")
-dbx = dropbox.Dropbox(dropbox_access_token)
-
-upload(dbx, 'alerts.csv', '', '',
-           'alerts.csv', overwrite=True)
+try:
+    dropbox_access_token = os.environ.get("DROPBOX_ACCESS_TOKEN")
+    dbx = dropbox.Dropbox(dropbox_access_token)
+    
+    upload(dbx, 'alerts.csv', '', '',
+               'alerts.csv', overwrite=True)
+except:
+    print('unable to upload to dropbox')
 
 print(alerts_df)
