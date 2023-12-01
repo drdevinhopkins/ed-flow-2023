@@ -1,4 +1,5 @@
 import os
+import requests
 import pandas as pd
 from prophet import Prophet
 from tqdm import tqdm
@@ -52,7 +53,23 @@ drive.put(name='anomaly_detection_ranges.csv',
           path='anomaly_detection_ranges.csv')
 
 try:
-    dropbox_access_token = os.environ.get("DROPBOX_ACCESS_TOKEN")
+    dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
+    dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
+    dropbox_refresh_token = os.environ.get("DROPBOX_REFRESH_TOKEN")
+
+    # exchange the authorization code for an access token:
+    token_url = "https://api.dropboxapi.com/oauth2/token"
+    params = {
+        "grant_type": "refresh_token",
+        "refresh_token": dropbox_refresh_token,
+        "client_id": dropbox_app_key,
+        "client_secret": dropbox_app_secret
+    }
+    r = requests.post(token_url, data=params)
+    # print(r.text)
+
+    dropbox_access_token = r.json()['access_token']
+
     dbx = dropbox.Dropbox(dropbox_access_token)
     
     upload(dbx, 'anomaly_detection_ranges.csv', '', '',
