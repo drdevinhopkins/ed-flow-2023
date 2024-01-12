@@ -48,7 +48,7 @@ allData = pd.read_csv('https://drive.deta.sh/v1/b0x22rtxtdf/data/files/download?
                       storage_options={'X-API-Key': os.environ.get("DETA_PROJECT_KEY")})
 allData.ds = pd.to_datetime(allData.ds)
 
-allData = pd.concat([allData, df], ignore_index=True).drop_duplicates(
+allData = pd.concat([allData, df], ignore_index=True).drop_duplicates(subset='ds',
     keep='last').sort_values(by='ds', ascending=True)
 
 allData.to_csv('allData.csv', index=False)
