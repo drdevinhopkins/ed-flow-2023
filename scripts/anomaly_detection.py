@@ -1,6 +1,8 @@
 import os
 import requests
 import pandas as pd
+import numpy as np
+np.float_ = np.float64
 from prophet import Prophet
 from tqdm import tqdm
 from deta import Deta
@@ -19,6 +21,7 @@ allData = pd.read_csv('https://drive.deta.sh/v1/b0x22rtxtdf/data/files/download?
                       storage_options={'X-API-Key': os.environ.get("DETA_PROJECT_KEY")})
 allData.ds = pd.to_datetime(allData.ds)
 print(allData.tail(1))
+print('length of allData: '+len(allData))
 
 df = allData.copy()
 df.isna().sum().sum()
