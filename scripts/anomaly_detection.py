@@ -21,7 +21,7 @@ allData = pd.read_csv('https://drive.deta.sh/v1/b0x22rtxtdf/data/files/download?
                       storage_options={'X-API-Key': os.environ.get("DETA_PROJECT_KEY")})
 allData.ds = pd.to_datetime(allData.ds)
 print(allData.tail(1))
-print('length of allData: '+len(allData))
+print('length of allData: '+str(len(allData)))
 
 df = allData.copy()
 df.isna().sum().sum()
