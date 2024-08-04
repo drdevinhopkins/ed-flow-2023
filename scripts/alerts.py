@@ -66,7 +66,8 @@ alert_types = [
                 'RAZ_XRAY_MORE2H',
                 'RAZ_CT_MORE2H1',
                 # 'PSYCH1',
-                # 'PSYCH_WAITINGADM']
+                # 'PSYCH_WAITINGADM'
+                ]
 
 alerts = []
 
