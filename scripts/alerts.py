@@ -73,7 +73,7 @@ for column in alert_types:
     try:
         if current[column] > anomaly_detection_ranges[column+'_yhat_upper']:
             alerts.append({'metric': column, 'value': current[column], 'yhat_upper': round(
-                anomaly_detection_ranges[column+'_yhat_upper'], 1)})
+                anomaly_detection_ranges[column+'_yhat_upper'], 1), 'ds':current.ds})
     except:
         continue
 
