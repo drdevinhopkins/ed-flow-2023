@@ -22,13 +22,13 @@ current = current_df.head(1).iloc[0]
 anomaly_detection_ranges = anomaly_detection_ranges.set_index('ds').loc[current.ds]
 
 alert_types = [
-                # 'INFLOW_STRETCHER',
+                'INFLOW_STRETCHER',
                 # 'Infl_Stretcher_cum',
-                # 'INFLOW_AMBULATORY',
+                'INFLOW_AMBULATORY',
                 # 'Infl_Ambulatory_cum',
-                # 'Inflow_Total',
+                'Inflow_Total',
                 # 'Inflow_Cum_Total',
-                # 'INFLOW_AMBULANCES',
+                'INFLOW_AMBULANCES',
                 # 'Infl_Ambulances_cum',
                 # 'FLS',
                 # 'CUM_ADMREQ',
@@ -55,18 +55,18 @@ alert_types = [
                 # 'POST_POD1',
                 # 'VERTSTRET',
                 'RAZ_TBS',
-                'RAZ_LAZYBOY',
-                'RAZ_WAITINGREZ',
-                'AMBVERT1',
+                # 'RAZ_LAZYBOY',
+                # 'RAZ_WAITINGREZ',
+                # 'AMBVERT1',
                 'AMBVERTTBS',
                 'QTrack_TBS',
-                'Garage_TBS',
+                # 'Garage_TBS',
                 'RAZ_CONS_MORE2H',
                 'RAZ_IMCONS_MORE4H',
                 'RAZ_XRAY_MORE2H',
                 'RAZ_CT_MORE2H1',
-                'PSYCH1',
-                'PSYCH_WAITINGADM']
+                # 'PSYCH1',
+                # 'PSYCH_WAITINGADM']
 
 alerts = []
 
