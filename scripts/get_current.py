@@ -39,8 +39,11 @@ df["ds"] = pd.to_datetime(
 df = df.set_index('ds').reset_index().drop(['dateflg', 'timeflg'], axis=1)
 
 df.to_csv('current.csv', index=False)
+df.to_excel('current.xlsx', index_label="index")
 
 drive.put(name='current.csv', path='current.csv')
+drive.put(name='current.xlsx', path='current.xlsx')
+
 
 df = df.sort_values(by='ds', ascending=True)
 
@@ -52,8 +55,11 @@ allData = pd.concat([allData, df], ignore_index=True).drop_duplicates(subset='ds
     keep='last').sort_values(by='ds', ascending=True)
 
 allData.to_csv('allData.csv', index=False)
+allData.to_excel('allData.xlsx', index_label="index")
 
 drive.put(name='allData.csv', path='allData.csv')
+drive.put(name='allData.xlsx', path='allData.xlsx')
+
 
 try:
     dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
@@ -81,8 +87,13 @@ try:
     upload(dbx, 'allData.csv', '', '',
                'allData.csv', overwrite=True)
     
+    upload(dbx, 'allData.xlsx', '', '',
+               'allData.xlsx', overwrite=True)
+    
     upload(dbx, 'current.csv', '', '',
                'current.csv', overwrite=True)
+    upload(dbx, 'current.xlsx', '', '',
+               'current.xlsx', overwrite=True)
 except:
     print('unable to upload to dropbox')
 

@@ -51,6 +51,8 @@ for column in tqdm(df.columns.to_list()):
         print(column + ' failed')
 
 output.to_csv('anomaly_detection_ranges.csv', index=False)
+output.to_excel('anomaly_detection_ranges.xlsx', index_label="index")
+
 
 drive.put(name='anomaly_detection_ranges.csv',
           path='anomaly_detection_ranges.csv')
@@ -77,6 +79,8 @@ try:
     
     upload(dbx, 'anomaly_detection_ranges.csv', '', '',
                'anomaly_detection_ranges.csv', overwrite=True)
+    upload(dbx, 'anomaly_detection_ranges.xlsx', '', '',
+               'anomaly_detection_ranges.xlsx', overwrite=True)
 except:
     print('unable to upload to dropbox')
 

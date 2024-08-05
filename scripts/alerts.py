@@ -82,6 +82,8 @@ for column in alert_types:
 alerts_df = pd.DataFrame(alerts)
 
 alerts_df.to_csv('alerts.csv', index=False)
+alerts_df.to_excel('alerts.xlsx', index_label="index")
+
 
 drive.put(name='alerts.csv',
           path='alerts.csv')
@@ -107,6 +109,8 @@ try:
     
     upload(dbx, 'alerts.csv', '', '',
                'alerts.csv', overwrite=True)
+    upload(dbx, 'alerts.xlsx', '', '',
+               'alerts.xlsx', overwrite=True)
 except:
     print('unable to upload to dropbox')
 
