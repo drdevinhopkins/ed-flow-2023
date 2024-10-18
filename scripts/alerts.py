@@ -1,7 +1,7 @@
 import os
 import requests
 import pandas as pd
-from deta import Deta
+# from deta import Deta
 from dotenv import load_dotenv
 from utils import upload
 import dropbox
@@ -10,12 +10,16 @@ load_dotenv()
 
 deta = Deta(os.environ.get("DETA_PROJECT_KEY"))
 
-drive = deta.Drive("data")
+# drive = deta.Drive("data")
 
-anomaly_detection_ranges = pd.read_csv('https://drive.deta.sh/v1/b0x22rtxtdf/data/files/download?name=anomaly_detection_ranges.csv', storage_options={'X-API-Key':os.environ.get("DETA_PROJECT_KEY")})
+# anomaly_detection_ranges = pd.read_csv('https://drive.deta.sh/v1/b0x22rtxtdf/data/files/download?name=anomaly_detection_ranges.csv', storage_options={'X-API-Key':os.environ.get("DETA_PROJECT_KEY")})
+anomaly_detection_ranges = pd.read_csv('https://www.dropbox.com/scl/fi/fjz0am427gw35sz7l994m/anomaly_detection_ranges.csv?rlkey=lib9w0jz2zei5n566jv76o7ol&dl=1')
+
 anomaly_detection_ranges.ds = pd.to_datetime(anomaly_detection_ranges.ds)
 
-current_df = pd.read_csv('https://drive.deta.sh/v1/b0x22rtxtdf/data/files/download?name=current.csv', storage_options={'X-API-Key':os.environ.get("DETA_PROJECT_KEY")})
+# current_df = pd.read_csv('https://drive.deta.sh/v1/b0x22rtxtdf/data/files/download?name=current.csv', storage_options={'X-API-Key':os.environ.get("DETA_PROJECT_KEY")})
+current_df = pd.read_csv('https://www.dropbox.com/scl/fi/4zmm1bpwtrhrqtvce8aqq/current.csv?rlkey=1wnfrlal5jefwkx4fg7jxl20o&dl=1')
+
 current_df.ds = pd.to_datetime(current_df.ds)
 current = current_df.head(1).iloc[0]
 
@@ -85,8 +89,8 @@ alerts_df.to_csv('alerts.csv', index=False)
 alerts_df.to_excel('alerts.xlsx', index_label="index")
 
 
-drive.put(name='alerts.csv',
-          path='alerts.csv')
+# drive.put(name='alerts.csv',
+#           path='alerts.csv')
 try:
     dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
     dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")

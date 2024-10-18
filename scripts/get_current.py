@@ -3,7 +3,7 @@ import datetime
 import requests
 import camelot
 import pandas as pd
-from deta import Deta
+# from deta import Deta
 from dotenv import load_dotenv
 import constants
 from utils import upload
@@ -11,9 +11,9 @@ import dropbox
 
 load_dotenv()
 
-deta = Deta(os.environ.get("DETA_PROJECT_KEY"))
+# deta = Deta(os.environ.get("DETA_PROJECT_KEY"))
 
-drive = deta.Drive("data")
+# drive = deta.Drive("data")
 
 URL = 'https://www.dropbox.com/s/ckijmipu33z3feg/HourlyReport.pdf?dl=1'
 r = requests.get(URL, allow_redirects=True)
@@ -41,14 +41,15 @@ df = df.set_index('ds').reset_index().drop(['dateflg', 'timeflg'], axis=1)
 df.to_csv('current.csv', index=False)
 df.to_excel('current.xlsx', index_label="index")
 
-drive.put(name='current.csv', path='current.csv')
-drive.put(name='current.xlsx', path='current.xlsx')
+# drive.put(name='current.csv', path='current.csv')
+# drive.put(name='current.xlsx', path='current.xlsx')
 
 
 df = df.sort_values(by='ds', ascending=True)
 
-allData = pd.read_csv('https://drive.deta.sh/v1/b0x22rtxtdf/data/files/download?name=allData.csv',
-                      storage_options={'X-API-Key': os.environ.get("DETA_PROJECT_KEY")})
+# allData = pd.read_csv('https://drive.deta.sh/v1/b0x22rtxtdf/data/files/download?name=allData.csv',
+#                       storage_options={'X-API-Key': os.environ.get("DETA_PROJECT_KEY")})
+allData = pd.read_csv('https://www.dropbox.com/scl/fi/ksf0nbmmiort5khbrgr61/allData.csv?rlkey=75e735fjk4ifttjt553ukxt3k&dl=1')
 allData.ds = pd.to_datetime(allData.ds)
 
 allData = pd.concat([allData, df], ignore_index=True).drop_duplicates(subset='ds',
@@ -57,8 +58,8 @@ allData = pd.concat([allData, df], ignore_index=True).drop_duplicates(subset='ds
 allData.to_csv('allData.csv', index=False)
 allData.to_excel('allData.xlsx', index_label="index")
 
-drive.put(name='allData.csv', path='allData.csv')
-drive.put(name='allData.xlsx', path='allData.xlsx')
+# drive.put(name='allData.csv', path='allData.csv')
+# drive.put(name='allData.xlsx', path='allData.xlsx')
 
 
 try:

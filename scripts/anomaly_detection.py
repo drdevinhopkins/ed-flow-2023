@@ -5,20 +5,22 @@ import numpy as np
 np.float_ = np.float64
 from prophet import Prophet
 from tqdm import tqdm
-from deta import Deta
+# from deta import Deta
 from dotenv import load_dotenv
 from utils import upload
 import dropbox
 
 load_dotenv()
 
-deta = Deta(os.environ.get("DETA_PROJECT_KEY"))
+# deta = Deta(os.environ.get("DETA_PROJECT_KEY"))
 
-drive = deta.Drive("data")
+# drive = deta.Drive("data")
 
 
-allData = pd.read_csv('https://drive.deta.sh/v1/b0x22rtxtdf/data/files/download?name=allData.csv',
-                      storage_options={'X-API-Key': os.environ.get("DETA_PROJECT_KEY")})
+# allData = pd.read_csv('https://drive.deta.sh/v1/b0x22rtxtdf/data/files/download?name=allData.csv',
+                    #   storage_options={'X-API-Key': os.environ.get("DETA_PROJECT_KEY")})
+allData = pd.read_csv('https://www.dropbox.com/scl/fi/ksf0nbmmiort5khbrgr61/allData.csv?rlkey=75e735fjk4ifttjt553ukxt3k&dl=1')
+
 allData.ds = pd.to_datetime(allData.ds)
 print(allData.tail(1))
 print('length of allData: '+str(len(allData)))
@@ -54,8 +56,8 @@ output.to_csv('anomaly_detection_ranges.csv', index=False)
 output.to_excel('anomaly_detection_ranges.xlsx', index_label="index")
 
 
-drive.put(name='anomaly_detection_ranges.csv',
-          path='anomaly_detection_ranges.csv')
+# drive.put(name='anomaly_detection_ranges.csv',
+#           path='anomaly_detection_ranges.csv')
 
 try:
     dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
