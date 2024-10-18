@@ -8,7 +8,7 @@ import dropbox
 
 load_dotenv()
 
-deta = Deta(os.environ.get("DETA_PROJECT_KEY"))
+# deta = Deta(os.environ.get("DETA_PROJECT_KEY"))
 
 # drive = deta.Drive("data")
 
