@@ -61,41 +61,69 @@ allData.to_excel('allData.xlsx', index_label="index")
 # drive.put(name='allData.csv', path='allData.csv')
 # drive.put(name='allData.xlsx', path='allData.xlsx')
 
+allData['total_tbs'] = allData[['TRG_HALLWAY_TBS',
+                      'POD_GREEN_TBS',
+                      'POD_YELLOW_TBS',
+                      'POD_ORANGE_TBS',
+                      'RAZ_TBS',
+                      'AMBVERTTBS',
+                      'QTrack_TBS',
+                      'Garage_TBS']].sum(axis=1)
+allData['vert_tbs'] = allData[[
+    'RAZ_TBS',
+    'AMBVERTTBS',
+    'QTrack_TBS',
+    'Garage_TBS']].sum(axis=1)
+allData['pod_tbs'] = allData[['TRG_HALLWAY_TBS',
+                    'POD_GREEN_TBS',
+                    'POD_YELLOW_TBS',
+                    'POD_ORANGE_TBS',
+                    ]].sum(axis=1)
 
-try:
-    dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
-    dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
-    dropbox_refresh_token = os.environ.get("DROPBOX_REFRESH_TOKEN")
+allData['overflow'] = allData['TRG_HALLWAY1']+allData['POST_POD1']
 
-    # exchange the authorization code for an access token:
-    token_url = "https://api.dropboxapi.com/oauth2/token"
-    params = {
-        "grant_type": "refresh_token",
-        "refresh_token": dropbox_refresh_token,
-        "client_id": dropbox_app_key,
-        "client_secret": dropbox_app_secret
-    }
-    r = requests.post(token_url, data=params)
-    # print(r.text)
 
-    dropbox_access_token = r.json()['access_token']
+allData.to_csv('allDataWithCalculatedColumns.csv', index=False)
+allData.to_excel('allDataWithCalculatedColumns.xlsx', index_label="index")
 
-    dbx = dropbox.Dropbox(dropbox_access_token)
-    
-    upload(dbx, 'hourlyreport.pdf', '', '',
-               'hourlyreport.pdf', overwrite=True)
-    
-    upload(dbx, 'allData.csv', '', '',
-               'allData.csv', overwrite=True)
-    
-    upload(dbx, 'allData.xlsx', '', '',
-               'allData.xlsx', overwrite=True)
-    
-    upload(dbx, 'current.csv', '', '',
-               'current.csv', overwrite=True)
-    upload(dbx, 'current.xlsx', '', '',
-               'current.xlsx', overwrite=True)
-except:
-    print('unable to upload to dropbox')
+dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
+dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
+dropbox_refresh_token = os.environ.get("DROPBOX_REFRESH_TOKEN")
+
+# exchange the authorization code for an access token:
+token_url = "https://api.dropboxapi.com/oauth2/token"
+params = {
+    "grant_type": "refresh_token",
+    "refresh_token": dropbox_refresh_token,
+    "client_id": dropbox_app_key,
+    "client_secret": dropbox_app_secret
+}
+r = requests.post(token_url, data=params)
+# print(r.text)
+
+dropbox_access_token = r.json()['access_token']
+
+dbx = dropbox.Dropbox(dropbox_access_token)
+
+upload(dbx, 'hourlyreport.pdf', '', '',
+            'hourlyreport.pdf', overwrite=True)
+
+upload(dbx, 'allData.csv', '', '',
+            'allData.csv', overwrite=True)
+
+upload(dbx, 'allData.xlsx', '', '',
+            'allData.xlsx', overwrite=True)
+
+upload(dbx, 'current.csv', '', '',
+            'current.csv', overwrite=True)
+upload(dbx, 'current.xlsx', '', '',
+            'current.xlsx', overwrite=True)
+
+upload(dbx, 'allDataWithCalculatedColumns.csv', '', '',
+            'allDataWithCalculatedColumns.csv', overwrite=True)
+
+upload(dbx, 'allDataWithCalculatedColumns.xlsx', '', '',
+            'allDataWithCalculatedColumns.xlsx', overwrite=True)
+
 
 print(allData.tail(5))
