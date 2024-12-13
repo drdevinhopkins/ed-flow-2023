@@ -1,0 +1,2 @@
+metric,critical,time,value,forecast,forecast_time,forecast_value,forecast_lower,forecast_upper
+total_tbs,False,2024-12-12 15:00:00,34.0,49.65658086057017,2024-12-12 15:00:00,32.36954485851683,17.51430925197591,49.65658086057017

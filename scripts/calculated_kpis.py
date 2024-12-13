@@ -62,7 +62,7 @@ for column in tqdm(tbs_columns):
         print(column + ' failed')
 
 data = df.copy()
-
+alerts = []
 def create_metric_graph(metric):
     # Calculate total patients to be seen as the sum of specified columns
 
@@ -88,15 +88,39 @@ def create_metric_graph(metric):
     # Group by hour and calculate the average number of patients for this specific day of the week
     hourly_data_same_day = same_day_data.groupby('Hour')[metric].mean()
 
-    prophet_data = output[['ds', metric+'_yhat', metric+'_yhat_lower', metric+'_yhat_upper']]
+    prophet_data = output[['ds', metric+'_yhat', metric+'_yhat_lower', metric+'_yhat_upper']].copy()
     prophet_data['Hour'] = pd.to_datetime(prophet_data['ds']).dt.hour
     prophet_data_today = prophet_data[prophet_data.ds.dt.date == most_recent_timestamp.date()]
     prophet_data_today = prophet_data_today.reset_index(drop=True)
-
+    
     if most_recent_value > prophet_data_today.iloc[most_recent_hour][metric+'_yhat_upper']:
         now_color = '#ff4d4d'
+        print(metric,'critical')
+        alerts.append({
+            'metric': metric,
+            'critical': True,
+            'time': most_recent_timestamp,
+            'value': most_recent_value,
+            'forecast': prophet_data_today.iloc[most_recent_hour][metric+'_yhat_upper'],
+            'forecast_time': prophet_data_today.iloc[most_recent_hour]['ds'],
+            'forecast_value': prophet_data_today.iloc[most_recent_hour][metric+'_yhat'],
+            'forecast_lower': prophet_data_today.iloc[most_recent_hour][metric+'_yhat_lower'],
+            'forecast_upper': prophet_data_today.iloc[most_recent_hour][metric+'_yhat_upper']
+        })
     else:
         now_color = '#ff4d4d'
+        print(metric,'not critical')
+        alerts.append({
+            'metric': metric,
+            'critical': False,
+            'time': most_recent_timestamp,
+            'value': most_recent_value,
+            'forecast': prophet_data_today.iloc[most_recent_hour][metric+'_yhat_upper'],
+            'forecast_time': prophet_data_today.iloc[most_recent_hour]['ds'],
+            'forecast_value': prophet_data_today.iloc[most_recent_hour][metric+'_yhat'],
+            'forecast_lower': prophet_data_today.iloc[most_recent_hour][metric+'_yhat_lower'],
+            'forecast_upper': prophet_data_today.iloc[most_recent_hour][metric+'_yhat_upper']
+        })
 
     prophet_data_today.tail()
     # Plot the updated graph with colors matching the example and no vertical grid lines
@@ -132,20 +156,25 @@ def create_metric_graph(metric):
 for metric in tbs_columns:
     create_metric_graph(metric)
 
+print(alerts)
+
+alerts_df = pd.DataFrame(alerts)
+alerts_df.to_csv('calculated_KPIs_alerts.csv', index=False) # save alerts to csv
+alerts_df.to_excel('calculated_KPIs_alerts.xlsx', index_label="index")
 
 dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
 dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
 dropbox_refresh_token = os.environ.get("DROPBOX_REFRESH_TOKEN")
 
 # exchange the authorization code for an access token:
-token_url = "https://api.dropboxapi.com/oauth2/token"
+TOKEN_URL = "https://api.dropboxapi.com/oauth2/token"
 params = {
     "grant_type": "refresh_token",
     "refresh_token": dropbox_refresh_token,
     "client_id": dropbox_app_key,
     "client_secret": dropbox_app_secret
 }
-r = requests.post(token_url, data=params)
+r = requests.post(TOKEN_URL, data=params, timeout=30)
 # print(r.text)
 
 dropbox_access_token = r.json()['access_token']
@@ -155,3 +184,8 @@ dbx = dropbox.Dropbox(dropbox_access_token)
 for metric in tbs_columns:
     upload(dbx, metric+'.png', '', '',
             metric+'.png', overwrite=True)
+
+upload(dbx, 'calculated_KPIs_alerts.csv', '', '',
+            'calculated_KPIs_alerts.csv', overwrite=True)
+upload(dbx, 'calculated_KPIs_alerts.xlsx', '', '',
+            'calculated_KPIs_alerts.xlsx', overwrite=True)
