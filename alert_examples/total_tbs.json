@@ -1,0 +1,41 @@
+{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.5",
+    "body": [
+      {
+        "type": "TextBlock",
+        "text": "🚨 **CRITICAL PATIENT VOLUME** 🚨",
+        "size": "Large",
+        "weight": "Bolder",
+        "color": "Attention"
+      },
+      {
+        "type": "Image",
+        "url": "https://www.dropbox.com/scl/fi/9fye9nkzkxx78uh274ut4/total_tbs.png?rlkey=nnmup1ht4phevmt7yw9jyhav5&raw=1",
+         "altText": "Daily Patient Volume Graph",
+         "size": "Stretch"
+      },
+      {
+            "type": "TextBlock",
+        "text": "The current total number of patients to be seen is significantly above expected levels.",
+              "wrap": true
+      },
+      {
+        "type": "TextBlock",
+        "text": "Consider mobilizing the on-call physician.",
+              "wrap": true,
+              "weight": "Bolder"
+      },
+     {
+        "type": "ActionSet",
+        "actions": [
+            {
+                  "type": "Action.OpenUrl",
+                  "title": "Go to Flow Dashboard",
+                  "url": "https://app.powerbi.com/groups/me/reports/d22df078-20e6-4064-9c91-96d08d028897/ReportSectionbf2b1e80bc7570cb2ec4?experience=power-bi"
+            }
+        ]
+      }
+    ]
+  }
