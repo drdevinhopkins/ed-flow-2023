@@ -11,10 +11,6 @@ import dropbox
 
 load_dotenv()
 
-# deta = Deta(os.environ.get("DETA_PROJECT_KEY"))
-
-# drive = deta.Drive("data")
-
 URL = 'https://www.dropbox.com/s/ckijmipu33z3feg/HourlyReport.pdf?dl=1'
 r = requests.get(URL, allow_redirects=True)
 open('hourlyreport.pdf', 'wb').write(r.content)
@@ -41,44 +37,38 @@ df = df.set_index('ds').reset_index().drop(['dateflg', 'timeflg'], axis=1)
 df.to_csv('current.csv', index=False)
 df.to_excel('current.xlsx', index_label="index")
 
-# drive.put(name='current.csv', path='current.csv')
-# drive.put(name='current.xlsx', path='current.xlsx')
 
 
 df = df.sort_values(by='ds', ascending=True)
 
-# allData = pd.read_csv('https://drive.deta.sh/v1/b0x22rtxtdf/data/files/download?name=allData.csv',
-#                       storage_options={'X-API-Key': os.environ.get("DETA_PROJECT_KEY")})
-allData = pd.read_csv('https://www.dropbox.com/scl/fi/ksf0nbmmiort5khbrgr61/allData.csv?rlkey=75e735fjk4ifttjt553ukxt3k&dl=1')
+allData = pd.read_csv(
+    'https://www.dropbox.com/scl/fi/ksf0nbmmiort5khbrgr61/allData.csv?rlkey=75e735fjk4ifttjt553ukxt3k&dl=1')
 allData.ds = pd.to_datetime(allData.ds)
 
 allData = pd.concat([allData, df], ignore_index=True).drop_duplicates(subset='ds',
-    keep='last').sort_values(by='ds', ascending=True)
+                                                                      keep='last').sort_values(by='ds', ascending=True)
 
 allData.to_csv('allData.csv', index=False)
 allData.to_excel('allData.xlsx', index_label="index")
 
-# drive.put(name='allData.csv', path='allData.csv')
-# drive.put(name='allData.xlsx', path='allData.xlsx')
-
 allData['total_tbs'] = allData[['TRG_HALLWAY_TBS',
-                      'POD_GREEN_TBS',
-                      'POD_YELLOW_TBS',
-                      'POD_ORANGE_TBS',
-                      'RAZ_TBS',
-                      'AMBVERTTBS',
-                      'QTrack_TBS',
-                      'Garage_TBS']].sum(axis=1)
+                                'POD_GREEN_TBS',
+                                'POD_YELLOW_TBS',
+                                'POD_ORANGE_TBS',
+                                'RAZ_TBS',
+                                'AMBVERTTBS',
+                                'QTrack_TBS',
+                                'Garage_TBS']].sum(axis=1)
 allData['vert_tbs'] = allData[[
     'RAZ_TBS',
     'AMBVERTTBS',
     'QTrack_TBS',
     'Garage_TBS']].sum(axis=1)
 allData['pod_tbs'] = allData[['TRG_HALLWAY_TBS',
-                    'POD_GREEN_TBS',
-                    'POD_YELLOW_TBS',
-                    'POD_ORANGE_TBS',
-                    ]].sum(axis=1)
+                              'POD_GREEN_TBS',
+                              'POD_YELLOW_TBS',
+                              'POD_ORANGE_TBS',
+                              ]].sum(axis=1)
 
 allData['overflow'] = allData['TRG_HALLWAY1']+allData['POST_POD1']
 
