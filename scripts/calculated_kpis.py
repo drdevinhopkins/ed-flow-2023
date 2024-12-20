@@ -231,8 +231,8 @@ upload(dbx, 'calculated_KPIs_critical_alerts.csv', '', '',
 upload(dbx, 'calculated_KPIs_critical_alerts.xlsx', '', '',
             'calculated_KPIs_critical_alerts.xlsx', overwrite=True)
 
-total_tbs_figure_as_base64 = base64.b64encode(
-    open('total_tbs.png', 'rb').read()).decode('utf-8')
+# total_tbs_figure_as_base64 = base64.b64encode(
+#     open('total_tbs.png', 'rb').read()).decode('utf-8')
 
 # Check if total_tbs is critical by looking in critical_alerts_df
 is_total_tbs_critical = False
@@ -254,7 +254,7 @@ if is_total_tbs_critical:
             },
             {
                 "type": "Image",
-                "url": f"data:image/png;base64,{total_tbs_figure_as_base64}",
+                "url": f"https://www.dropbox.com/scl/fi/9fye9nkzkxx78uh274ut4/total_tbs.png?rlkey=nnmup1ht4phevmt7yw9jyhav5&raw=1&timestamp={str(int(pd.Timestamp.now().timestamp()))}",
                 "altText": "Daily Patient Volume Graph",
                 "size": "Stretch"
             },
