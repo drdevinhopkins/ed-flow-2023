@@ -9,8 +9,41 @@ import matplotlib.pyplot as plt
 from dotenv import load_dotenv
 from utils import upload
 import dropbox
+import time
+import datetime
 
 load_dotenv()
+
+def upload_to_dropbox(dbx, fullname, folder, subfolder, name, overwrite=False):
+    """Upload a file.
+    Return the request response, or None in case of error.
+    """
+    path = '/%s/%s/%s' % (folder, subfolder.replace(os.path.sep, '/'), name)
+    while '//' in path:
+        path = path.replace('//', '/')
+    mode = (dropbox.files.WriteMode.overwrite
+            if overwrite
+            else dropbox.files.WriteMode.add)
+    mtime = os.path.getmtime(fullname)
+    with open(fullname, 'rb') as f:
+        data = f.read()
+    try:
+        res = dbx.files_upload(
+            data, path, mode,
+            client_modified=datetime.datetime(*time.gmtime(mtime)[:6]),
+            mute=True)
+        check_for_links = dbx.sharing_list_shared_links(path)
+        if check_for_links.links:
+            link_to_file = check_for_links.links[0].url
+        else:
+            shared_link_metadata = dbx.sharing_create_shared_link_with_settings(path)
+            link_to_file = shared_link_metadata.url
+
+    except dropbox.exceptions.ApiError as err:
+        print('*** API error', err)
+        return None
+    print('uploaded as', res.name.encode('utf8'))
+    return link_to_file
 
 allData = pd.read_csv(
     'https://www.dropbox.com/scl/fi/ksf0nbmmiort5khbrgr61/allData.csv?rlkey=75e735fjk4ifttjt553ukxt3k&dl=1')
@@ -198,28 +231,31 @@ critical_alerts_df.to_csv(
 critical_alerts_df.to_excel(
     'calculated_KPIs_critical_alerts.xlsx', index_label="index")
 
-dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
-dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
-dropbox_refresh_token = os.environ.get("DROPBOX_REFRESH_TOKEN")
+# dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
+# dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
+# dropbox_refresh_token = os.environ.get("DROPBOX_REFRESH_TOKEN")
+dropbox_access_token = os.environ.get("DROPBOX_ACCESS_TOKEN")
 
-# exchange the authorization code for an access token:
-TOKEN_URL = "https://api.dropboxapi.com/oauth2/token"
-params = {
-    "grant_type": "refresh_token",
-    "refresh_token": dropbox_refresh_token,
-    "client_id": dropbox_app_key,
-    "client_secret": dropbox_app_secret
-}
-r = requests.post(TOKEN_URL, data=params, timeout=30)
-# print(r.text)
+# # exchange the authorization code for an access token:
+# TOKEN_URL = "https://api.dropboxapi.com/oauth2/token"
+# params = {
+#     "grant_type": "refresh_token",
+#     "refresh_token": dropbox_refresh_token,
+#     "client_id": dropbox_app_key,
+#     "client_secret": dropbox_app_secret
+# }
+# r = requests.post(TOKEN_URL, data=params, timeout=30)
+# # print(r.text)
 
-dropbox_access_token = r.json()['access_token']
+# dropbox_access_token = r.json()['access_token']
 
 dbx = dropbox.Dropbox(dropbox_access_token)
 
+figure_links = {}
+
 for metric in tbs_columns:
-    upload(dbx, metric+'.png', '', '',
-           metric+'.png', overwrite=True)
+    figure_links[metric] = upload_to_dropbox(dbx, metric+'.png', 'figures', '',
+           metric+'_'+str(int(pd.Timestamp.now().timestamp()))+'.png', overwrite=True)
 
 upload(dbx, 'calculated_KPIs_alerts.csv', '', '',
             'calculated_KPIs_alerts.csv', overwrite=True)
@@ -254,7 +290,7 @@ if is_total_tbs_critical:
             },
             {
                 "type": "Image",
-                "url": f"https://www.dropbox.com/scl/fi/9fye9nkzkxx78uh274ut4/total_tbs.png?rlkey=nnmup1ht4phevmt7yw9jyhav5&raw=1&timestamp={str(int(pd.Timestamp.now().timestamp()))}",
+                "url": figure_links['total_tbs'].replace('dl=0', "raw=1"),
                 "altText": "Daily Patient Volume Graph",
                 "size": "Stretch"
             },
@@ -290,3 +326,5 @@ with open('total_tbs_alert_adaptive_card.json', 'w') as f:
 
 upload(dbx, 'total_tbs_alert_adaptive_card.json', '', '',
             'total_tbs_alert_adaptive_card.json', overwrite=True)
+
+print(figure_links['total_tbs'].replace('dl=0', "raw=1"))
