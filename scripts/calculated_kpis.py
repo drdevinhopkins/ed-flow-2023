@@ -231,23 +231,23 @@ critical_alerts_df.to_csv(
 critical_alerts_df.to_excel(
     'calculated_KPIs_critical_alerts.xlsx', index_label="index")
 
-# dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
-# dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
-# dropbox_refresh_token = os.environ.get("DROPBOX_REFRESH_TOKEN")
-dropbox_access_token = os.environ.get("DROPBOX_ACCESS_TOKEN")
+dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
+dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
+dropbox_refresh_token = os.environ.get("DROPBOX_REFRESH_TOKEN")
+# dropbox_access_token = os.environ.get("DROPBOX_ACCESS_TOKEN")
 
-# # exchange the authorization code for an access token:
-# TOKEN_URL = "https://api.dropboxapi.com/oauth2/token"
-# params = {
-#     "grant_type": "refresh_token",
-#     "refresh_token": dropbox_refresh_token,
-#     "client_id": dropbox_app_key,
-#     "client_secret": dropbox_app_secret
-# }
-# r = requests.post(TOKEN_URL, data=params, timeout=30)
-# # print(r.text)
+# exchange the authorization code for an access token:
+TOKEN_URL = "https://api.dropboxapi.com/oauth2/token"
+params = {
+    "grant_type": "refresh_token",
+    "refresh_token": dropbox_refresh_token,
+    "client_id": dropbox_app_key,
+    "client_secret": dropbox_app_secret
+}
+r = requests.post(TOKEN_URL, data=params, timeout=30)
+# print(r.text)
 
-# dropbox_access_token = r.json()['access_token']
+dropbox_access_token = r.json()['access_token']
 
 dbx = dropbox.Dropbox(dropbox_access_token)
 
