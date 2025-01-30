@@ -9,3 +9,4 @@ dropbox
 pymsteams
 matplotlib
 tqdm
+XlsxWriter
