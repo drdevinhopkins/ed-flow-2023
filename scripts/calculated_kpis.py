@@ -86,7 +86,8 @@ for column in tqdm(tbs_columns):
         m = Prophet(interval_width=0.95)
         m.fit(df[['ds', column]].rename(columns={column: 'y'}))
         future = m.make_future_dataframe(periods=24*1, freq='h')
-        forecast = m.predict(future.tail(24*14))
+        # forecast = m.predict(future.tail(24*14))
+        forecast = m.predict(future)
         if FIRST_RUN:
             output['ds'] = forecast['ds']
 
@@ -328,3 +329,41 @@ upload(dbx, 'total_tbs_alert_adaptive_card.json', '', '',
             'total_tbs_alert_adaptive_card.json', overwrite=True)
 
 print(figure_links['total_tbs'].replace('dl=0', "raw=1"))
+
+
+total_tbs = df[['ds','total_tbs']]
+total_tbs_forecast = output[['ds', 'total_tbs_yhat', 'total_tbs_yhat_lower', 'total_tbs_yhat_upper']]
+
+merged_df = pd.merge(
+    total_tbs, 
+    total_tbs_forecast, 
+    on='ds', 
+    how='outer'
+)
+
+# Create an Excel writer using XlsxWriter
+file_name = "total_tbs.xlsx"
+with pd.ExcelWriter(file_name, engine='xlsxwriter', datetime_format="yyyy-mm-dd hh:mm:ss") as writer:
+    merged_df.to_excel(writer, sheet_name='Sheet1', index=False)
+
+    # Get the workbook and worksheet objects
+    workbook = writer.book
+    worksheet = writer.sheets['Sheet1']
+
+    # Define the range for the table
+    num_rows, num_cols = merged_df.shape
+    col_letters = [chr(65 + i) for i in range(num_cols)]  # Column letters (A, B, C...)
+    table_range = f"A1:{col_letters[-1]}{num_rows+1}"  # Adjusting for headers
+
+    # Add an Excel table
+    worksheet.add_table(table_range, {
+        'columns': [{'header': col} for col in merged_df.columns],
+        'name': 'total_tbs',  # Optional: Name your table
+        'style': 'Table Style Medium 9'  # Choose a predefined style
+    })
+
+    # Save the file
+    writer.close()
+
+    upload(dbx, 'total_tbs.xlsx', '', '',
+            'total_tbs.xlsx', overwrite=True)
