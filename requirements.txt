@@ -10,3 +10,4 @@ pymsteams
 matplotlib
 tqdm
 XlsxWriter
+neuralprophet
