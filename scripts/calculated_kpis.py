@@ -102,6 +102,11 @@ data = df.copy()
 alerts = []
 critical_alerts = []
 
+total_tbs_np = pd.read_csv('https://www.dropbox.com/scl/fi/w82obtpfnxdtdaq5zoran/total_tbs_np.csv?rlkey=bndevo6c0qi0bdi5ponko99ej&st=34o472dp&dl=1')
+total_tbs_np.ds = pd.to_datetime(total_tbs_np.ds)
+total_tbs_np = total_tbs_np.set_index(pd.to_datetime(total_tbs_np['ds']).dt.hour)
+most_recent_timestamp = pd.to_datetime(data['ds']).iloc[-1]
+total_tbs_np = total_tbs_np[total_tbs_np['ds'].dt.date == most_recent_timestamp.date()]
 
 def create_metric_graph(metric):
     # Calculate total patients to be seen as the sum of specified columns
@@ -151,6 +156,9 @@ def create_metric_graph(metric):
     plt.bar(
         recent_data.index, recent_data, color='#ff4d4d', alpha=0.2, label='Today'
     )
+    if metric == 'total_tbs':
+        plt.bar(total_tbs_np.index, total_tbs_np.yhat, color='green', alpha=0.1, label='Forecasted')
+
     plt.xlabel('Hour of the Day', fontsize=14)
     # plt.ylabel(metric, fontsize=14)
     if metric == 'total_tbs':
