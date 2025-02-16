@@ -37,12 +37,9 @@ data = pd.read_csv(
     'https://www.dropbox.com/scl/fi/ksf0nbmmiort5khbrgr61/allData.csv?rlkey=75e735fjk4ifttjt553ukxt3k&dl=1')
 data.ds = pd.to_datetime(data.ds)
 data = data.sort_values('ds')
-data['y'] = data['POD_GREEN_TBS']+data['POD_YELLOW_TBS']+data['POD_ORANGE_TBS'] + \
-    data['TRG_HALLWAY_TBS']+data['RAZ_TBS'] + \
-    data['AMBVERTTBS']+data['QTrack_TBS']+data['Garage_TBS']
-df = data.copy()
-df = df[['ds', 'y']]
 
+df = data.copy()
+df = df[['ds', 'Inflow_Total']].rename(columns={'ds': 'ds', 'Inflow_Total': 'y'})
 params = {
     'growth': 'off',
     'yearly_seasonality': True,
@@ -53,12 +50,41 @@ params = {
     'epochs': 10,
     'quantiles': [0.2, 0.5, 0.8]
 }
-
 m = NeuralProphet(**params)
 m.set_plotting_backend("plotly-static")
 metrics = m.fit(df[['ds', 'y']], freq='h', progress='plot')
-
 df_future = m.make_future_dataframe(df[['ds', 'y']], periods=8)
+forecast = m.predict(df_future, decompose=False, raw=True)
+output_df = reformat_forecast(forecast)
+inflow_total_np = output_df.copy()
+
+
+
+
+
+data['y'] = data['POD_GREEN_TBS']+data['POD_YELLOW_TBS']+data['POD_ORANGE_TBS'] + \
+    data['TRG_HALLWAY_TBS']+data['RAZ_TBS'] + \
+    data['AMBVERTTBS']+data['QTrack_TBS']+data['Garage_TBS']
+df = data.copy()
+df = df[['ds', 'y', 'Inflow_Total']]
+
+params = {
+    'growth': 'off',
+    'yearly_seasonality': True,
+    'weekly_seasonality': True,
+    'daily_seasonality': True,
+    'n_lags': 48,
+    'n_forecasts': 8,
+    'epochs': 50,
+    'quantiles': [0.2, 0.5, 0.8]
+}
+
+m = NeuralProphet(**params)
+m.set_plotting_backend("plotly-static")
+m.add_future_regressor('Inflow_Total')
+metrics = m.fit(df, freq='h', progress='plot')
+
+df_future = m.make_future_dataframe(df[['ds', 'y', 'Inflow_Total']], periods=8, regressors_df=inflow_total_np[['ds', 'yhat']].rename(columns={'ds': 'ds', 'yhat': 'Inflow_Total'}))
 forecast = m.predict(df_future, decompose=False, raw=True)
 
 output_df = reformat_forecast(forecast)

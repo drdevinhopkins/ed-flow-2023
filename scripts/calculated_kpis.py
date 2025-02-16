@@ -157,7 +157,10 @@ def create_metric_graph(metric):
         recent_data.index, recent_data, color='#ff4d4d', alpha=0.2, label='Today'
     )
     if metric == 'total_tbs':
-        plt.bar(total_tbs_np.index, total_tbs_np.yhat, color='green', alpha=0.1, label='Forecasted')
+        try:
+            plt.bar(total_tbs_np.index, total_tbs_np.yhat, color='green', alpha=0.1, label='Forecasted')
+        except: 
+            print('total_tbs_np not available')
 
     plt.xlabel('Hour of the Day', fontsize=14)
     # plt.ylabel(metric, fontsize=14)
