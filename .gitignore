@@ -162,3 +162,5 @@ cython_debug/
 
 *.png
 total_tbs_alert_adaptive_card.json
+
+notebooks/lightning_logs/*

@@ -11,6 +11,7 @@ from utils import upload
 import dropbox
 import time
 import datetime
+import math
 
 load_dotenv()
 
@@ -158,7 +159,13 @@ def create_metric_graph(metric):
     )
     if metric == 'total_tbs':
         try:
-            plt.bar(total_tbs_np.index, total_tbs_np.yhat, color='green', alpha=0.1, label='Forecasted')
+            my_index=0
+            for index,row in total_tbs_np.iterrows():
+                my_index = my_index+1
+                if my_index == 1:
+                    plt.bar(index, row.yhat, color='green', alpha=0.4*(math.pow(0.8,my_index)), label='Forecasted')
+                else:
+                    plt.bar(index, row.yhat, color='green', alpha=0.4*(math.pow(0.8,my_index)))
         except: 
             print('total_tbs_np not available')
 
