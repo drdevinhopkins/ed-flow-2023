@@ -276,6 +276,10 @@ for metric in tbs_columns:
     figure_links[metric] = upload_to_dropbox(dbx, metric+'.png', 'figures', '',
            metric+'_'+str(int(pd.Timestamp.now().timestamp()))+'.png', overwrite=True)
 
+for metric in tbs_columns:
+    figure_links[metric] = upload_to_dropbox(dbx, metric+'.png', 'static_figures', '',
+           metric+'.png', overwrite=True)
+
 upload(dbx, 'calculated_KPIs_alerts.csv', '', '',
             'calculated_KPIs_alerts.csv', overwrite=True)
 upload(dbx, 'calculated_KPIs_alerts.xlsx', '', '',

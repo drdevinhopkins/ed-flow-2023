@@ -15,7 +15,7 @@ load_dotenv()
 def reformat_forecast(forecast):
     forecast_data = []
 
-    for i in range(8):
+    for i in range(24):
         step_col = f"step{i}"
         quantile_20_col = f"step{i} 20.0%"  # Column name for 20th percentile
         quantile_80_col = f"step{i} 80.0%"  # Column name for 80th percentile
@@ -46,14 +46,14 @@ params = {
     'weekly_seasonality': True,
     'daily_seasonality': True,
     'n_lags': 48,
-    'n_forecasts': 8,
-    'epochs': 10,
+    'n_forecasts': 24,
+    'epochs': 50,
     'quantiles': [0.2, 0.5, 0.8]
 }
 m = NeuralProphet(**params)
 m.set_plotting_backend("plotly-static")
 metrics = m.fit(df[['ds', 'y']], freq='h', progress='plot')
-df_future = m.make_future_dataframe(df[['ds', 'y']], periods=8)
+df_future = m.make_future_dataframe(df[['ds', 'y']], periods=24)
 forecast = m.predict(df_future, decompose=False, raw=True)
 output_df = reformat_forecast(forecast)
 inflow_total_np = output_df.copy()
@@ -74,7 +74,7 @@ params = {
     'weekly_seasonality': True,
     'daily_seasonality': True,
     'n_lags': 48,
-    'n_forecasts': 8,
+    'n_forecasts': 24,
     'epochs': 50,
     'quantiles': [0.2, 0.5, 0.8]
 }
@@ -84,7 +84,7 @@ m.set_plotting_backend("plotly-static")
 m.add_future_regressor('Inflow_Total')
 metrics = m.fit(df, freq='h', progress='plot')
 
-df_future = m.make_future_dataframe(df[['ds', 'y', 'Inflow_Total']], periods=8, regressors_df=inflow_total_np[['ds', 'yhat']].rename(columns={'ds': 'ds', 'yhat': 'Inflow_Total'}))
+df_future = m.make_future_dataframe(df[['ds', 'y', 'Inflow_Total']], periods=24, regressors_df=inflow_total_np[['ds', 'yhat']].rename(columns={'ds': 'ds', 'yhat': 'Inflow_Total'}))
 forecast = m.predict(df_future, decompose=False, raw=True)
 
 output_df = reformat_forecast(forecast)
