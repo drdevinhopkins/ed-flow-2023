@@ -29,7 +29,6 @@ jobs:
         pip install --upgrade pip
         pip install \
               torch==2.5.* \
-              pytorch-lightning==2.3.* \
               neuralprophet==0.8.0 \
               python-dotenv dropbox
     - name: Total TBS NP
