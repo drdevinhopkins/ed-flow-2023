@@ -26,7 +26,7 @@ jobs:
         # cache: 'pip' # caching pip dependencies
     - name: Install dependencies
       run: |
-        pip install neuralprophet --upgrade
+        pip install neuralprophet python-dotenv --upgrade
     - name: Total TBS NP
       run: python scripts/total_tbs_np.py
       env:
