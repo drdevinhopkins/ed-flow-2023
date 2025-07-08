@@ -10,4 +10,5 @@ pymsteams
 matplotlib
 tqdm
 XlsxWriter
-neuralprophet
+torch 2.5.*
+neuralprophet 0.8.0

@@ -21,10 +21,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.13
+    - name: Set up Python 3.12
       uses: actions/setup-python@v5
       with:
-        python-version: "3.13"
+        python-version: "3.12"
         cache: 'pip' # caching pip dependencies
     - name: Install dependencies
       run: |
@@ -37,12 +37,12 @@ jobs:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
-    # - name: Total TBS NP
-    #   run: python scripts/total_tbs_np.py
-    #   env:
-    #       DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-    #       DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
-    #       DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+    - name: Total TBS NP
+      run: python scripts/total_tbs_np.py
+      env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     - name: Calculated KPIs
       run: python scripts/calculated_kpis.py
       env:
