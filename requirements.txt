@@ -11,4 +11,4 @@ matplotlib
 tqdm
 XlsxWriter
 torch==2.5.*
-neuralprophet>=0.8.0
+neuralprophet==0.8.0
