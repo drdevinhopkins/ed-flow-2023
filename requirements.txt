@@ -10,5 +10,5 @@ pymsteams
 matplotlib
 tqdm
 XlsxWriter
-torc==2.5.*
+torch==2.5.*
 neuralprophe>=0.9.0
