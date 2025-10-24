@@ -38,7 +38,6 @@ df.to_csv('current.csv', index=False)
 df.to_excel('current.xlsx', index_label="index")
 
 
-
 df = df.sort_values(by='ds', ascending=True)
 
 allData = pd.read_csv(
@@ -117,3 +116,21 @@ upload(dbx, 'allDataWithCalculatedColumns.xlsx', '', '',
 
 
 print(allData.tail(5))
+
+# Group by date (dropping the time component) and sum Inflow_Total
+
+daily_inflow = (
+    allData.groupby(allData['ds'].dt.date)['Inflow_Total']
+    .sum()
+    .reset_index(name='Daily_Inflow_Total')
+)
+
+daily_inflow = daily_inflow[:-1]
+print(daily_inflow.tail(5))
+daily_inflow.to_csv('daily_inflow.csv', index=False)
+daily_inflow.to_excel('daily_inflow.xlsx', index_label="index")
+
+upload(dbx, 'daily_inflow.csv', '', '',
+            'daily_inflow.csv', overwrite=True)
+upload(dbx, 'daily_inflow.xlsx', '', '',
+            'daily_inflow.xlsx', overwrite=True)
