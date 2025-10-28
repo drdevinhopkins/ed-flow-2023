@@ -116,4 +116,4 @@ print(output_df)
 
 MODEL_VERSION = 1
 
-save(m, f"../models/total_tbs-{MODEL_VERSION}.np")
+save(m, f"models/total_tbs-{MODEL_VERSION}.np")
