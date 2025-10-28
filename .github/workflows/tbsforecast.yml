@@ -10,16 +10,17 @@ on:
     branches: [ "main" ]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
 
     runs-on: ubuntu-latest
-
+    env:
+      MODEL_VERSION: "1"
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.13
+    - name: Set up Python 3.12
       uses: actions/setup-python@v5
       with:
         python-version: "3.12"
@@ -37,3 +38,15 @@ jobs:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+    - name: Cache models
+      uses: actions/cache@v4
+      with:
+        path: models
+        key: models-${{ env.MODEL_VERSION }}
+
+    - name: Publish model release asset
+      run: |
+        gh release create v${{ env.MODEL_VERSION }} --notes "Models v${{ env.MODEL_VERSION }}" || true
+        gh release upload v${{ env.MODEL_VERSION }} models/total_tbs-${{ env.MODEL_VERSION }}.joblib --clobber
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

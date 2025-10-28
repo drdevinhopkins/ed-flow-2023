@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import dropbox
 import requests
 from utils import upload
-
+from neuralprophet import save
 
 load_dotenv()
 
@@ -21,12 +21,12 @@ def reformat_forecast(forecast):
         quantile_80_col = f"step{i} 80.0%"  # Column name for 80th percentile
 
         forecast_data.append({
-            "ds": forecast["ds"].iloc[0] + pd.Timedelta(hours=i),
-            "yhat": forecast[step_col].iloc[0],
+            "ds": forecast["ds"].iloc[-1] + pd.Timedelta(hours=i),
+            "yhat": forecast[step_col].iloc[-1],
             # Add lower bound (20th percentile)
-            "yhat_lower": forecast[quantile_20_col].iloc[0],
+            "yhat_lower": forecast[quantile_20_col].iloc[-1],
             # Add upper bound (80th percentile)
-            "yhat_upper": forecast[quantile_80_col].iloc[0]
+            "yhat_upper": forecast[quantile_80_col].iloc[-1]
         })
 
     new_forecast_df = pd.DataFrame(forecast_data)
@@ -39,7 +39,8 @@ data.ds = pd.to_datetime(data.ds)
 data = data.sort_values('ds')
 
 df = data.copy()
-df = df[['ds', 'Inflow_Total']].rename(columns={'ds': 'ds', 'Inflow_Total': 'y'})
+df = df[['ds', 'Inflow_Total']].rename(
+    columns={'ds': 'ds', 'Inflow_Total': 'y'})
 params = {
     'growth': 'off',
     'yearly_seasonality': True,
@@ -57,9 +58,6 @@ df_future = m.make_future_dataframe(df[['ds', 'y']], periods=24)
 forecast = m.predict(df_future, decompose=False, raw=True)
 output_df = reformat_forecast(forecast)
 inflow_total_np = output_df.copy()
-
-
-
 
 
 data['y'] = data['POD_GREEN_TBS']+data['POD_YELLOW_TBS']+data['POD_ORANGE_TBS'] + \
@@ -84,7 +82,8 @@ m.set_plotting_backend("plotly-static")
 m.add_future_regressor('Inflow_Total')
 metrics = m.fit(df, freq='h', progress='plot')
 
-df_future = m.make_future_dataframe(df[['ds', 'y', 'Inflow_Total']], periods=24, regressors_df=inflow_total_np[['ds', 'yhat']].rename(columns={'ds': 'ds', 'yhat': 'Inflow_Total'}))
+df_future = m.make_future_dataframe(df[['ds', 'y', 'Inflow_Total']], periods=24, regressors_df=inflow_total_np[[
+                                    'ds', 'yhat']].rename(columns={'ds': 'ds', 'yhat': 'Inflow_Total'}))
 forecast = m.predict(df_future, decompose=False, raw=True)
 
 output_df = reformat_forecast(forecast)
@@ -114,3 +113,7 @@ upload(dbx, 'total_tbs_np.csv', '', '',
             'total_tbs_np.csv', overwrite=True)
 
 print(output_df)
+
+MODEL_VERSION = 1
+
+save(m, f"../models/total_tbs-{MODEL_VERSION}.np")

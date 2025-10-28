@@ -168,3 +168,5 @@ lightning_logs/*
 *.csv
 *.xlsx
 *.pdf
+
+models/
