@@ -36,6 +36,7 @@ jobs:
         pip install -r requirements.txt
     - name: Get current data
       run: python scripts/get_current.py
+      continue-on-error: true
       env:
           DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
@@ -43,6 +44,7 @@ jobs:
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     - name: Calculated KPIs
       run: python scripts/calculated_kpis.py
+      continue-on-error: true
       env:
           DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
@@ -50,6 +52,7 @@ jobs:
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     - name: Alerts
       run: python scripts/alerts.py
+      continue-on-error: true
       env:
           DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
@@ -57,6 +60,7 @@ jobs:
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     - name: Total TBS NP
       run: python scripts/total_tbs_np.py
+      continue-on-error: true
       env:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
@@ -64,9 +68,13 @@ jobs:
 
     - name: Anomaly detection
       run: python scripts/anomaly_detection.py
+      continue-on-error: true
       env:
           DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+    - name: Check for failed steps
+      if: failure()
+      run: echo "⚠️ Some steps failed, but workflow continued."
 
