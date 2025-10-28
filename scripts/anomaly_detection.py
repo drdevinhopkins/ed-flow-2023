@@ -82,6 +82,7 @@ print(allData.tail(5))
 daily_inflow = pd.read_csv(
     'https://www.dropbox.com/scl/fi/e61kmtweg90tq5hpqrnsf/daily_inflow.csv?rlkey=15r15klj0s0005fvhvlt2iuqt&raw=1')
 daily_inflow.ds = pd.to_datetime(daily_inflow.ds)
+daily_inflow = daily_inflow.tail(365*3)
 
 column = 'Daily_Inflow_Total'
 m = Prophet(interval_width=0.95, weekly_seasonality=True, yearly_seasonality=True, daily_seasonality=False,
