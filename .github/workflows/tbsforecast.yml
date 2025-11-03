@@ -1,5 +1,5 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# This workflow will install Python dependencies, run your NeuralProphet job,
+# and publish the resulting .np model file to a GitHub Release.
 
 name: TBS Forecast
 
@@ -14,42 +14,76 @@ permissions:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     env:
       MODEL_VERSION: "1"
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - name: Cache pip
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/nprequirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r nprequirements.txt
-    - name: Total TBS NP
-      run: python scripts/total_tbs_np.py
-      env:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/nprequirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r nprequirements.txt
+
+      # Put the models cache BEFORE training so an existing cache can be reused.
+      # Note: actions/cache is immutable for a given key. If MODEL_VERSION stays "1",
+      # this cache won't update. Bump MODEL_VERSION when you want a fresh cache.
+      - name: Cache models
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: models-${{ env.MODEL_VERSION }}
+
+      - name: Run Total TBS NP
+        env:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
-    - name: Cache models
-      uses: actions/cache@v4
-      with:
-        path: models
-        key: models-${{ env.MODEL_VERSION }}
+        run: |
+          set -euxo pipefail
+          python scripts/total_tbs_np.py
 
-    - name: Publish model release asset
-      run: |
-        gh release create v${{ env.MODEL_VERSION }} --notes "Models v${{ env.MODEL_VERSION }}" || true
-        gh release upload v${{ env.MODEL_VERSION }} models/total_tbs-${{ env.MODEL_VERSION }}.joblib --clobber
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify model file exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -lah
+          ls -lah models
+          test -s "models/total_tbs-${MODEL_VERSION}.np" || {
+            echo "Expected model not found: models/total_tbs-${MODEL_VERSION}.np"
+            exit 1
+          }
+
+      - name: Create or reuse release and upload model
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="v${MODEL_VERSION}"
+          TITLE="Models ${TAG}"
+          NOTES="Automated model build."
+
+          # Reuse the release if it already exists (avoids HTTP 422).
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists; reusing."
+          else
+            gh release create "$TAG" --title "$TITLE" --notes "$NOTES"
+          fi
+
+          # Overwrite the asset if it already exists on the release.
+          gh release upload "$TAG" "models/total_tbs-${MODEL_VERSION}.np" --clobber
