@@ -7,6 +7,16 @@ import requests
 from utils import upload
 from neuralprophet import save
 
+import torch
+import neuralprophet.configure as npc
+
+torch.serialization.add_safe_globals([
+    npc.ConfigSeasonality,
+    npc.ConfigLaggedRegressors,
+    npc.ConfigEvents,
+    npc.ConfigFutureRegressors,
+])
+
 load_dotenv()
 
 # Function to reformat the forecast data
