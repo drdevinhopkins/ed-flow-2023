@@ -1,21 +1,15 @@
 import os
 import pandas as pd
-from neuralprophet import NeuralProphet
 from dotenv import load_dotenv
 import dropbox
 import requests
 from utils import upload
-from neuralprophet import save
 
 import torch
-import neuralprophet.configure as npc
+import neuralprophet_safe_load  # must come before loading checkpoints
+from neuralprophet import NeuralProphet
+from neuralprophet import save
 
-torch.serialization.add_safe_globals([
-    npc.ConfigSeasonality,
-    npc.ConfigLaggedRegressors,
-    npc.ConfigEvents,
-    npc.ConfigFutureRegressors,
-])
 
 load_dotenv()
 
