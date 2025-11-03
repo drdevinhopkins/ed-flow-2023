@@ -4,9 +4,6 @@ from dotenv import load_dotenv
 import dropbox
 import requests
 from utils import upload
-
-import torch
-import neuralprophet_safe_load  # must come before loading checkpoints
 from neuralprophet import NeuralProphet
 from neuralprophet import save
 

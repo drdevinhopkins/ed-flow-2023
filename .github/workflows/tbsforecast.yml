@@ -35,8 +35,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r nprequirements.txt
-    - name: NP Safe Load
-      run: python scripts/neuralprophet_safe_load.py
     - name: Total TBS NP
       run: python scripts/total_tbs_np.py
       env:
