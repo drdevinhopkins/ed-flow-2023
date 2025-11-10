@@ -10,7 +10,7 @@ load_dotenv()
 
 metar_df = pd.read_csv(
     'https://www.dropbox.com/scl/fi/7b390c7zu7lg2nug9r21e/full_metar_data.csv?rlkey=ob25xfgvuqth42lruczhszoz3&raw=1')
-metar_df.valid = pd.to_datetime(metar_df.valid)
+metar_df.valid = pd.to_datetime(metar_df.valid, errors='coerce')
 print("METAR data shape:", metar_df.shape)
 
 
