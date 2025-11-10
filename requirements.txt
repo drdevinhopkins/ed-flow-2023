@@ -11,5 +11,5 @@ matplotlib
 tqdm
 XlsxWriter
 torch
-neuralprophet==0.8.0
+neuralprophet @ git+https://github.com/ourownstory/neural_prophet.git
 pytz
