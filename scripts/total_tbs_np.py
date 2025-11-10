@@ -10,6 +10,8 @@ from neuralprophet import save
 
 load_dotenv()
 
+MODEL_VERSION = 1
+
 # Function to reformat the forecast data
 
 
@@ -59,6 +61,7 @@ df_future = m.make_future_dataframe(df[['ds', 'y']], periods=24)
 forecast = m.predict(df_future, decompose=False, raw=True)
 output_df = reformat_forecast(forecast)
 inflow_total_np = output_df.copy()
+save(m, f"models/inflow_total_np-{MODEL_VERSION}.np")
 
 
 data['y'] = data['POD_GREEN_TBS']+data['POD_YELLOW_TBS']+data['POD_ORANGE_TBS'] + \
@@ -114,7 +117,5 @@ upload(dbx, 'total_tbs_np.csv', '', '',
             'total_tbs_np.csv', overwrite=True)
 
 print(output_df)
-
-MODEL_VERSION = 1
 
 save(m, f"models/total_tbs-{MODEL_VERSION}.np")

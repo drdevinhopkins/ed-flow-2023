@@ -1,0 +1,103 @@
+name: TBS Forecast (Inference)
+
+on:
+  workflow_dispatch:
+    inputs:
+      horizon_hours:
+        description: "Forecast horizon (hours)"
+        required: true
+        default: "48"
+#   schedule:
+#     - cron: "*/30 * * * *"   # every 30 minutes – tweak as you like
+  repository_dispatch:
+    types: [trigger_forecast_inference]
+
+permissions:
+  contents: read
+
+jobs:
+  inference:
+    runs-on: ubuntu-latest
+    env:
+      MODEL_VERSION: "1"  # bump when you publish a new model
+      MODEL_NAME: "total_tbs"
+      MODEL_FILE: "total_tbs-${{ env.MODEL_VERSION }}.np"
+      MODEL_DIR: "models"
+      OUTPUT_DIR: "outputs"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/nprequirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install minimal deps for inference
+        run: |
+          python -m pip install --upgrade pip
+          # You can keep using your nprequirements.txt, or create a slim one for inference:
+          # neuralprophet version needs to match the one used to save the model.
+          pip install -r nprequirements.txt
+
+      # Try to reuse cached model first
+      - name: Restore models cache
+        id: modelcache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.MODEL_DIR }}
+          key: models-${{ env.MODEL_VERSION }}
+
+      - name: Ensure model file present (fallback to Release download)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euxo pipefail
+          mkdir -p "${MODEL_DIR}"
+          if [ ! -s "${MODEL_DIR}/${MODEL_FILE}" ]; then
+            echo "Model cache miss; downloading from Release v${MODEL_VERSION}"
+            # gh is preinstalled on ubuntu-latest
+            gh release download "v${MODEL_VERSION}" \
+              --pattern "${MODEL_NAME}-${MODEL_VERSION}.np" \
+              --dir "${MODEL_DIR}" \
+              --clobber
+          fi
+          test -s "${MODEL_DIR}/${MODEL_FILE}"
+
+      # (Optional) Save back to cache so subsequent runs hit it fast even if runner evicts it
+      - name: Save models cache
+        if: steps.modelcache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.MODEL_DIR }}
+          key: models-${{ env.MODEL_VERSION }}
+
+      - name: Run inference
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        run: |
+          set -euxo pipefail
+          mkdir -p "${OUTPUT_DIR}"
+          HORIZON="${{ github.event.inputs.horizon_hours || '48' }}"
+          python scripts/run_forecast_np.py \
+            --model-path "${MODEL_DIR}/${MODEL_FILE}" \
+            --horizon-hours "${HORIZON}" \
+            --output-path "${OUTPUT_DIR}/forecast_${{ env.MODEL_NAME }}.parquet"
+
+      # Make the forecast available to downstream/people
+      - name: Upload forecast artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: forecast-${{ env.MODEL_NAME }}
+          path: ${{ env.OUTPUT_DIR }}/*
+          if-no-files-found: error
