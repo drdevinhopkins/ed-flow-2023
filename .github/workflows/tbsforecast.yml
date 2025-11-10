@@ -87,3 +87,4 @@ jobs:
 
           # Overwrite the asset if it already exists on the release.
           gh release upload "$TAG" "models/total_tbs-${MODEL_VERSION}.np" --clobber
+          gh release upload "$TAG" "models/inflow_total_np-${MODEL_VERSION}.np" --clobber
