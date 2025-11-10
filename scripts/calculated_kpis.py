@@ -12,6 +12,7 @@ import dropbox
 import time
 import datetime
 import math
+import pytz
 
 load_dotenv()
 
@@ -281,7 +282,8 @@ dbx = dropbox.Dropbox(dropbox_access_token)
 
 figure_links = {}
 
-current_hour = pd.Timestamp.now().floor('H')
+montreal_tz = pytz.timezone('America/Montreal')
+current_hour = pd.Timestamp.now(tz=montreal_tz).floor('H')
 timestamp_str = current_hour.strftime('%Y-%m-%d-%H')
 
 for metric in tbs_columns:
