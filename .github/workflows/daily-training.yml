@@ -1,13 +1,15 @@
 # This workflow will install Python dependencies, run your NeuralProphet job,
 # and publish the resulting .np model file to a GitHub Release.
 
-name: TBS Forecast
+name: Daily Training
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  schedule:
+    - cron: '0 6 * * *'  # Runs daily at 02:00 UTC
 
 permissions:
   contents: write
@@ -30,14 +32,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/nprequirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r nprequirements.txt
+          pip install -r requirements.txt
 
       # Put the models cache BEFORE training so an existing cache can be reused.
       # Note: actions/cache is immutable for a given key. If MODEL_VERSION stays "1",
@@ -56,7 +58,15 @@ jobs:
         run: |
           set -euxo pipefail
           python scripts/total_tbs_np.py
-
+        continue-on-error: true
+      - name: Anomaly detection
+        run: python scripts/anomaly_detection.py
+        continue-on-error: true
+        env:
+            DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
+            DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+            DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+            DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
       - name: Verify model file exists
         shell: bash
         run: |
