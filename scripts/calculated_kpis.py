@@ -15,6 +15,7 @@ import math
 
 load_dotenv()
 
+
 def upload_to_dropbox(dbx, fullname, folder, subfolder, name, overwrite=False):
     """Upload a file.
     Return the request response, or None in case of error.
@@ -37,7 +38,8 @@ def upload_to_dropbox(dbx, fullname, folder, subfolder, name, overwrite=False):
         if check_for_links.links:
             link_to_file = check_for_links.links[0].url
         else:
-            shared_link_metadata = dbx.sharing_create_shared_link_with_settings(path)
+            shared_link_metadata = dbx.sharing_create_shared_link_with_settings(
+                path)
             link_to_file = shared_link_metadata.url
 
     except dropbox.exceptions.ApiError as err:
@@ -45,6 +47,7 @@ def upload_to_dropbox(dbx, fullname, folder, subfolder, name, overwrite=False):
         return None
     print('uploaded as', res.name.encode('utf8'))
     return link_to_file
+
 
 allData = pd.read_csv(
     'https://www.dropbox.com/scl/fi/ksf0nbmmiort5khbrgr61/allData.csv?rlkey=75e735fjk4ifttjt553ukxt3k&dl=1')
@@ -103,11 +106,15 @@ data = df.copy()
 alerts = []
 critical_alerts = []
 
-total_tbs_np = pd.read_csv('https://www.dropbox.com/scl/fi/w82obtpfnxdtdaq5zoran/total_tbs_np.csv?rlkey=bndevo6c0qi0bdi5ponko99ej&st=34o472dp&dl=1')
+total_tbs_np = pd.read_csv(
+    'https://www.dropbox.com/scl/fi/w82obtpfnxdtdaq5zoran/total_tbs_np.csv?rlkey=bndevo6c0qi0bdi5ponko99ej&st=34o472dp&dl=1')
 total_tbs_np.ds = pd.to_datetime(total_tbs_np.ds)
-total_tbs_np = total_tbs_np.set_index(pd.to_datetime(total_tbs_np['ds']).dt.hour)
+total_tbs_np = total_tbs_np.set_index(
+    pd.to_datetime(total_tbs_np['ds']).dt.hour)
 most_recent_timestamp = pd.to_datetime(data['ds']).iloc[-1]
-total_tbs_np = total_tbs_np[total_tbs_np['ds'].dt.date == most_recent_timestamp.date()]
+total_tbs_np = total_tbs_np[total_tbs_np['ds'].dt.date ==
+                            most_recent_timestamp.date()]
+
 
 def create_metric_graph(metric):
     # Calculate total patients to be seen as the sum of specified columns
@@ -159,14 +166,16 @@ def create_metric_graph(metric):
     )
     if metric == 'total_tbs':
         try:
-            my_index=0
-            for index,row in total_tbs_np.iterrows():
+            my_index = 0
+            for index, row in total_tbs_np.iterrows():
                 my_index = my_index+1
                 if my_index == 1:
-                    plt.bar(index, row.yhat, color='green', alpha=0.4*(math.pow(0.8,my_index)), label='Forecasted')
+                    plt.bar(index, row.yhat, color='green', alpha=0.4 *
+                            (math.pow(0.8, my_index)), label='Forecasted')
                 else:
-                    plt.bar(index, row.yhat, color='green', alpha=0.4*(math.pow(0.8,my_index)))
-        except: 
+                    plt.bar(index, row.yhat, color='green',
+                            alpha=0.4*(math.pow(0.8, my_index)))
+        except:
             print('total_tbs_np not available')
 
     plt.xlabel('Hour of the Day', fontsize=14)
@@ -272,13 +281,18 @@ dbx = dropbox.Dropbox(dropbox_access_token)
 
 figure_links = {}
 
+current_hour = pd.Timestamp.now().floor('H')
+timestamp_str = current_hour.strftime('%Y-%m-%d-%H')
+
 for metric in tbs_columns:
+    # figure_links[metric] = upload_to_dropbox(dbx, metric+'.png', 'figures', '',
+    #        metric+'_'+str(int(pd.Timestamp.now().timestamp()))+'.png', overwrite=True)
     figure_links[metric] = upload_to_dropbox(dbx, metric+'.png', 'figures', '',
-           metric+'_'+str(int(pd.Timestamp.now().timestamp()))+'.png', overwrite=True)
+                                             f'{metric}_{timestamp_str}.png', overwrite=True)
 
 for metric in tbs_columns:
     figure_links[metric] = upload_to_dropbox(dbx, metric+'.png', 'static_figures', '',
-           metric+'.png', overwrite=True)
+                                             metric+'.png', overwrite=True)
 
 upload(dbx, 'calculated_KPIs_alerts.csv', '', '',
             'calculated_KPIs_alerts.csv', overwrite=True)
@@ -301,7 +315,7 @@ if not critical_alerts_df.empty:
 if is_total_tbs_critical:
     card_json = {
         "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-        "type": "AdaptiveCard", 
+        "type": "AdaptiveCard",
         "version": "1.5",
         "body": [
             {
@@ -353,13 +367,14 @@ upload(dbx, 'total_tbs_alert_adaptive_card.json', '', '',
 print(figure_links['total_tbs'].replace('dl=0', "raw=1"))
 
 
-total_tbs = df[['ds','total_tbs']]
-total_tbs_forecast = output[['ds', 'total_tbs_yhat', 'total_tbs_yhat_lower', 'total_tbs_yhat_upper']]
+total_tbs = df[['ds', 'total_tbs']]
+total_tbs_forecast = output[['ds', 'total_tbs_yhat',
+                             'total_tbs_yhat_lower', 'total_tbs_yhat_upper']]
 
 merged_df = pd.merge(
-    total_tbs, 
-    total_tbs_forecast, 
-    on='ds', 
+    total_tbs,
+    total_tbs_forecast,
+    on='ds',
     how='outer'
 )
 
@@ -374,7 +389,8 @@ with pd.ExcelWriter(file_name, engine='xlsxwriter', datetime_format="yyyy-mm-dd 
 
     # Define the range for the table
     num_rows, num_cols = merged_df.shape
-    col_letters = [chr(65 + i) for i in range(num_cols)]  # Column letters (A, B, C...)
+    col_letters = [chr(65 + i)
+                   for i in range(num_cols)]  # Column letters (A, B, C...)
     table_range = f"A1:{col_letters[-1]}{num_rows+1}"  # Adjusting for headers
 
     # Add an Excel table
@@ -388,4 +404,4 @@ with pd.ExcelWriter(file_name, engine='xlsxwriter', datetime_format="yyyy-mm-dd 
     writer.close()
 
     upload(dbx, 'total_tbs.xlsx', '', '',
-            'total_tbs.xlsx', overwrite=True)
+           'total_tbs.xlsx', overwrite=True)
