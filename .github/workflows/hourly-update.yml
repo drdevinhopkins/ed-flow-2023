@@ -61,14 +61,6 @@ jobs:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
-    - name: Anomaly detection
-      run: python scripts/anomaly_detection.py
-      continue-on-error: true
-      env:
-          DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
-          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
-          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     - name: Check for failed steps
       if: failure()
       run: echo "⚠️ Some steps failed, but workflow continued."
