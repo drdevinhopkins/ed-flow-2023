@@ -10,8 +10,10 @@ load_dotenv()
 
 metar_df = pd.read_csv(
     'https://www.dropbox.com/scl/fi/7b390c7zu7lg2nug9r21e/full_metar_data.csv?rlkey=ob25xfgvuqth42lruczhszoz3&raw=1')
-metar_df.valid = pd.to_datetime(metar_df.valid, errors='coerce')
+metar_df.valid = pd.to_datetime(
+    metar_df.valid, format='mixed', errors='coerce')
 print("METAR data shape:", metar_df.shape)
+print(metar_df.tail(1).valid)
 
 
 # get the most recent date in metar_df
@@ -19,11 +21,11 @@ most_recent_date = metar_df['valid'].max()
 print("Most recent date in METAR data:", most_recent_date)
 
 # get the day before the most recent date
-day_before_most_recent = most_recent_date - pd.Timedelta(days=1)
+day_before_most_recent = most_recent_date - pd.Timedelta(days=7)
 print("Day before most recent date:", day_before_most_recent)
 
 # get the day after the most recent date
-day_after_most_recent = most_recent_date + pd.Timedelta(days=1)
+day_after_most_recent = most_recent_date + pd.Timedelta(days=7)
 print("Day after most recent date:", day_after_most_recent)
 
 base_url = (
@@ -54,10 +56,13 @@ print(url)
 
 recent_metar_df = pd.read_csv(url)
 print("Recent METAR data shape:", recent_metar_df.shape)
+recent_metar_df.valid = pd.to_datetime(
+    recent_metar_df.valid, format='mixed', errors='coerce')
+print(recent_metar_df.tail(1).valid)
 
 # merge recent_metar_df with metar_df, avoiding duplicates
 metar_df = pd.concat([metar_df, recent_metar_df]).drop_duplicates(
-    subset=['valid']).reset_index(drop=True)
+    subset=['valid'], keep='last').sort_values('valid').reset_index(drop=True)
 print("Updated METAR dataframe shape:", metar_df.shape)
 
 metar_df.to_csv('full_metar_data.csv', index=False)
