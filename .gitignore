@@ -170,3 +170,4 @@ lightning_logs/*
 *.pdf
 
 models/
+.DS_Store

@@ -33,7 +33,6 @@ jobs:
       run: python scripts/get_current.py
       continue-on-error: true
       env:
-          DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
@@ -41,7 +40,6 @@ jobs:
       run: python scripts/total_tbs_np_forecast.py
       continue-on-error: true
       env:
-          DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
@@ -49,7 +47,6 @@ jobs:
       run: python scripts/calculated_kpis.py
       continue-on-error: true
       env:
-          DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
@@ -57,7 +54,6 @@ jobs:
       run: python scripts/alerts.py
       continue-on-error: true
       env:
-          DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
@@ -65,10 +61,19 @@ jobs:
       run: python scripts/update_metar.py
       continue-on-error: true
       env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+    - name: Update ShiftAdmin data
+      run: python scripts/shiftadmin.py
+      continue-on-error: true
+      env:
           DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+          SHIFTADMIN_USER: ${{ secrets.SHIFTADMIN_USER }}
+          SHIFTADMIN_PASS: ${{ secrets.SHIFTADMIN_PASS }}
     - name: Check for failed steps
       if: failure()
       run: echo "⚠️ Some steps failed, but workflow continued."
