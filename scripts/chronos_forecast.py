@@ -1,12 +1,10 @@
 from chronos import BaseChronosPipeline, Chronos2Pipeline
 import pandas as pd
 import os
-import pandas as pd
 from dotenv import load_dotenv
 import requests
 from utils import upload
 import dropbox
-import pandas as pd
 from pandas.tseries.frequencies import to_offset
 
 load_dotenv()

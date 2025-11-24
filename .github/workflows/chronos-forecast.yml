@@ -24,7 +24,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install 'chronos-forecasting>=2.0' 'pandas[pyarrow]' 'matplotlib' 'dropbox' 'python-dotenv' 'requests'
     - name: Run Chronos Forecast Scripts
-      run: python scripts/chronos.py
+      run: python scripts/chronos_forecast.py
       env:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
