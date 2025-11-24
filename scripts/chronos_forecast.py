@@ -92,7 +92,6 @@ pred_df = pipeline.predict_df(
 )
 
 pred_df.to_csv('chronos_forecast.csv', index=False)
-pred_df.to_excel('chronos_forecast.xlsx', index_label="index")
 
 dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
 dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
