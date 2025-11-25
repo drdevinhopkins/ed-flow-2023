@@ -23,6 +23,88 @@ df.ds = pd.to_datetime(df.ds, errors="coerce")
 df['id'] = 'jgh'
 
 
+all_shifts_df = pd.read_csv('https://www.dropbox.com/scl/fi/yeyr2a7pj6nry8i2q3m0c/all_shifts.csv?rlkey=q1su2h8fqxfnlu7t1l2qe1w0q&raw=1')
+all_shifts_df['shift_start'] = pd.to_datetime(all_shifts_df['shift_start']).dt.round('h')
+all_shifts_df['shift_end'] = pd.to_datetime(all_shifts_df['shift_end']).dt.round('h')
+
+shift_types_dict = {'W1':'flow',
+ 'X1':'pod',
+ 'X3':'pod',
+ 'X4':'vertical',
+ 'X2':'vertical',
+ 'WOC1':'oncall',
+ 'WOC2':'oncall',
+ 'WOC3':'oncall',
+ 'X5':'pod',
+ 'W3':'overlap',
+ 'Y1':'pod',
+ 'Y3':'pod',
+ 'Y4':'vertical',
+ 'Y2':'vertical',
+ 'Y5':'pod',
+ 'Z1':'night',
+ 'Z2':'night',
+ 'D1':'pod',
+ 'R1':'pod',
+ 'P1':'vertical',
+ 'D2':'vertical',
+ 'OC1':'oncall',
+ 'OC2':'oncall',
+ 'V1':'flow',
+ 'A1':'pod',
+ 'G1':'vertical',
+ 'E1':'pod',
+ 'R2':'pod',
+ 'A2':'pod',
+ 'P2':'vertical',
+ 'E2':'vertical',
+ 'N1':'night',
+ 'N2':'night',
+ 'L2':'overlap',
+ 'L4':'overlap',
+ 'H1':'teaching',
+ 'B1':'vertical',
+ 'L1':'overlap',
+ 'W5':'overlap',
+ 'L6':'overlap',
+ 'B2':'vertical'}
+
+all_shifts_df['shift_type'] = all_shifts_df['shift_short_name'].map(shift_types_dict)
+
+# Create hourly rows
+# We'll use a list comprehension to generate the range for each row
+expanded_rows = []
+for _, row in all_shifts_df.iterrows():
+    # Create range. inclusive='left' means [start, end)
+    # If start == end (e.g. 0 length shift after rounding), it will be empty, which is correct
+    hours = pd.date_range(row['shift_start'], row['shift_end'], freq='h', inclusive='left')
+    for h in hours:
+        expanded_rows.append({
+            'ds': h,
+            'user': row['first_name']+row['last_name'],
+            'shift_type': row['shift_type'],
+            'shift_short_name': row['shift_short_name']
+        })
+
+expanded_df = pd.DataFrame(expanded_rows)
+
+# Pivot
+# index=timestamp, columns=user_id, values=shift_type
+hourly_shifts_by_user_df = expanded_df.pivot_table(
+    index='ds', 
+    columns='user', 
+    values='shift_type', 
+    aggfunc='first' # In case of duplicates, take the first
+)
+
+# Fill NaNs
+hourly_shifts_by_user_df = hourly_shifts_by_user_df.fillna('NotWorking')
+
+df = df.merge(hourly_shifts_by_user_df, on='ds')
+
+future_df = hourly_shifts_by_user_df.reset_index()[hourly_shifts_by_user_df.reset_index()['ds'] > df['ds'].max()]
+future_df['id'] = 'jgh'
+
 ID_COL = "id"
 TS_COL = "ds"
 TARGETS = ['total_tbs']
@@ -85,6 +167,7 @@ if to_offset(freq).name.lower() != "h":
 pred_df = pipeline.predict_df(
     df,
     prediction_length=24,
+    future_df = future_df.head(24),
     quantile_levels=[0.1, 0.5, 0.9],
     id_column=ID_COL,
     timestamp_column=TS_COL,
