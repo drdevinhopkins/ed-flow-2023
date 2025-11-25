@@ -1,0 +1,6 @@
+chronos-forecasting>=2.0
+pandas[pyarrow]
+matplotlib
+dropbox
+python-dotenv
+requests
