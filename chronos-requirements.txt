@@ -4,3 +4,4 @@ matplotlib
 dropbox
 python-dotenv
 requests
+holidays

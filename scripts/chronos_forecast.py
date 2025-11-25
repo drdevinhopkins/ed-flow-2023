@@ -6,6 +6,8 @@ import requests
 from utils import upload
 import dropbox
 from pandas.tseries.frequencies import to_offset
+import pandas as pd
+import holidays
 
 load_dotenv()
 
@@ -16,6 +18,64 @@ pipeline: Chronos2Pipeline = BaseChronosPipeline.from_pretrained(
     # device_map="cuda"
     device_map="cpu"
 )
+
+def add_holiday_flags(
+    df: pd.DataFrame,
+    ts_col: str = "ds",
+    local_tz: str = "America/Montreal",
+    observed: bool = True,
+    include_names: bool = False,
+) -> pd.DataFrame:
+    """
+    Adds boolean columns:
+      • is_qc_holiday       — Québec public holiday (CA-QC)
+      • is_jewish_holiday   — Israeli public/Jewish holiday (IL)
+    Optionally adds:
+      • qc_holiday_name
+      • jewish_holiday_name
+
+    Notes:
+      • Holiday checks are date-based (00:00–24:00 local calendar date),
+        not sundown-to-sundown observance.
+      • NaT timestamps are ignored gracefully.
+    """
+    out = df.copy()
+
+    # 1) Parse to datetime
+    out[ts_col] = pd.to_datetime(out[ts_col], errors="coerce")
+
+    # 2) Get the calendar DATE to use for holiday lookup
+    #    - If tz-aware: convert to Montreal then take .date
+    #    - If naive: assume values already represent local Montreal wall-clock; just take .date
+    if getattr(out[ts_col].dt, "tz", None) is not None:
+        dates_for_calendar = out[ts_col].dt.tz_convert(local_tz).dt.date
+    else:
+        dates_for_calendar = out[ts_col].dt.date
+
+    # 3) Build a SAFE integer year range for the holiday objects
+    years_series = pd.Series(dates_for_calendar)
+    years_series = years_series.dropna().map(lambda d: int(pd.Timestamp(d).year))
+    if years_series.empty:
+        raise ValueError("No valid datetimes found to extract holiday years.")
+    years = list(range(int(years_series.min()), int(years_series.max()) + 1))
+
+    # 4) Construct holiday calendars
+    qc_holidays = holidays.Canada(subdiv="QC", years=years, observed=observed)
+    il_holidays = holidays.Israel(years=years, observed=observed)
+
+   # 5) Flag membership
+    out["is_qc_holiday"] = [ ("yes" if d in qc_holidays else "no") if pd.notna(pd.Timestamp(d)) else "no"
+                             for d in dates_for_calendar ]
+    out["is_jewish_holiday"] = [ ("yes" if d in il_holidays else "no") if pd.notna(pd.Timestamp(d)) else "no"
+                                 for d in dates_for_calendar ]
+
+    if include_names:
+        out["qc_holiday_name"] = [ qc_holidays.get(d, "no") if pd.notna(pd.Timestamp(d)) else "no"
+                                   for d in dates_for_calendar ]
+        out["jewish_holiday_name"] = [ il_holidays.get(d, "no") if pd.notna(pd.Timestamp(d)) else "no"
+                                       for d in dates_for_calendar ]
+
+    return out
 
 df = pd.read_csv(
     'https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/allDataWithCalculatedColumns.csv?rlkey=9mm4zwaugxyj2r4ooyd39y4nl&raw=1')
@@ -101,9 +161,11 @@ hourly_shifts_by_user_df = expanded_df.pivot_table(
 hourly_shifts_by_user_df = hourly_shifts_by_user_df.fillna('NotWorking')
 
 df = df.merge(hourly_shifts_by_user_df, on='ds')
+df = add_holiday_flags(df, ts_col='ds', include_names=True)
 
 future_df = hourly_shifts_by_user_df.reset_index()[hourly_shifts_by_user_df.reset_index()['ds'] > df['ds'].max()]
 future_df['id'] = 'jgh'
+future_df = add_holiday_flags(future_df, ts_col='ds', include_names=True)
 
 ID_COL = "id"
 TS_COL = "ds"
