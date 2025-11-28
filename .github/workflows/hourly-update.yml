@@ -4,8 +4,8 @@
 name: Hourly update
 
 on:
-  # push:
-  #   branches: [ "main" ]
+  push:
+    branches: [ "main" ]
   # pull_request:
   #   branches: [ "main" ]
   repository_dispatch:
@@ -28,6 +28,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install torch --index-url https://download.pytorch.org/whl/cpu
+        pip install -r chronos-requirements.txt
         pip install -r requirements.txt
     - name: Get current data
       run: python scripts/get_current.py
@@ -52,6 +54,13 @@ jobs:
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
           SHIFTADMIN_USER: ${{ secrets.SHIFTADMIN_USER }}
           SHIFTADMIN_PASS: ${{ secrets.SHIFTADMIN_PASS }}
+    - name: Run Chronos Forecast Scripts
+      run: python scripts/chronos_forecast.py
+      env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
     - name: Total TBS NP Forecast
       run: python scripts/total_tbs_np_forecast.py
       continue-on-error: true
