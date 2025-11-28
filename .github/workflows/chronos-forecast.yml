@@ -4,12 +4,12 @@
 name: Chronos Forecast
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  # push:
+  #   branches: [ "main" ]
+  # pull_request:
+  #   branches: [ "main" ]
   repository_dispatch:
-      types: [trigger_get_current_data_action]
+      types: [trigger_chronos_forecast]
 jobs:
   build:
     runs-on: ubuntu-latest
