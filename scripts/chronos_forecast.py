@@ -6,7 +6,6 @@ import requests
 from utils import upload
 import dropbox
 from pandas.tseries.frequencies import to_offset
-import pandas as pd
 import holidays
 
 load_dotenv()
@@ -18,6 +17,28 @@ pipeline: Chronos2Pipeline = BaseChronosPipeline.from_pretrained(
     # device_map="cuda"
     device_map="cpu"
 )
+
+def regularize_hourly(g: pd.DataFrame) -> pd.DataFrame:
+    """
+    Reindex each group's timestamps to strict hourly and fill gaps.
+    Works whether the grouping column is present or omitted (include_groups=False).
+    """
+    # The group key (id) is available as g.name; if ID_COL exists, prefer it.
+    sid = g[ID_COL].iloc[0] if ID_COL in g.columns else g.name
+
+    g = g.sort_values(TS_COL)
+    full_idx = pd.date_range(g[TS_COL].min(), g[TS_COL].max(), freq="h")
+    g = g.set_index(TS_COL).reindex(full_idx)
+    g.index.name = TS_COL
+
+    # restore id (constant for the whole group)
+    g[ID_COL] = sid
+
+    # numeric + fill for targets
+    for col in TARGETS:
+        if col in g.columns:
+            g[col] = pd.to_numeric(g[col], errors="coerce").ffill().bfill()
+    return g.reset_index()
 
 def add_holiday_flags(
     df: pd.DataFrame,
@@ -77,16 +98,6 @@ def add_holiday_flags(
 
     return out
 
-df = pd.read_csv(
-    'https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/allDataWithCalculatedColumns.csv?rlkey=9mm4zwaugxyj2r4ooyd39y4nl&raw=1')
-df.ds = pd.to_datetime(df.ds, errors="coerce")
-df['id'] = 'jgh'
-
-
-all_shifts_df = pd.read_csv('https://www.dropbox.com/scl/fi/yeyr2a7pj6nry8i2q3m0c/all_shifts.csv?rlkey=q1su2h8fqxfnlu7t1l2qe1w0q&raw=1')
-all_shifts_df['shift_start'] = pd.to_datetime(all_shifts_df['shift_start']).dt.round('h')
-all_shifts_df['shift_end'] = pd.to_datetime(all_shifts_df['shift_end']).dt.round('h')
-
 shift_types_dict = {'W1':'flow',
  'X1':'pod',
  'X3':'pod',
@@ -129,6 +140,17 @@ shift_types_dict = {'W1':'flow',
  'L6':'overlap',
  'B2':'vertical'}
 
+
+# Load hourly data
+df = pd.read_csv(
+    'https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/allDataWithCalculatedColumns.csv?rlkey=9mm4zwaugxyj2r4ooyd39y4nl&raw=1')
+df.ds = pd.to_datetime(df.ds, errors="coerce")
+df['id'] = 'jgh'
+
+# Load shift data
+all_shifts_df = pd.read_csv('https://www.dropbox.com/scl/fi/yeyr2a7pj6nry8i2q3m0c/all_shifts.csv?rlkey=q1su2h8fqxfnlu7t1l2qe1w0q&raw=1')
+all_shifts_df['shift_start'] = pd.to_datetime(all_shifts_df['shift_start']).dt.round('h')
+all_shifts_df['shift_end'] = pd.to_datetime(all_shifts_df['shift_end']).dt.round('h')
 all_shifts_df['shift_type'] = all_shifts_df['shift_short_name'].map(shift_types_dict)
 
 # Create hourly rows
@@ -160,12 +182,7 @@ hourly_shifts_by_user_df = expanded_df.pivot_table(
 # Fill NaNs
 hourly_shifts_by_user_df = hourly_shifts_by_user_df.fillna('NotWorking')
 
-df = df.merge(hourly_shifts_by_user_df, on='ds')
-df = add_holiday_flags(df, ts_col='ds', include_names=True)
 
-future_df = hourly_shifts_by_user_df.reset_index()[hourly_shifts_by_user_df.reset_index()['ds'] > df['ds'].max()]
-future_df['id'] = 'jgh'
-future_df = add_holiday_flags(future_df, ts_col='ds', include_names=True)
 
 ID_COL = "id"
 TS_COL = "ds"
@@ -183,27 +200,7 @@ df = df.sort_values([ID_COL, TS_COL]).drop_duplicates(
     [ID_COL, TS_COL], keep="last")
 
 
-def regularize_hourly(g: pd.DataFrame) -> pd.DataFrame:
-    """
-    Reindex each group's timestamps to strict hourly and fill gaps.
-    Works whether the grouping column is present or omitted (include_groups=False).
-    """
-    # The group key (id) is available as g.name; if ID_COL exists, prefer it.
-    sid = g[ID_COL].iloc[0] if ID_COL in g.columns else g.name
 
-    g = g.sort_values(TS_COL)
-    full_idx = pd.date_range(g[TS_COL].min(), g[TS_COL].max(), freq="h")
-    g = g.set_index(TS_COL).reindex(full_idx)
-    g.index.name = TS_COL
-
-    # restore id (constant for the whole group)
-    g[ID_COL] = sid
-
-    # numeric + fill for targets
-    for col in TARGETS:
-        if col in g.columns:
-            g[col] = pd.to_numeric(g[col], errors="coerce").ffill().bfill()
-    return g.reset_index()
 
 
 # Call apply with include_groups=False if supported; else fall back
@@ -226,15 +223,83 @@ if to_offset(freq).name.lower() != "h":
     raise ValueError(f"Non-1h gaps remain around: {bad}")
 
 # Predict
-pred_df = pipeline.predict_df(
+basic_forecast = pipeline.predict_df(
     df,
     prediction_length=24,
-    future_df = future_df.head(24),
-    quantile_levels=[0.1, 0.5, 0.9],
+    # future_df = future_df.head(24),
+    # quantile_levels=[0.1, 0.5, 0.9],
+    # quantile_levels=[0.5],
     id_column=ID_COL,
     timestamp_column=TS_COL,
     target=TARGETS,
 )
+
+basic_forecast
+
+
+df_with_holidays = add_holiday_flags(df, ts_col='ds', include_names=True)
+
+#create a dataframe with the next 24 hours timestamps hourly as column 'ds', with column 'id' jgh
+future_df = hourly_shifts_by_user_df.reset_index()[hourly_shifts_by_user_df.reset_index()['ds'] > df['ds'].max()]
+future_df['id'] = 'jgh'
+future_df = add_holiday_flags(future_df, ts_col='ds', include_names=True)
+
+# First, add holiday flags to future_df
+future_df_with_added_holidays = add_holiday_flags(future_df, ts_col='ds', include_names=True)
+
+# Then, select only the columns from future_df_with_added_holidays that are also in df_with_holidays
+common_columns = [col for col in future_df_with_added_holidays.columns if col in df_with_holidays.columns]
+future_df_with_holidays = future_df_with_added_holidays[common_columns]
+
+# Predict
+forecast_with_holidays = pipeline.predict_df(
+    df_with_holidays,
+    prediction_length=24,
+    future_df = future_df_with_holidays.head(24),
+    # quantile_levels=[0.1, 0.5, 0.9],
+    # quantile_levels=[0.5],
+    id_column=ID_COL,
+    timestamp_column=TS_COL,
+    target=TARGETS,
+)
+
+forecast_with_holidays
+
+
+df_with_staffing = df.merge(hourly_shifts_by_user_df, on='ds')
+future_df_with_staffing = hourly_shifts_by_user_df.reset_index()[hourly_shifts_by_user_df.reset_index()['ds'] > df['ds'].max()]
+future_df_with_staffing['id'] = 'jgh'
+
+forecast_with_staffing = pipeline.predict_df(
+    df_with_staffing,
+    prediction_length=24,
+    future_df = future_df_with_staffing.head(24),
+    # quantile_levels=[0.1, 0.5, 0.9],
+    # quantile_levels=[0.5],
+    id_column=ID_COL,
+    timestamp_column=TS_COL,
+    target=TARGETS,
+)
+
+forecast_with_staffing
+
+#join the predictions columns of basic_forecast, forecast_with_holidays and forecast_with_staffing on the 'ds' column
+basic_forecast = basic_forecast[['ds','predictions']].rename(columns={'predictions':'basic_forecast'})
+forecast_with_holidays = forecast_with_holidays[['ds','predictions']].rename(columns={'predictions':'forecast_with_holidays'})
+forecast_with_staffing = forecast_with_staffing[['ds','predictions']].rename(columns={'predictions':'forecast_with_staffing'})
+pred_df = basic_forecast.merge(forecast_with_holidays, on='ds').merge(forecast_with_staffing, on='ds')
+pred_df.head()
+
+
+
+
+# df = df.merge(hourly_shifts_by_user_df, on='ds')
+# df = add_holiday_flags(df, ts_col='ds', include_names=True)
+
+# future_df = hourly_shifts_by_user_df.reset_index()[hourly_shifts_by_user_df.reset_index()['ds'] > df['ds'].max()]
+# future_df['id'] = 'jgh'
+# future_df = add_holiday_flags(future_df, ts_col='ds', include_names=True)
+
 
 pred_df.to_csv('chronos_forecast.csv', index=False)
 
