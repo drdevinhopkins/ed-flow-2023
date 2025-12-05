@@ -12,3 +12,6 @@ XlsxWriter
 torch
 neuralprophet @ git+https://github.com/ourownstory/neural_prophet.git
 pytz
+openmeteo-requests
+requests-cache
+retry-requests
