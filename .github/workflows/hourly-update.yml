@@ -4,8 +4,8 @@
 name: Hourly update
 
 on:
-  push:
-    branches: [ "main" ]
+  # push:
+  #   branches: [ "main" ]
   # pull_request:
   #   branches: [ "main" ]
   repository_dispatch:
