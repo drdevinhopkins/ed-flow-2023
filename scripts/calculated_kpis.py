@@ -107,14 +107,21 @@ data = df.copy()
 alerts = []
 critical_alerts = []
 
-total_tbs_np = pd.read_csv(
-    'https://www.dropbox.com/scl/fi/w82obtpfnxdtdaq5zoran/total_tbs_np.csv?rlkey=bndevo6c0qi0bdi5ponko99ej&st=34o472dp&dl=1')
-total_tbs_np.ds = pd.to_datetime(total_tbs_np.ds)
-total_tbs_np = total_tbs_np.set_index(
-    pd.to_datetime(total_tbs_np['ds']).dt.hour)
-most_recent_timestamp = pd.to_datetime(data['ds']).iloc[-1]
-total_tbs_np = total_tbs_np[total_tbs_np['ds'].dt.date ==
-                            most_recent_timestamp.date()]
+# total_tbs_np = pd.read_csv(
+#     'https://www.dropbox.com/scl/fi/w82obtpfnxdtdaq5zoran/total_tbs_np.csv?rlkey=bndevo6c0qi0bdi5ponko99ej&st=34o472dp&dl=1')
+# total_tbs_np.ds = pd.to_datetime(total_tbs_np.ds)
+# total_tbs_np = total_tbs_np.set_index(
+#     pd.to_datetime(total_tbs_np['ds']).dt.hour)
+# most_recent_timestamp = pd.to_datetime(data['ds']).iloc[-1]
+# total_tbs_np = total_tbs_np[total_tbs_np['ds'].dt.date ==
+#                             most_recent_timestamp.date()]
+
+chronos_forecast = pd.read_csv('https://www.dropbox.com/scl/fi/oixh0znyvhe3syhzutusw/chronos_forecast.csv?rlkey=n02skba3a10hbqf9c5lbjl9ch&dl=1')
+chronos_forecast.ds = pd.to_datetime(chronos_forecast.ds)
+chronos_forecast = chronos_forecast.set_index(
+    pd.to_datetime(chronos_forecast['ds']).dt.hour)
+chronos_forecast = chronos_forecast[chronos_forecast['ds'].dt.date ==
+                                    most_recent_timestamp.date()]
 
 
 def create_metric_graph(metric):
@@ -168,16 +175,16 @@ def create_metric_graph(metric):
     if metric == 'total_tbs':
         try:
             my_index = 0
-            for index, row in total_tbs_np.iterrows():
+            for index, row in chronos_forecast.iterrows():
                 my_index = my_index+1
                 if my_index == 1:
-                    plt.bar(index, row.yhat, color='green', alpha=0.4 *
+                    plt.bar(index, row['forecast_with_staffing'], color='green', alpha=0.4 *
                             (math.pow(0.8, my_index)), label='Forecasted')
                 else:
-                    plt.bar(index, row.yhat, color='green',
+                    plt.bar(index, row['forecast_with_staffing'], color='green',
                             alpha=0.4*(math.pow(0.8, my_index)))
         except:
-            print('total_tbs_np not available')
+            print('chronos_forecast not available')
 
     plt.xlabel('Hour of the Day', fontsize=14)
     # plt.ylabel(metric, fontsize=14)

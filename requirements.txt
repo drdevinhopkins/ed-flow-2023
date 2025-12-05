@@ -9,6 +9,6 @@ pymsteams
 matplotlib
 tqdm
 XlsxWriter
-torch
-neuralprophet @ git+https://github.com/ourownstory/neural_prophet.git
+# torch
+# neuralprophet @ git+https://github.com/ourownstory/neural_prophet.git
 pytz

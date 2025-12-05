@@ -61,13 +61,13 @@ jobs:
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-    - name: Total TBS NP Forecast
-      run: python scripts/total_tbs_np_forecast.py
-      continue-on-error: true
-      env:
-          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
-          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+    # - name: Total TBS NP Forecast
+    #   run: python scripts/total_tbs_np_forecast.py
+    #   continue-on-error: true
+    #   env:
+    #       DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+    #       DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+    #       DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     - name: Calculated KPIs
       run: python scripts/calculated_kpis.py
       continue-on-error: true
