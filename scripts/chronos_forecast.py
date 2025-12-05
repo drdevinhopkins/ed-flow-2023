@@ -283,11 +283,35 @@ forecast_with_staffing = pipeline.predict_df(
 
 forecast_with_staffing
 
+weather_df = pd.read_csv('https://www.dropbox.com/scl/fi/gmhwwld9z9yychg4r0yuk/weather.csv?rlkey=66c78m90aviamr0x0uu72pfr8&raw=1')
+weather_df.ds = pd.to_datetime(weather_df.ds, errors="coerce")
+
+
+future_df = weather_df[weather_df.ds > df.ds.max()].head(24)
+future_df['id']='jgh'
+# Predict
+forecast_with_weather = pipeline.predict_df(
+    #join df with weather_df on ds
+    df.merge(weather_df, on='ds'),
+    prediction_length=24,
+    #weather_df where ds is greater than the max of df.ds.max()
+    future_df = future_df,
+    # future_df = future_df.head(24),
+    # quantile_levels=[0.1, 0.5, 0.9],
+    quantile_levels=[0.5],
+    id_column=ID_COL,
+    timestamp_column=TS_COL,
+    target=TARGETS,
+)
+
+forecast_with_weather
+
 #join the predictions columns of basic_forecast, forecast_with_holidays and forecast_with_staffing on the 'ds' column
 basic_forecast = basic_forecast[['ds','predictions']].rename(columns={'predictions':'basic_forecast'})
 forecast_with_holidays = forecast_with_holidays[['ds','predictions']].rename(columns={'predictions':'forecast_with_holidays'})
 forecast_with_staffing = forecast_with_staffing[['ds','predictions']].rename(columns={'predictions':'forecast_with_staffing'})
-pred_df = basic_forecast.merge(forecast_with_holidays, on='ds').merge(forecast_with_staffing, on='ds')
+forecast_with_weather = forecast_with_weather[['ds','predictions']].rename(columns={'predictions':'forecast_with_weather'})
+pred_df = basic_forecast.merge(forecast_with_holidays, on='ds').merge(forecast_with_staffing, on='ds').merge(forecast_with_weather, on='ds')
 pred_df.head()
 
 
