@@ -120,6 +120,7 @@ chronos_forecast = pd.read_csv('https://www.dropbox.com/scl/fi/oixh0znyvhe3syhzu
 chronos_forecast.ds = pd.to_datetime(chronos_forecast.ds)
 chronos_forecast = chronos_forecast.set_index(
     pd.to_datetime(chronos_forecast['ds']).dt.hour)
+most_recent_timestamp = pd.to_datetime(data['ds']).iloc[-1]
 chronos_forecast = chronos_forecast[chronos_forecast['ds'].dt.date ==
                                     most_recent_timestamp.date()]
 
