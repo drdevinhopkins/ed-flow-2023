@@ -223,6 +223,7 @@ if to_offset(freq).name.lower() != "h":
     raise ValueError(f"Non-1h gaps remain around: {bad}")
 
 # Predict
+print('Predicting basic forecast')
 basic_forecast = pipeline.predict_df(
     df,
     prediction_length=24,
@@ -234,7 +235,7 @@ basic_forecast = pipeline.predict_df(
     target=TARGETS,
 )
 
-basic_forecast
+# basic_forecast
 
 
 df_with_holidays = add_holiday_flags(df, ts_col='ds', include_names=True)
@@ -252,6 +253,7 @@ common_columns = [col for col in future_df_with_added_holidays.columns if col in
 future_df_with_holidays = future_df_with_added_holidays[common_columns]
 
 # Predict
+print('Predicting forecast with holidays')  
 forecast_with_holidays = pipeline.predict_df(
     df_with_holidays,
     prediction_length=24,
@@ -263,13 +265,14 @@ forecast_with_holidays = pipeline.predict_df(
     target=TARGETS,
 )
 
-forecast_with_holidays
+# forecast_with_holidays
 
 
 df_with_staffing = df.merge(hourly_shifts_by_user_df, on='ds')
 future_df_with_staffing = hourly_shifts_by_user_df.reset_index()[hourly_shifts_by_user_df.reset_index()['ds'] > df['ds'].max()]
 future_df_with_staffing['id'] = 'jgh'
 
+print('Predicting forecast with staffing')
 forecast_with_staffing = pipeline.predict_df(
     df_with_staffing,
     prediction_length=24,
@@ -281,21 +284,23 @@ forecast_with_staffing = pipeline.predict_df(
     target=TARGETS,
 )
 
-forecast_with_staffing
+# forecast_with_staffing
 
 weather_df = pd.read_csv('https://www.dropbox.com/scl/fi/gmhwwld9z9yychg4r0yuk/weather.csv?rlkey=66c78m90aviamr0x0uu72pfr8&raw=1')
 weather_df.ds = pd.to_datetime(weather_df.ds, errors="coerce")
 
 
-future_df = weather_df[weather_df.ds > df.ds.max()].head(24)
-future_df['id']='jgh'
+future_weather_df = weather_df[weather_df.ds > df.ds.max()].head(24)
+future_weather_df['id']='jgh'
+
+print('Predicting forecast with weather')
 # Predict
 forecast_with_weather = pipeline.predict_df(
     #join df with weather_df on ds
     df.merge(weather_df, on='ds'),
     prediction_length=24,
     #weather_df where ds is greater than the max of df.ds.max()
-    future_df = future_df,
+    future_df = future_weather_df,
     # future_df = future_df.head(24),
     # quantile_levels=[0.1, 0.5, 0.9],
     quantile_levels=[0.5],
@@ -304,14 +309,51 @@ forecast_with_weather = pipeline.predict_df(
     target=TARGETS,
 )
 
-forecast_with_weather
+#forecast_with_weather
 
-#join the predictions columns of basic_forecast, forecast_with_holidays and forecast_with_staffing on the 'ds' column
+
+# All variables forecast without future
+# all_variable_df = add_holiday_flags(df_with_staffing, ts_col='ds', include_names=True).merge(weather_df, on='ds')
+# print('Predicting all variables forecast without future')
+# forecast_all_vars_without_future = pipeline.predict_df(
+#     all_variable_df,
+#     prediction_length=24,
+#     # quantile_levels=[0.1, 0.5, 0.9],
+#     quantile_levels=[0.5],
+#     id_column=ID_COL,
+#     timestamp_column=TS_COL,
+#     target=TARGETS,
+# )
+
+#forecast_all_vars_without_future
+
+# All variables forecast
+print('Predicting all variables forecast')
+all_variable_df = add_holiday_flags(df_with_staffing, ts_col='ds', include_names=True).merge(weather_df, on='ds')
+
+forecast_all_vars_with_future = pipeline.predict_df(
+    all_variable_df,
+    prediction_length=24,
+    #future_df should be future_df_with_staffing merged with future_weather_df on 'ds' and 'id'
+    future_df = future_df_with_staffing.merge(future_weather_df, on=['ds', 'id']),
+    # quantile_levels=[0.1, 0.5, 0.9],
+    quantile_levels=[0.5],
+    id_column=ID_COL,
+    timestamp_column=TS_COL,
+    target=TARGETS,
+)   
+
+#forecast_all_vars_with_future
+
+#join the predictions columns of basic_forecast, forecast_with_holidays, forecast_with_staffing, forecast_with_weather, forecast_all_vars_without_future, forecast_all_vars_with_future on the 'ds' column
 basic_forecast = basic_forecast[['ds','predictions']].rename(columns={'predictions':'basic_forecast'})
 forecast_with_holidays = forecast_with_holidays[['ds','predictions']].rename(columns={'predictions':'forecast_with_holidays'})
 forecast_with_staffing = forecast_with_staffing[['ds','predictions']].rename(columns={'predictions':'forecast_with_staffing'})
 forecast_with_weather = forecast_with_weather[['ds','predictions']].rename(columns={'predictions':'forecast_with_weather'})
-pred_df = basic_forecast.merge(forecast_with_holidays, on='ds').merge(forecast_with_staffing, on='ds').merge(forecast_with_weather, on='ds')
+# forecast_all_vars_without_future = forecast_all_vars_without_future[['ds','predictions']].rename(columns={'predictions':'forecast_all_vars_without_future'})
+forecast_all_vars_with_future = forecast_all_vars_with_future[['ds','predictions']].rename(columns={'predictions':'forecast_all_vars_with_future'})
+
+pred_df = basic_forecast.merge(forecast_with_holidays, on='ds').merge(forecast_with_staffing, on='ds').merge(forecast_with_weather, on='ds').merge(forecast_all_vars_with_future, on='ds')
 pred_df.head()
 
 

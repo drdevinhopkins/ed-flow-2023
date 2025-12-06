@@ -179,10 +179,10 @@ def create_metric_graph(metric):
             for index, row in chronos_forecast.iterrows():
                 my_index = my_index+1
                 if my_index == 1:
-                    plt.bar(index, row['forecast_with_staffing'], color='green', alpha=0.4 *
+                    plt.bar(index, row['forecast_all_vars_with_future'], color='green', alpha=0.4 *
                             (math.pow(0.8, my_index)), label='Forecasted')
                 else:
-                    plt.bar(index, row['forecast_with_staffing'], color='green',
+                    plt.bar(index, row['forecast_all_vars_with_future'], color='green',
                             alpha=0.4*(math.pow(0.8, my_index)))
         except:
             print('chronos_forecast not available')
