@@ -186,7 +186,7 @@ hourly_shifts_by_user_df = hourly_shifts_by_user_df.fillna('NotWorking')
 
 ID_COL = "id"
 TS_COL = "ds"
-TARGETS = ['total_tbs']
+TARGETS = ['total_tbs', 'Inflow_Total', 'overflow']
 
 df = df.copy()
 df[TS_COL] = pd.to_datetime(df[TS_COL], errors="coerce")
@@ -346,14 +346,14 @@ forecast_all_vars_with_future = pipeline.predict_df(
 #forecast_all_vars_with_future
 
 #join the predictions columns of basic_forecast, forecast_with_holidays, forecast_with_staffing, forecast_with_weather, forecast_all_vars_without_future, forecast_all_vars_with_future on the 'ds' column
-basic_forecast = basic_forecast[['ds','predictions']].rename(columns={'predictions':'basic_forecast'})
-forecast_with_holidays = forecast_with_holidays[['ds','predictions']].rename(columns={'predictions':'forecast_with_holidays'})
-forecast_with_staffing = forecast_with_staffing[['ds','predictions']].rename(columns={'predictions':'forecast_with_staffing'})
-forecast_with_weather = forecast_with_weather[['ds','predictions']].rename(columns={'predictions':'forecast_with_weather'})
-# forecast_all_vars_without_future = forecast_all_vars_without_future[['ds','predictions']].rename(columns={'predictions':'forecast_all_vars_without_future'})
-forecast_all_vars_with_future = forecast_all_vars_with_future[['ds','predictions']].rename(columns={'predictions':'forecast_all_vars_with_future'})
+basic_forecast = basic_forecast[['ds', 'target_name', 'predictions']].rename(columns={'predictions':'basic_forecast'})
+forecast_with_holidays = forecast_with_holidays[['ds', 'target_name', 'predictions']].rename(columns={'predictions':'forecast_with_holidays'})
+forecast_with_staffing = forecast_with_staffing[['ds', 'target_name', 'predictions']].rename(columns={'predictions':'forecast_with_staffing'})
+forecast_with_weather = forecast_with_weather[['ds', 'target_name', 'predictions']].rename(columns={'predictions':'forecast_with_weather'})
+# forecast_all_vars_without_future = forecast_all_vars_without_future[['ds', 'target_name', 'predictions']].rename(columns={'predictions':'forecast_all_vars_without_future'})
+forecast_all_vars_with_future = forecast_all_vars_with_future[['ds', 'target_name', 'predictions']].rename(columns={'predictions':'forecast_all_vars_with_future'})
 
-pred_df = basic_forecast.merge(forecast_with_holidays, on='ds').merge(forecast_with_staffing, on='ds').merge(forecast_with_weather, on='ds').merge(forecast_all_vars_with_future, on='ds')
+pred_df = basic_forecast.merge(forecast_with_holidays, on=['ds', 'target_name']).merge(forecast_with_staffing, on=['ds', 'target_name']).merge(forecast_with_weather, on=['ds', 'target_name']).merge(forecast_all_vars_with_future, on=['ds', 'target_name'])
 pred_df.head()
 
 
