@@ -10,6 +10,9 @@ import holidays
 
 load_dotenv()
 
+# import torch
+# torch.cuda.set_device(6)
+
 # Load the Chronos-2 pipeline
 # GPU recommended for faster inference, but CPU is also supported
 pipeline: Chronos2Pipeline = BaseChronosPipeline.from_pretrained(
@@ -186,7 +189,9 @@ hourly_shifts_by_user_df = hourly_shifts_by_user_df.fillna('NotWorking')
 
 ID_COL = "id"
 TS_COL = "ds"
-TARGETS = ['total_tbs', 'Inflow_Total', 'overflow']
+# TARGETS = ['total_tbs', 'Inflow_Total', 'overflow']
+# Targets are all columns in df except ds (timestamp) and id
+TARGETS = [col for col in df.columns.tolist() if col != TS_COL and col != ID_COL]
 
 df = df.copy()
 df[TS_COL] = pd.to_datetime(df[TS_COL], errors="coerce")
@@ -357,7 +362,37 @@ pred_df = basic_forecast.merge(forecast_with_holidays, on=['ds', 'target_name'])
 pred_df.head()
 
 
+# Create a new dataframe with the average % difference of each forecast compared to the basic forecast, for each target_name averaged over all ds
+# The output dataframe should only have 1 row per target_name, and columns for the average % difference of each forecast compared to the basic forecast
+comparison_df = pred_df.copy()
+comparison_df['%diff_holidays'] = (comparison_df['forecast_with_holidays'] - comparison_df['basic_forecast']) / comparison_df['basic_forecast'] * 100
+comparison_df['%diff_staffing'] = (comparison_df['forecast_with_staffing'] - comparison_df['basic_forecast']) / comparison_df['basic_forecast'] * 100
+comparison_df['%diff_weather'] = (comparison_df['forecast_with_weather'] - comparison_df['basic_forecast']) / comparison_df['basic_forecast'] * 100
+comparison_df['%diff_all_vars_with_future'] = (comparison_df['forecast_all_vars_with_future'] - comparison_df['basic_forecast']) / comparison_df['basic_forecast'] * 100
+comparison_df = comparison_df.groupby('target_name')[['%diff_holidays', '%diff_staffing', '%diff_weather', '%diff_all_vars_with_future']].mean().reset_index()
+comparison_df.head()
+comparison_df.to_csv('forecast_variable_effects.csv', index=False)
 
+anomaly_detection_ranges_df = pd.read_csv('https://www.dropbox.com/scl/fi/fjz0am427gw35sz7l994m/anomaly_detection_ranges.csv?rlkey=lib9w0jz2zei5n566jv76o7ol&raw=1')
+anomaly_detection_ranges_df.ds = pd.to_datetime(anomaly_detection_ranges_df.ds, errors="coerce")
+anomaly_detection_ranges_df.tail()
+
+targets = pred_df['target_name'].unique().tolist()
+output_df = pd.DataFrame()
+for target in targets:
+    target_df = pred_df[pred_df['target_name'] == target][['ds', 'forecast_all_vars_with_future']].rename(columns={'forecast_all_vars_with_future': target+'_forecast'})
+    target_df = target_df.merge(anomaly_detection_ranges_df[['ds', target+'_yhat', target+'_yhat_lower', target+'_yhat_upper']], on=['ds'], how='left')
+    target_df[target+'_anomaly'] = ((target_df[target+'_forecast'] < target_df[target+'_yhat_lower']) | (target_df[target+'_forecast'] > target_df[target+'_yhat_upper'])).map({True: 'yes', False: 'no'})
+    #assign a colour based on how the value compares to the yhat and the yhat_lower and yhat_upper. If it's an anomaly, colour is #D13438. If it's between yhat and yhat_upper, colour is #FFB900. If it's between yhat_lower and yhat, colour is #107C10. 
+    target_df[target+'_colour'] = target_df.apply(lambda row: '#D13438' if row[target+'_anomaly'] == 'yes' else ('#FFB900' if row[target+'_forecast'] > row[target+'_yhat'] else '#107C10'), axis=1)
+    if output_df.empty:
+        output_df = target_df
+    else:
+        output_df = output_df.merge(target_df, on='ds', how='outer')
+
+output_df.head()
+
+output_df.to_csv('ED_Hourly_Forecasts_Anomalies_v1.0.csv', index=False)
 
 # df = df.merge(hourly_shifts_by_user_df, on='ds')
 # df = add_holiday_flags(df, ts_col='ds', include_names=True)
@@ -389,3 +424,7 @@ dbx = dropbox.Dropbox(dropbox_access_token)
 
 upload(dbx, 'chronos_forecast.csv', '', '',
             'chronos_forecast.csv', overwrite=True)
+upload(dbx, 'ED_Hourly_Forecasts_Anomalies_v1.0.csv', '', '',
+            'ED_Hourly_Forecasts_Anomalies_v1.0.csv', overwrite=True)
+upload(dbx, 'forecast_variable_effects.csv', '', '',
+            'forecast_variable_effects.csv', overwrite=True)

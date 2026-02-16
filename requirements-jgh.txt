@@ -1,0 +1,16 @@
+chronos-forecasting>=2.0
+pandas[pyarrow]
+matplotlib
+dropbox
+python-dotenv
+requests
+holidays
+camelot-py[base]
+PyPDF2<3.0
+opencv-python-headless
+requests
+prophet
+pymsteams
+tqdm
+XlsxWriter
+pytz
