@@ -377,6 +377,8 @@ anomaly_detection_ranges_df = pd.read_csv('https://www.dropbox.com/scl/fi/fjz0am
 anomaly_detection_ranges_df.ds = pd.to_datetime(anomaly_detection_ranges_df.ds, errors="coerce")
 anomaly_detection_ranges_df.tail()
 
+recent_df = df.tail(24)
+
 targets = pred_df['target_name'].unique().tolist()
 output_df = pd.DataFrame()
 for target in targets:
@@ -389,6 +391,8 @@ for target in targets:
         output_df = target_df
     else:
         output_df = output_df.merge(target_df, on='ds', how='outer')
+
+output_df = output_df.merge(recent_df.tail(24), on='ds', how='outer')
 
 output_df.head()
 

@@ -34,7 +34,7 @@ for column in tqdm(df.columns.to_list()):
 
         m = Prophet(interval_width=0.95)
         m.fit(df[['ds', column]].rename(columns={column: 'y'}))
-        future = m.make_future_dataframe(periods=24*1, freq='h')
+        future = m.make_future_dataframe(periods=24*2, freq='h')
         forecast = m.predict(future.tail(24*14))
         if FIRST_RUN:
             output['ds'] = forecast['ds']
