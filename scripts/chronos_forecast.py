@@ -341,8 +341,8 @@ forecast_all_vars_with_future = pipeline.predict_df(
     prediction_length=24,
     #future_df should be future_df_with_staffing merged with future_weather_df on 'ds' and 'id'
     future_df = future_df_with_staffing.merge(future_weather_df, on=['ds', 'id']),
-    # quantile_levels=[0.1, 0.5, 0.9],
-    quantile_levels=[0.5],
+    quantile_levels=[0.2, 0.5, 0.8],
+    # quantile_levels=[0.5],
     id_column=ID_COL,
     timestamp_column=TS_COL,
     target=TARGETS,
@@ -356,9 +356,9 @@ forecast_with_holidays = forecast_with_holidays[['ds', 'target_name', 'predictio
 forecast_with_staffing = forecast_with_staffing[['ds', 'target_name', 'predictions']].rename(columns={'predictions':'forecast_with_staffing'})
 forecast_with_weather = forecast_with_weather[['ds', 'target_name', 'predictions']].rename(columns={'predictions':'forecast_with_weather'})
 # forecast_all_vars_without_future = forecast_all_vars_without_future[['ds', 'target_name', 'predictions']].rename(columns={'predictions':'forecast_all_vars_without_future'})
-forecast_all_vars_with_future = forecast_all_vars_with_future[['ds', 'target_name', 'predictions']].rename(columns={'predictions':'forecast_all_vars_with_future'})
+forecast_all_vars_with_future_to_merge = forecast_all_vars_with_future[['ds', 'target_name', 'predictions']].rename(columns={'predictions':'forecast_all_vars_with_future'})
 
-pred_df = basic_forecast.merge(forecast_with_holidays, on=['ds', 'target_name']).merge(forecast_with_staffing, on=['ds', 'target_name']).merge(forecast_with_weather, on=['ds', 'target_name']).merge(forecast_all_vars_with_future, on=['ds', 'target_name'])
+pred_df = basic_forecast.merge(forecast_with_holidays, on=['ds', 'target_name']).merge(forecast_with_staffing, on=['ds', 'target_name']).merge(forecast_with_weather, on=['ds', 'target_name']).merge(forecast_all_vars_with_future_to_merge, on=['ds', 'target_name'])
 pred_df.head()
 
 
@@ -382,7 +382,8 @@ recent_df = df.tail(24)
 targets = pred_df['target_name'].unique().tolist()
 output_df = pd.DataFrame()
 for target in targets:
-    target_df = pred_df[pred_df['target_name'] == target][['ds', 'forecast_all_vars_with_future']].rename(columns={'forecast_all_vars_with_future': target+'_forecast'})
+    target_df = forecast_all_vars_with_future[forecast_all_vars_with_future['target_name'] == target][['ds', 'predictions', '0.2', '0.8']].rename(columns={'predictions': target+'_forecast', '0.2': target+'_forecast_lower', '0.8': target+'_forecast_upper'})
+    # target_df = pred_df[pred_df['target_name'] == target][['ds', 'forecast_all_vars_with_future']].rename(columns={'forecast_all_vars_with_future': target+'_forecast'})
     target_df = target_df.merge(anomaly_detection_ranges_df[['ds', target+'_yhat', target+'_yhat_lower', target+'_yhat_upper']], on=['ds'], how='left')
     target_df[target+'_anomaly'] = ((target_df[target+'_forecast'] < target_df[target+'_yhat_lower']) | (target_df[target+'_forecast'] > target_df[target+'_yhat_upper'])).map({True: 'yes', False: 'no'})
     #assign a colour based on how the value compares to the yhat and the yhat_lower and yhat_upper. If it's an anomaly, colour is #D13438. If it's between yhat and yhat_upper, colour is #FFB900. If it's between yhat_lower and yhat, colour is #107C10. 
@@ -394,9 +395,9 @@ for target in targets:
 
 output_df = output_df.merge(recent_df.tail(24), on='ds', how='outer')
 
-output_df.head()
-
 output_df.to_csv('ED_Hourly_Forecasts_Anomalies_v1.0.csv', index=False)
+
+output_df.head(48)
 
 # df = df.merge(hourly_shifts_by_user_df, on='ds')
 # df = add_holiday_flags(df, ts_col='ds', include_names=True)
