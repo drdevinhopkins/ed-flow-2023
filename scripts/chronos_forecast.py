@@ -401,16 +401,21 @@ for target in targets:
     target_df[target+'_anomaly'] = ((target_df[target+'_forecast'] < target_df[target+'_yhat_lower']) | (target_df[target+'_forecast'] > target_df[target+'_yhat_upper'])).map({True: 'yes', False: 'no'})
     #assign a colour based on how the value compares to the yhat and the yhat_lower and yhat_upper. If it's an anomaly, colour is #D13438. If it's between yhat and yhat_upper, colour is #FFB900. If it's between yhat_lower and yhat, colour is #107C10. 
     target_df[target+'_colour'] = target_df.apply(lambda row: '#D13438' if row[target+'_anomaly'] == 'yes' else ('#FFB900' if row[target+'_forecast'] > row[target+'_yhat'] else '#107C10'), axis=1)
+    #remove all the columns containing yhat, yhat_lower, yhat_upper from recent_df
+    target_df = target_df[[col for col in target_df.columns if not any(sub in col for sub in ['yhat', 'yhat_lower', 'yhat_upper'])]]
     if output_df.empty:
         output_df = target_df
     else:
         output_df = output_df.merge(target_df, on='ds', how='outer')
 
 output_df = output_df.merge(recent_df, on='ds', how='outer')
+output_df = output_df.merge(anomaly_detection_ranges_df, on='ds', how='outer')
+
 
 output_df.to_csv('ED_Hourly_Forecasts_Anomalies_v1.0.csv', index=False)
 
-output_df.head(48)
+output_df.head()
+    
 
 # df = df.merge(hourly_shifts_by_user_df, on='ds')
 # df = add_holiday_flags(df, ts_col='ds', include_names=True)
