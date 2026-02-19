@@ -409,7 +409,7 @@ for target in targets:
         output_df = output_df.merge(target_df, on='ds', how='outer')
 
 output_df = output_df.merge(recent_df, on='ds', how='outer')
-output_df = output_df.merge(anomaly_detection_ranges_df, on='ds', how='outer')
+output_df = output_df.merge(anomaly_detection_ranges_df, on='ds', how='inner')
 
 
 output_df.to_csv('ED_Hourly_Forecasts_Anomalies_v1.0.csv', index=False)
