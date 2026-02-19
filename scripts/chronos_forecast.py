@@ -377,7 +377,20 @@ anomaly_detection_ranges_df = pd.read_csv('https://www.dropbox.com/scl/fi/fjz0am
 anomaly_detection_ranges_df.ds = pd.to_datetime(anomaly_detection_ranges_df.ds, errors="coerce")
 anomaly_detection_ranges_df.tail()
 
-recent_df = df.tail(24)
+recent_df = df.tail(24).copy()
+targets = recent_df.columns.tolist()
+#remove ds and id from targets
+targets = [t for t in targets if t not in ['ds', 'id']]
+
+# Merge recent_df with anomaly_detection_ranges_df on 'ds' to align the data
+recent_df = recent_df.merge(anomaly_detection_ranges_df, on='ds', how='left')
+
+for target in targets:
+    recent_df[target+'_hist_anomaly'] = ((recent_df[target] < recent_df[target+'_yhat_lower']) | (recent_df[target] > recent_df[target+'_yhat_upper'])).map({True: 'yes', False: 'no'})
+    recent_df[target+'_hist_colour'] = recent_df.apply(lambda row: '#D13438' if row[target+'_hist_anomaly'] == 'yes' else ('#FFB900' if row[target] > row[target+'_yhat'] else ('#107C10' if row[target] < row[target+'_yhat'] else '#000000')), axis=1)
+
+#remove all the columns containing yhat, yhat_lower, yhat_upper from recent_df
+recent_df = recent_df[[col for col in recent_df.columns if not any(sub in col for sub in ['yhat', 'yhat_lower', 'yhat_upper'])]]
 
 targets = pred_df['target_name'].unique().tolist()
 output_df = pd.DataFrame()
@@ -393,7 +406,7 @@ for target in targets:
     else:
         output_df = output_df.merge(target_df, on='ds', how='outer')
 
-output_df = output_df.merge(recent_df.tail(24), on='ds', how='outer')
+output_df = output_df.merge(recent_df, on='ds', how='outer')
 
 output_df.to_csv('ED_Hourly_Forecasts_Anomalies_v1.0.csv', index=False)
 
