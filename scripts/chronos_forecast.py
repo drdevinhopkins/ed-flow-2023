@@ -369,9 +369,10 @@ comparison_df['%diff_holidays'] = (comparison_df['forecast_with_holidays'] - com
 comparison_df['%diff_staffing'] = (comparison_df['forecast_with_staffing'] - comparison_df['basic_forecast']) / comparison_df['basic_forecast'] * 100
 comparison_df['%diff_weather'] = (comparison_df['forecast_with_weather'] - comparison_df['basic_forecast']) / comparison_df['basic_forecast'] * 100
 comparison_df['%diff_all_vars_with_future'] = (comparison_df['forecast_all_vars_with_future'] - comparison_df['basic_forecast']) / comparison_df['basic_forecast'] * 100
-comparison_df = comparison_df.groupby('target_name')[['%diff_holidays', '%diff_staffing', '%diff_weather', '%diff_all_vars_with_future']].mean().reset_index()
-comparison_df.head()
-comparison_df.to_csv('forecast_variable_effects.csv', index=False)
+comparison_df.to_csv('forecast_variable_effects_hourly.csv', index=False)
+
+comparison_df_mean = comparison_df.groupby('target_name')[['%diff_holidays', '%diff_staffing', '%diff_weather', '%diff_all_vars_with_future']].mean().reset_index()
+comparison_df_mean.to_csv('forecast_variable_effects.csv', index=False)
 
 anomaly_detection_ranges_df = pd.read_csv('https://www.dropbox.com/scl/fi/fjz0am427gw35sz7l994m/anomaly_detection_ranges.csv?rlkey=lib9w0jz2zei5n566jv76o7ol&raw=1')
 anomaly_detection_ranges_df.ds = pd.to_datetime(anomaly_detection_ranges_df.ds, errors="coerce")
@@ -456,3 +457,5 @@ upload(dbx, 'ED_Hourly_Forecasts_Anomalies_v1.0.csv', '', '',
             'ED_Hourly_Forecasts_Anomalies_v1.0.csv', overwrite=True)
 upload(dbx, 'forecast_variable_effects.csv', '', '',
             'forecast_variable_effects.csv', overwrite=True)
+upload(dbx, 'forecast_variable_effects_hourly.csv', '', '',
+            'forecast_variable_effects_hourly.csv', overwrite=True)
