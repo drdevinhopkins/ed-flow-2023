@@ -411,6 +411,11 @@ for target in targets:
 output_df = output_df.merge(recent_df, on='ds', how='outer')
 output_df = output_df.merge(anomaly_detection_ranges_df, on='ds', how='inner')
 
+today_mtl = pd.Timestamp.now(tz="America/Montreal").normalize().tz_localize(None)
+output_df['ds_date'] = output_df['ds'].dt.date
+# Create new column where yesterday is -1, today is 0, tomorrow is 1, etc.
+output_df['day_offset'] = (output_df['ds_date'] - today_mtl.date()).apply(lambda x: x.days)
+output_df = output_df.drop(columns=['ds_date'])
 
 output_df.to_csv('ED_Hourly_Forecasts_Anomalies_v1.0.csv', index=False)
 
