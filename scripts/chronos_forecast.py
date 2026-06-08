@@ -11,14 +11,14 @@ import holidays
 load_dotenv()
 
 # import torch
-# torch.cuda.set_device(6)
+# torch.cuda.set_device(0)
 
 # Load the Chronos-2 pipeline
 # GPU recommended for faster inference, but CPU is also supported
 pipeline: Chronos2Pipeline = BaseChronosPipeline.from_pretrained(
     "amazon/chronos-2",
-    # device_map="cuda"
-    device_map="cpu"
+    device_map="cuda"
+    # device_map="cpu"
 )
 
 def regularize_hourly(g: pd.DataFrame) -> pd.DataFrame:

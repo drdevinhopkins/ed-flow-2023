@@ -11,7 +11,7 @@ import dropbox
 
 load_dotenv()
 
-URL = 'https://www.dropbox.com/s/ckijmipu33z3feg/HourlyReport.pdf?dl=1'
+URL = 'https://www.dropbox.com/scl/fi/jbgh8weawfscab9emb70h/hourlyreport.pdf?rlkey=ai2jpkqhrhf3aqc0f9iaq1z0z&dl=1'
 r = requests.get(URL, allow_redirects=True)
 open('hourlyreport.pdf', 'wb').write(r.content)
 
@@ -94,8 +94,8 @@ dropbox_access_token = r.json()['access_token']
 
 dbx = dropbox.Dropbox(dropbox_access_token)
 
-upload(dbx, 'hourlyreport.pdf', '', '',
-            'hourlyreport.pdf', overwrite=True)
+# upload(dbx, 'hourlyreport.pdf', '', '',
+#             'hourlyreport.pdf', overwrite=True)
 
 upload(dbx, 'allData.csv', '', '',
             'allData.csv', overwrite=True)

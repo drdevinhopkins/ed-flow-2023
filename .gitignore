@@ -171,3 +171,5 @@ lightning_logs/*
 
 models/
 .DS_Store
+.cache.sqlite
+state/dropbox_cursor.txt
