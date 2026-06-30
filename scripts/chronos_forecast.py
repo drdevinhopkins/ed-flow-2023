@@ -17,8 +17,8 @@ load_dotenv()
 # GPU recommended for faster inference, but CPU is also supported
 pipeline: Chronos2Pipeline = BaseChronosPipeline.from_pretrained(
     "amazon/chronos-2",
-    device_map="cuda"
-    # device_map="cpu"
+    # device_map="cuda"
+    device_map="cpu"
 )
 
 def regularize_hourly(g: pd.DataFrame) -> pd.DataFrame:
