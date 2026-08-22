@@ -166,6 +166,7 @@ total_tbs_alert_adaptive_card.json
 notebooks/lightning_logs/*
 lightning_logs/*
 *.csv
+!hourly_oncall_used_for_busy_since_2022.csv
 *.xlsx
 *.pdf
 
