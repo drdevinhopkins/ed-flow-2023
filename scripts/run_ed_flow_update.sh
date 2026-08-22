@@ -10,5 +10,7 @@ source .venv/bin/activate
 python scripts/get_current.py
 python scripts/shiftadmin.py
 python scripts/chronos_forecast.py
+python scripts/forecast_oncall_impact.py
+python scripts/forecast_oncall_probability.py
 python scripts/calculated_kpis.py
 python scripts/alerts.py
