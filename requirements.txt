@@ -9,6 +9,8 @@ pymsteams
 matplotlib
 tqdm
 XlsxWriter
+catboost
+scikit-learn
 # torch
 # neuralprophet @ git+https://github.com/ourownstory/neural_prophet.git
 pytz
