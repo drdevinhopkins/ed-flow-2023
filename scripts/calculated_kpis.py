@@ -294,11 +294,11 @@ montreal_tz = pytz.timezone('America/Montreal')
 current_hour = pd.Timestamp.now(tz=montreal_tz).floor('h')
 timestamp_str = current_hour.strftime('%Y-%m-%d-%H')
 
-for metric in tbs_columns:
-    upload_to_dropbox(dbx, metric+'.png', 'static_figures', '',
-                                             metric+'.png', overwrite=True)
-    figure_links[metric] = upload_to_dropbox(dbx, metric+'.png', 'figures', '',
-                                             f'{metric}_{timestamp_str}.png', overwrite=True)
+# for metric in tbs_columns:
+#     upload_to_dropbox(dbx, metric+'.png', 'static_figures', '',
+#                                              metric+'.png', overwrite=True)
+#     figure_links[metric] = upload_to_dropbox(dbx, metric+'.png', 'figures', '',
+#                                              f'{metric}_{timestamp_str}.png', overwrite=True)
 
 
 
