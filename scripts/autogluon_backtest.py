@@ -45,10 +45,55 @@ BACKTEST_SUMMARY_PATH = Path(os.environ.get("AUTOGLUON_BACKTEST_SUMMARY_PATH", "
 BACKTEST_HORIZONS_PATH = Path(os.environ.get("AUTOGLUON_BACKTEST_HORIZONS_PATH", "autogluon_backtest_horizons.csv"))
 
 
+def canonicalize_flow_targets(frame: pd.DataFrame) -> pd.DataFrame:
+    """Expose the six operational targets under stable names used by AutoGluon."""
+    out = frame.copy()
+
+    aliases = {
+        "Total_TBS": "total_tbs",
+        "POD_TBS": "pod_tbs",
+        "Vertical_TBS": "vert_tbs",
+        "Overflow": "overflow",
+    }
+    for target, source in aliases.items():
+        if target not in out.columns and source in out.columns:
+            out[target] = pd.to_numeric(out[source], errors="coerce")
+
+    component_sets = {
+        "Total_TBS": [
+            "TRG_HALLWAY_TBS",
+            "POD_GREEN_TBS",
+            "POD_YELLOW_TBS",
+            "POD_ORANGE_TBS",
+            "RAZ_TBS",
+            "AMBVERTTBS",
+            "QTrack_TBS",
+            "Garage_TBS",
+        ],
+        "POD_TBS": [
+            "TRG_HALLWAY_TBS",
+            "POD_GREEN_TBS",
+            "POD_YELLOW_TBS",
+            "POD_ORANGE_TBS",
+        ],
+        "Vertical_TBS": ["RAZ_TBS", "AMBVERTTBS", "QTrack_TBS", "Garage_TBS"],
+        "Overflow": ["TRG_HALLWAY1", "POST_POD1"],
+    }
+    for target, components in component_sets.items():
+        if target in out.columns:
+            continue
+        missing = [column for column in components if column not in out.columns]
+        if not missing:
+            out[target] = out[components].apply(pd.to_numeric, errors="coerce").sum(axis=1)
+
+    return out
+
+
 def prepare_history() -> tuple[pd.DataFrame, list[str], list[str]]:
     flow = pd.read_csv(FLOW_URL)
     flow["ds"] = pd.to_datetime(flow["ds"], errors="coerce")
     flow = flow.dropna(subset=["ds"]).sort_values("ds")
+    flow = canonicalize_flow_targets(flow)
     targets = validate_flow_targets(flow)
 
     staffing = staffing_features(pd.read_csv(SHIFTS_URL))
