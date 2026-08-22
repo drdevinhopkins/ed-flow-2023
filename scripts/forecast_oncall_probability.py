@@ -28,6 +28,7 @@ SERIES_ID = "jgh"
 HORIZONS = (4, 6, 8)
 VALIDATION_FRACTION = 0.20
 RANDOM_SEED = 42
+STRETCHER_CAPACITY = 53.0
 
 HOURLY_DATA_URL = (
     "https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/"
@@ -91,6 +92,13 @@ def derive_flow_metrics(df: pd.DataFrame) -> pd.DataFrame:
     )
     derive_sum("vertical_tbs", ["RAZ_TBS", "AMBVERTTBS", "QTrack_TBS", "Garage_TBS"])
     derive_sum("overflow", ["POST_POD1", "TRG_HALLWAY1"])
+
+    if "stretcher_occupancy" not in out and "TTStr" in out.columns:
+        out["stretcher_occupancy"] = (
+            pd.to_numeric(out["TTStr"], errors="coerce")
+            / STRETCHER_CAPACITY
+            * 100.0
+        )
     return out
 
 

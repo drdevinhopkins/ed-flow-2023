@@ -185,6 +185,7 @@ Most generated CSV, Excel, PDF, model, and cache files are ignored by Git. Repre
 - `models/total_tbs-<version>.np`, `models/inflow_total_np-<version>.np`
 - `oncall_need_forecast.csv` for the on-call-need experiment
 - `oncall_impact_forecast.csv`, `oncall_impact_summary.csv`
+  - The `stretcher_occupancy` target is expressed as percent of 53-stretcher capacity and is derived from `TTStr`: `TTStr / 53 * 100`.
 - `oncall_need_probability.csv`, `oncall_need_probability_validation.csv`
 
 ## Power BI reporting

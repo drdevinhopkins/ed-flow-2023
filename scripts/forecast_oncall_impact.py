@@ -23,6 +23,7 @@ SERIES_ID = "jgh"
 PREDICTION_LENGTH = 8
 SCENARIO_DURATIONS = (4, 6, 8)
 QUANTILES = (0.1, 0.5, 0.9)
+STRETCHER_CAPACITY = 53.0
 
 HOURLY_DATA_URL = (
     "https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/"
@@ -109,6 +110,13 @@ def derive_flow_metrics(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     derive_sum("pod_tbs", pod_tbs_components)
     derive_sum("vertical_tbs", vertical_tbs_components)
     derive_sum("overflow", ["POST_POD1", "TRG_HALLWAY1"])
+
+    if "stretcher_occupancy" not in out and "TTStr" in out.columns:
+        out["stretcher_occupancy"] = (
+            pd.to_numeric(out["TTStr"], errors="coerce")
+            / STRETCHER_CAPACITY
+            * 100.0
+        )
 
     aliases = {
         "total_tbs": ("total_tbs", "Total_TBS", "TOTAL_TBS"),
