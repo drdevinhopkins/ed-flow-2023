@@ -294,6 +294,31 @@ def make_future_base(
     return future
 
 
+def normalize_numeric_covariates(
+    history: pd.DataFrame, future: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Keep numeric known covariates at a consistent float64 dtype."""
+    history = history.copy()
+    future = future.copy()
+    known_covariates = [
+        column
+        for column in future.columns
+        if column in history.columns and column not in {ID_COL, TS_COL}
+    ]
+    for column in known_covariates:
+        if (
+            pd.api.types.is_numeric_dtype(history[column])
+            or pd.api.types.is_numeric_dtype(future[column])
+        ):
+            history[column] = pd.to_numeric(
+                history[column], errors="coerce"
+            ).astype("float64")
+            future[column] = pd.to_numeric(
+                future[column], errors="coerce"
+            ).astype("float64")
+    return history, future
+
+
 def forecast_scenario(
     pipeline: Chronos2Pipeline,
     history: pd.DataFrame,
@@ -313,6 +338,7 @@ def forecast_scenario(
         if c in history.columns and c not in targets
     ]
     future = future[future_columns]
+    history, future = normalize_numeric_covariates(history, future)
 
     forecast = pipeline.predict_df(
         history,
