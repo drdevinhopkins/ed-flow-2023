@@ -24,6 +24,17 @@ MODEL_PATH = os.environ.get("AUTOGLUON_CHRONOS2_MODEL", "amazon/chronos-2")
 MODEL_DIR = Path(os.environ.get("AUTOGLUON_CHRONOS2_PATH", str(Path(tempfile.gettempdir()) / "ed-flow-autogluon-chronos2")))
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
+# Operational outcomes that matter for the ED flow forecast. Keep this list
+# intentionally small so model evaluation remains interpretable and efficient.
+FLOW_TARGETS = [
+    "Total_TBS",
+    "POD_TBS",
+    "Vertical_TBS",
+    "TTStr",
+    "Overflow",
+    "WAITINGADM",
+]
+
 SHIFT_TYPES = {
     "W1":"flow", "X1":"pod", "X3":"pod", "X4":"vertical", "X2":"vertical",
     "WOC1":"oncall", "WOC2":"oncall", "WOC3":"oncall", "X5":"pod", "W3":"overlap",
@@ -34,6 +45,29 @@ SHIFT_TYPES = {
     "E2":"vertical", "N1":"night", "N2":"night", "L2":"overlap", "L4":"overlap",
     "H1":"teaching", "B1":"vertical", "L1":"overlap", "W5":"overlap", "L6":"overlap", "B2":"vertical",
 }
+
+
+def validate_flow_targets(frame: pd.DataFrame) -> list[str]:
+    """Return the configured targets, failing loudly if the input schema changed."""
+    missing = [target for target in FLOW_TARGETS if target not in frame.columns]
+    if missing:
+        available = ", ".join(sorted(frame.columns))
+        raise ValueError(
+            "Missing required flow target column(s): "
+            f"{', '.join(missing)}. Available columns: {available}"
+        )
+
+    non_numeric = [target for target in FLOW_TARGETS if not pd.api.types.is_numeric_dtype(frame[target])]
+    if non_numeric:
+        print(f"Coercing configured flow targets to numeric: {', '.join(non_numeric)}")
+        for target in non_numeric:
+            frame[target] = pd.to_numeric(frame[target], errors="coerce")
+
+    empty = [target for target in FLOW_TARGETS if frame[target].notna().sum() == 0]
+    if empty:
+        raise ValueError(f"Configured flow target(s) contain no numeric observations: {', '.join(empty)}")
+
+    return list(FLOW_TARGETS)
 
 
 def add_holidays(frame: pd.DataFrame) -> pd.DataFrame:
@@ -104,6 +138,7 @@ def compare(autogluon: pd.DataFrame) -> None:
     direct_column = os.environ.get("DIRECT_FORECAST_COLUMN", "forecast_all_vars_with_future")
     if direct_column not in direct:
         raise ValueError(f"Missing direct forecast column {direct_column!r}")
+    direct = direct[direct["target_name"].isin(FLOW_TARGETS)]
     direct = direct[["ds", "target_name", direct_column]].rename(columns={direct_column: "direct_chronos_forecast"})
     result = autogluon.merge(direct, on=["ds", "target_name"], how="inner")
     result["difference"] = result["autogluon_forecast"] - result["direct_chronos_forecast"]
@@ -112,27 +147,32 @@ def compare(autogluon: pd.DataFrame) -> None:
     result.to_csv(COMPARISON_PATH, index=False)
     if not result.empty:
         print(f"Compared {len(result)} rows across {result['target_name'].nunique()} targets")
-        print(f"MAE: {result['difference'].abs().mean():.6f}")
-        print(f"RMSE: {np.sqrt((result['difference'] ** 2).mean()):.6f}")
+        print(f"Mean absolute model difference: {result['difference'].abs().mean():.6f}")
+        print(f"RMSE between model outputs: {np.sqrt((result['difference'] ** 2).mean()):.6f}")
     print(f"Saved comparison: {COMPARISON_PATH}")
 
 
 def main() -> None:
     print(f"Using AutoGluon Chronos2 device: {DEVICE}")
     print(f"AutoGluon Chronos2 model: {MODEL_PATH}")
+
     flow = pd.read_csv(FLOW_URL)
     flow["ds"] = pd.to_datetime(flow["ds"], errors="coerce")
     flow = flow.dropna(subset=["ds"]).sort_values("ds")
-    targets = [column for column in flow.columns if column != "ds" and pd.api.types.is_numeric_dtype(flow[column])]
+    targets = validate_flow_targets(flow)
+    print(f"Forecasting {len(targets)} operational targets: {', '.join(targets)}")
+
     staffing = staffing_features(pd.read_csv(SHIFTS_URL))
     weather = pd.read_csv(WEATHER_URL)
     weather["ds"] = pd.to_datetime(weather["ds"], errors="coerce")
     weather_columns = [column for column in weather if column != "ds"]
+
     history = flow[["ds", *targets]].merge(staffing, on="ds", how="left").merge(weather, on="ds", how="left")
     history = add_holidays(history)
     staffing_columns = [column for column in staffing if column != "ds"]
     covariates = [*staffing_columns, *weather_columns, "is_qc_holiday", "is_jewish_holiday"]
     history = fill_numeric(history, [*targets, *covariates])
+
     last = history["ds"].max()
     index = pd.date_range(history["ds"].min(), last, freq="h", name="ds")
     history = history.set_index("ds").reindex(index).reset_index()
@@ -148,11 +188,35 @@ def main() -> None:
 
     train = to_long(history, targets, covariates)
     known = future_long(future, targets, covariates)
-    predictor = TimeSeriesPredictor(target="target", known_covariates_names=covariates, prediction_length=PREDICTION_LENGTH, freq="h", eval_metric="WQL", quantile_levels=[0.5], path=MODEL_DIR, verbosity=2)
-    predictor.fit(train, hyperparameters={"Chronos2": {"model_path": MODEL_PATH, "device": DEVICE, "batch_size": int(os.environ.get("AUTOGLUON_BATCH_SIZE", "32"))}}, skip_model_selection=True, enable_ensemble=False, verbosity=2)
+    predictor = TimeSeriesPredictor(
+        target="target",
+        known_covariates_names=covariates,
+        prediction_length=PREDICTION_LENGTH,
+        freq="h",
+        eval_metric="WQL",
+        quantile_levels=[0.5],
+        path=MODEL_DIR,
+        verbosity=2,
+    )
+    predictor.fit(
+        train,
+        hyperparameters={
+            "Chronos2": {
+                "model_path": MODEL_PATH,
+                "device": DEVICE,
+                "batch_size": int(os.environ.get("AUTOGLUON_BATCH_SIZE", "32")),
+            }
+        },
+        skip_model_selection=True,
+        enable_ensemble=False,
+        verbosity=2,
+    )
     predictions = predictor.predict(train, known_covariates=known).reset_index()
     column = prediction_column(predictions)
-    output = predictions.rename(columns={"timestamp": "ds", "item_id": "target_name", column: "autogluon_forecast"})[["ds", "target_name", "autogluon_forecast"]]
+    output = predictions.rename(
+        columns={"timestamp": "ds", "item_id": "target_name", column: "autogluon_forecast"}
+    )[["ds", "target_name", "autogluon_forecast"]]
+    output = output[output["target_name"].isin(FLOW_TARGETS)]
     output.to_csv(AUTOGLUON_FORECAST_PATH, index=False)
     print(f"Saved AutoGluon forecast: {AUTOGLUON_FORECAST_PATH}")
     compare(output)
