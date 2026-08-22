@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 import json
+import os
 import pickle
 from pathlib import Path
 from typing import Iterable
 
+import dropbox
 import holidays
 import numpy as np
+import requests
 import pandas as pd
 from catboost import CatBoostClassifier
 from sklearn.isotonic import IsotonicRegression
+from dotenv import load_dotenv
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
+from utils import upload
+
+load_dotenv()
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -276,12 +283,38 @@ def train_horizon(
     return model, calibrator, metrics
 
 
+def upload_outputs(output_paths: Iterable[str]) -> None:
+    dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
+    dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
+    dropbox_refresh_token = os.environ.get("DROPBOX_REFRESH_TOKEN")
+
+    token_url = "https://api.dropboxapi.com/oauth2/token"
+    params = {
+        "grant_type": "refresh_token",
+        "refresh_token": dropbox_refresh_token,
+        "client_id": dropbox_app_key,
+        "client_secret": dropbox_app_secret,
+    }
+    response = requests.post(token_url, data=params, timeout=30)
+    response.raise_for_status()
+    dropbox_access_token = response.json()["access_token"]
+    dbx = dropbox.Dropbox(dropbox_access_token)
+
+    for output_path in output_paths:
+        upload(dbx, output_path, "", "", Path(output_path).name, overwrite=True)
+
+
 def main() -> None:
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     df = add_horizon_targets(add_time_and_trend_features(load_dataset()))
+    current = df.iloc[[-1]].copy()
 
     # A decision-support probability is only meaningful before activation. Rows where on-call
-    # is already active are excluded from model training and from the live prediction row.
+    # is already active are excluded from model training, but the live row is selected from the
+    # latest timestamp before that filtering so an active current state is never replaced by a
+    # stale inactive row.
+    if current["oncall_active"].iloc[0] == 1:
+        raise ValueError("Latest timestamp already has on-call active; no pre-activation probability is emitted.")
     df = df[df["oncall_active"] == 0].copy()
     df = df.dropna(subset=[f"oncall_within_{h}h" for h in HORIZONS])
 
@@ -293,7 +326,6 @@ def main() -> None:
         df[col] = df[col].fillna("Unknown").astype(str)
 
     train, validation = chronological_split(df)
-    current = df.iloc[[-1]].copy()
     probabilities: list[dict[str, object]] = []
     validation_metrics: list[dict[str, object]] = []
 
@@ -322,6 +354,7 @@ def main() -> None:
 
     pd.DataFrame(probabilities).to_csv("oncall_need_probability.csv", index=False)
     pd.DataFrame(validation_metrics).to_csv("oncall_need_probability_validation.csv", index=False)
+    upload_outputs(("oncall_need_probability.csv", "oncall_need_probability_validation.csv"))
 
     metadata = {
         "features": features,

@@ -1,12 +1,19 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Iterable
 
+import dropbox
 import holidays
+import requests
+from dotenv import load_dotenv
 import pandas as pd
 import torch
 from chronos import BaseChronosPipeline, Chronos2Pipeline
+from utils import upload
+
+load_dotenv()
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -360,6 +367,27 @@ def build_comparison(all_forecasts: pd.DataFrame) -> tuple[pd.DataFrame, pd.Data
     return detail, summary
 
 
+def upload_outputs(output_paths: Iterable[str]) -> None:
+    dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
+    dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
+    dropbox_refresh_token = os.environ.get("DROPBOX_REFRESH_TOKEN")
+
+    token_url = "https://api.dropboxapi.com/oauth2/token"
+    params = {
+        "grant_type": "refresh_token",
+        "refresh_token": dropbox_refresh_token,
+        "client_id": dropbox_app_key,
+        "client_secret": dropbox_app_secret,
+    }
+    response = requests.post(token_url, data=params, timeout=30)
+    response.raise_for_status()
+    dropbox_access_token = response.json()["access_token"]
+    dbx = dropbox.Dropbox(dropbox_access_token)
+
+    for output_path in output_paths:
+        upload(dbx, output_path, "", "", Path(output_path).name, overwrite=True)
+
+
 def main() -> None:
     hourly, shifts, weather = load_inputs()
     hourly, targets = derive_flow_metrics(hourly)
@@ -376,11 +404,30 @@ def main() -> None:
     )
     history = regularize_history(history, targets)
 
-    # Re-merge non-target covariates after regularization so synthetic gap rows do not
-    # accidentally inherit physician identity or weather from adjacent hours.
-    covariate_columns = [c for c in history.columns if c not in targets]
-    if history[covariate_columns].isna().any().any():
-        history = history.dropna(subset=[c for c in covariate_columns if c not in (ID_COL,)])
+    # Keep synthetic hourly rows so Chronos can infer a strict frequency. Fill each
+    # missing covariate according to its semantics instead of dropping timestamps.
+    for column in history.columns:
+        if column in targets or column in (TS_COL, ID_COL):
+            continue
+        missing = history[column].isna()
+        if not missing.any():
+            continue
+        if column.startswith("physician__"):
+            history.loc[missing, column] = "NotWorking"
+        elif column == "oncall_physician_id":
+            history.loc[missing, column] = "None"
+        elif column in {"is_qc_holiday", "is_jewish_holiday"}:
+            continue
+        elif column == "oncall_active" or column.startswith("n_"):
+            history.loc[missing, column] = 0.0
+        elif pd.api.types.is_numeric_dtype(history[column]):
+            history[column] = pd.to_numeric(history[column], errors="coerce").interpolate(
+                limit_direction="both"
+            )
+        else:
+            history[column] = history[column].ffill().bfill()
+
+    history = add_holiday_flags(history)
 
     cutoff = history[TS_COL].max()
     print(f"Historical cutoff: {cutoff}")
@@ -402,6 +449,7 @@ def main() -> None:
 
     detail.to_csv("oncall_impact_forecast.csv", index=False)
     summary.to_csv("oncall_impact_summary.csv", index=False)
+    upload_outputs(("oncall_impact_forecast.csv", "oncall_impact_summary.csv"))
 
     print("Saved oncall_impact_forecast.csv")
     print("Saved oncall_impact_summary.csv")
