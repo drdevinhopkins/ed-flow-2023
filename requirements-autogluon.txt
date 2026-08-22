@@ -1,0 +1,2 @@
+-r requirements-jgh.txt
+autogluon.timeseries==1.6.1
