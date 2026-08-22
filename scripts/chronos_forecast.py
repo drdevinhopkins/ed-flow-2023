@@ -101,6 +101,32 @@ def add_holiday_flags(
 
     return out
 
+
+def normalize_numeric_covariates(
+    history: pd.DataFrame, future: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Keep numeric known covariates at a consistent float64 dtype."""
+    history = history.copy()
+    future = future.copy()
+    known_covariates = [
+        column
+        for column in future.columns
+        if column in history.columns and column not in {ID_COL, TS_COL}
+    ]
+    for column in known_covariates:
+        if (
+            pd.api.types.is_numeric_dtype(history[column])
+            or pd.api.types.is_numeric_dtype(future[column])
+        ):
+            history[column] = pd.to_numeric(
+                history[column], errors="coerce"
+            ).astype("float64")
+            future[column] = pd.to_numeric(
+                future[column], errors="coerce"
+            ).astype("float64")
+    return history, future
+
+
 shift_types_dict = {'W1':'flow',
  'X1':'pod',
  'X3':'pod',
@@ -258,11 +284,14 @@ common_columns = [col for col in future_df_with_added_holidays.columns if col in
 future_df_with_holidays = future_df_with_added_holidays[common_columns]
 
 # Predict
+df_with_holidays, future_df_with_holidays = normalize_numeric_covariates(
+    df_with_holidays, future_df_with_holidays.head(24)
+)
 print('Predicting forecast with holidays')  
 forecast_with_holidays = pipeline.predict_df(
     df_with_holidays,
     prediction_length=24,
-    future_df = future_df_with_holidays.head(24),
+    future_df = future_df_with_holidays,
     # quantile_levels=[0.1, 0.5, 0.9],
     # quantile_levels=[0.5],
     id_column=ID_COL,
@@ -277,11 +306,14 @@ df_with_staffing = df.merge(hourly_shifts_by_user_df, on='ds')
 future_df_with_staffing = hourly_shifts_by_user_df.reset_index()[hourly_shifts_by_user_df.reset_index()['ds'] > df['ds'].max()]
 future_df_with_staffing['id'] = 'jgh'
 
+df_with_staffing, future_df_with_staffing = normalize_numeric_covariates(
+    df_with_staffing, future_df_with_staffing.head(24)
+)
 print('Predicting forecast with staffing')
 forecast_with_staffing = pipeline.predict_df(
     df_with_staffing,
     prediction_length=24,
-    future_df = future_df_with_staffing.head(24),
+    future_df = future_df_with_staffing,
     # quantile_levels=[0.1, 0.5, 0.9],
     # quantile_levels=[0.5],
     id_column=ID_COL,
@@ -298,11 +330,16 @@ weather_df.ds = pd.to_datetime(weather_df.ds, errors="coerce")
 future_weather_df = weather_df[weather_df.ds > df.ds.max()].head(24)
 future_weather_df['id']='jgh'
 
+df_with_weather = df.merge(weather_df, on='ds')
+df_with_weather, future_weather_df = normalize_numeric_covariates(
+    df_with_weather, future_weather_df
+)
+
 print('Predicting forecast with weather')
 # Predict
 forecast_with_weather = pipeline.predict_df(
     #join df with weather_df on ds
-    df.merge(weather_df, on='ds'),
+    df_with_weather,
     prediction_length=24,
     #weather_df where ds is greater than the max of df.ds.max()
     future_df = future_weather_df,
@@ -335,12 +372,18 @@ forecast_with_weather = pipeline.predict_df(
 # All variables forecast
 print('Predicting all variables forecast')
 all_variable_df = add_holiday_flags(df_with_staffing, ts_col='ds', include_names=True).merge(weather_df, on='ds')
+future_all_vars = future_df_with_staffing.merge(
+    future_weather_df, on=['ds', 'id']
+)
+all_variable_df, future_all_vars = normalize_numeric_covariates(
+    all_variable_df, future_all_vars
+)
 
 forecast_all_vars_with_future = pipeline.predict_df(
     all_variable_df,
     prediction_length=24,
     #future_df should be future_df_with_staffing merged with future_weather_df on 'ds' and 'id'
-    future_df = future_df_with_staffing.merge(future_weather_df, on=['ds', 'id']),
+    future_df = future_all_vars,
     quantile_levels=[0.2, 0.5, 0.8],
     # quantile_levels=[0.5],
     id_column=ID_COL,
