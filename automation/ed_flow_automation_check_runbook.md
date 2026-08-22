@@ -106,6 +106,15 @@ Running workflow: /home/dhopkins/apps/ed-flow-2023/scripts/run_ed_flow_update.sh
 Workflow completed successfully.
 ```
 
+The wrapper also runs the on-call impact and probability scripts after the main Chronos forecast. They upload:
+
+```text
+oncall_impact_forecast.csv
+oncall_impact_summary.csv
+oncall_need_probability.csv
+oncall_need_probability_validation.csv
+```
+
 It is also normal to see:
 
 ```text

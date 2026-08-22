@@ -50,15 +50,17 @@ The primary update sequence is:
 1. `get_current.py` downloads and parses `hourlyreport.pdf`, updates `current.*` and `allData.*`, calculates aggregate fields, and uploads the results to Dropbox.
 2. `shiftadmin.py` fetches a rolling window of schedules, writes `all_shifts.csv` and `hourly_shifts.csv`, and uploads them.
 3. `chronos_forecast.py` combines flow, staffing, holiday, and weather data to produce forecasts and variable-effect comparisons.
-4. `calculated_kpis.py` creates Prophet-based comparisons and KPI artifacts.
-5. `alerts.py` compares current observations with anomaly ranges and writes `alerts.csv`/`alerts.xlsx`.
+4. `forecast_oncall_impact.py` produces physician-aware counterfactual on-call scenarios and uploads impact CSVs.
+5. `forecast_oncall_probability.py` estimates 4h/6h/8h activation probabilities and uploads probability CSVs.
+6. `calculated_kpis.py` creates Prophet-based comparisons and KPI artifacts.
+7. `alerts.py` compares current observations with anomaly ranges and writes `alerts.csv`/`alerts.xlsx`.
 
 The Dropbox watcher in `scripts/watch_dropbox_pdf.py` can trigger that wrapper when `/hourlyreport.pdf` changes.
 
 The local wrapper runs the core sequence:
 
 ```text
-get_current.py → shiftadmin.py → chronos_forecast.py → calculated_kpis.py → alerts.py
+get_current.py → shiftadmin.py → chronos_forecast.py → forecast_oncall_impact.py → forecast_oncall_probability.py → calculated_kpis.py → alerts.py
 ```
 
 ## Requirements
@@ -182,6 +184,16 @@ Most generated CSV, Excel, PDF, model, and cache files are ignored by Git. Repre
 - `weather.csv`
 - `models/total_tbs-<version>.np`, `models/inflow_total_np-<version>.np`
 - `oncall_need_forecast.csv` for the on-call-need experiment
+- `oncall_impact_forecast.csv`, `oncall_impact_summary.csv`
+- `oncall_need_probability.csv`, `oncall_need_probability_validation.csv`
+
+## Power BI reporting
+
+Power BI reports and dashboards consume selected generated outputs from the Dropbox
+data products, including forecast, staffing, alert, and on-call artifacts. The
+local automation and Dropbox watcher therefore feed both the analytical files and
+the downstream operational reporting layer. Report definitions, refresh settings,
+and report URLs are maintained outside this repository.
 
 ## Local operations
 
