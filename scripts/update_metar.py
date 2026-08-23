@@ -1,3 +1,4 @@
+import io
 import os
 import requests
 import pandas as pd
@@ -8,8 +9,27 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-metar_df = pd.read_csv(
-    'https://www.dropbox.com/scl/fi/7b390c7zu7lg2nug9r21e/full_metar_data.csv?rlkey=ob25xfgvuqth42lruczhszoz3&raw=1')
+dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
+dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
+dropbox_refresh_token = os.environ.get("DROPBOX_REFRESH_TOKEN")
+
+token_url = "https://api.dropboxapi.com/oauth2/token"
+params = {
+    "grant_type": "refresh_token",
+    "refresh_token": dropbox_refresh_token,
+    "client_id": dropbox_app_key,
+    "client_secret": dropbox_app_secret,
+}
+token_response = requests.post(token_url, data=params, timeout=30)
+token_response.raise_for_status()
+dropbox_access_token = token_response.json()['access_token']
+dbx = dropbox.Dropbox(dropbox_access_token)
+
+# Read the canonical METAR history through the authenticated Dropbox API.
+# This avoids transient HTML/error responses from the public share URL being
+# handed to pandas as if they were CSV.
+_, metar_response = dbx.files_download('/metar/full_metar_data.csv')
+metar_df = pd.read_csv(io.BytesIO(metar_response.content))
 metar_df.valid = pd.to_datetime(
     metar_df.valid, format='mixed', errors='coerce')
 print("METAR data shape:", metar_df.shape)
@@ -67,24 +87,7 @@ print("Updated METAR dataframe shape:", metar_df.shape)
 
 metar_df.to_csv('full_metar_data.csv', index=False)
 
-dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
-dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
-dropbox_refresh_token = os.environ.get("DROPBOX_REFRESH_TOKEN")
-
-# exchange the authorization code for an access token:
-token_url = "https://api.dropboxapi.com/oauth2/token"
-params = {
-    "grant_type": "refresh_token",
-    "refresh_token": dropbox_refresh_token,
-    "client_id": dropbox_app_key,
-    "client_secret": dropbox_app_secret
-}
-r = requests.post(token_url, data=params)
-# print(r.text)
-
-dropbox_access_token = r.json()['access_token']
-
-dbx = dropbox.Dropbox(dropbox_access_token)
+# Reuse the authenticated Dropbox client created above.
 
 upload(dbx, 'full_metar_data.csv', 'metar', '',
             'full_metar_data.csv', overwrite=True)

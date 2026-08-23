@@ -1,5 +1,6 @@
 from chronos import BaseChronosPipeline, Chronos2Pipeline
 import pandas as pd
+import numpy as np
 import os
 from dotenv import load_dotenv
 import requests
@@ -442,9 +443,29 @@ targets = [t for t in targets if t not in ['ds', 'id']]
 # Merge recent_df with anomaly_detection_ranges_df on 'ds' to align the data
 recent_df = recent_df.merge(anomaly_detection_ranges_df, on='ds', how='left')
 
+historical_annotations = {}
 for target in targets:
-    recent_df[target+'_hist_anomaly'] = ((recent_df[target] < recent_df[target+'_yhat_lower']) | (recent_df[target] > recent_df[target+'_yhat_upper'])).map({True: 'yes', False: 'no'})
-    recent_df[target+'_hist_colour'] = recent_df.apply(lambda row: '#D13438' if row[target+'_hist_anomaly'] == 'yes' else ('#FFB900' if row[target] > row[target+'_yhat'] else ('#107C10' if row[target] < row[target+'_yhat'] else '#000000')), axis=1)
+    anomaly_mask = (
+        (recent_df[target] < recent_df[target+'_yhat_lower'])
+        | (recent_df[target] > recent_df[target+'_yhat_upper'])
+    )
+    historical_annotations[target+'_hist_anomaly'] = anomaly_mask.map(
+        {True: 'yes', False: 'no'}
+    )
+    historical_annotations[target+'_hist_colour'] = np.select(
+        [
+            anomaly_mask,
+            recent_df[target] > recent_df[target+'_yhat'],
+            recent_df[target] < recent_df[target+'_yhat'],
+        ],
+        ['#D13438', '#FFB900', '#107C10'],
+        default='#000000',
+    )
+
+recent_df = pd.concat(
+    [recent_df, pd.DataFrame(historical_annotations, index=recent_df.index)],
+    axis=1,
+)
 
 #remove all the columns containing yhat, yhat_lower, yhat_upper from recent_df
 recent_df = recent_df[[col for col in recent_df.columns if not any(sub in col for sub in ['yhat', 'yhat_lower', 'yhat_upper'])]]
@@ -469,10 +490,10 @@ output_df = output_df.merge(recent_df, on='ds', how='outer')
 output_df = output_df.merge(anomaly_detection_ranges_df, on='ds', how='inner')
 
 today_mtl = pd.Timestamp.now(tz="America/Montreal").normalize().tz_localize(None)
-output_df['ds_date'] = output_df['ds'].dt.date
+# Defragment after the wide merges before adding the final derived column.
+output_df = output_df.copy()
 # Create new column where yesterday is -1, today is 0, tomorrow is 1, etc.
-output_df['day_offset'] = (output_df['ds_date'] - today_mtl.date()).apply(lambda x: x.days)
-output_df = output_df.drop(columns=['ds_date'])
+output_df['day_offset'] = (output_df['ds'].dt.normalize() - today_mtl).dt.days
 
 output_df.to_csv('ED_Hourly_Forecasts_Anomalies_v1.0.csv', index=False)
 
