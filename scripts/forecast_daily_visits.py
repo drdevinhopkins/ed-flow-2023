@@ -8,6 +8,11 @@ backtest through ``daily_weather_feature_set.py``.
 Historical weather is backfilled only for the model context window. Future rows are
 fetched directly from the current Open-Meteo forecast in Montreal local time. Seasonal
 weather climatology is fit strictly through the last complete ED day.
+
+The research backtests required at least 120 contiguous complete target days. Production
+uses a 28-day hard floor so a single older incomplete source day does not suppress the
+forecast entirely; output explicitly records whether the current context is shorter than
+the 120-day validated-context threshold.
 """
 
 from __future__ import annotations
@@ -46,7 +51,8 @@ from weather_features import add_weather_features, aggregate_hourly_weather, fit
 
 DEFAULT_HORIZON_DAYS = 7
 DEFAULT_CONTEXT_DAYS = 1095
-DEFAULT_MIN_HISTORY_DAYS = 120
+DEFAULT_MIN_HISTORY_DAYS = 28
+VALIDATED_MIN_HISTORY_DAYS = 120
 DEFAULT_OUTPUT = Path("daily_visits_forecast.csv")
 
 
@@ -211,6 +217,7 @@ def format_output(
     future: pd.DataFrame,
     *,
     cutoff: pd.Timestamp,
+    history_days: int,
 ) -> pd.DataFrame:
     out = forecast.copy()
     if "predictions" in out.columns:
@@ -219,6 +226,9 @@ def format_output(
     out["data_cutoff"] = cutoff
     out["horizon_day"] = ((out["ds"] - cutoff) / pd.Timedelta(days=1)).astype(int)
     out["weather_feature_set"] = PROMOTED_WEATHER_FEATURE_SET
+    out["history_days"] = history_days
+    out["validated_context_threshold_days"] = VALIDATED_MIN_HISTORY_DAYS
+    out["short_context_warning"] = history_days < VALIDATED_MIN_HISTORY_DAYS
     out["forecast_generated_at_utc"] = pd.Timestamp.now(tz="UTC").isoformat()
 
     context_columns = [
@@ -246,6 +256,9 @@ def format_output(
         "data_cutoff",
         "horizon_day",
         "weather_feature_set",
+        "history_days",
+        "validated_context_threshold_days",
+        "short_context_warning",
         "forecast_generated_at_utc",
     ]
     preferred += [column for column in context_columns if column != "ds"]
@@ -323,8 +336,15 @@ def main() -> None:
         context_days=args.context_days,
         min_history_days=args.min_history_days,
     )
+    history_days = len(history)
+    if history_days < VALIDATED_MIN_HISTORY_DAYS:
+        print(
+            f"WARNING: current contiguous target history is {history_days} days, below the "
+            f"{VALIDATED_MIN_HISTORY_DAYS}-day research-validation threshold",
+            flush=True,
+        )
     print(
-        f"Daily target cutoff={cutoff.date()} history_days={len(history)} "
+        f"Daily target cutoff={cutoff.date()} history_days={history_days} "
         f"future={future['ds'].min().date()}..{future['ds'].max().date()} "
         f"feature_set={PROMOTED_WEATHER_FEATURE_SET}",
         flush=True,
@@ -342,7 +362,12 @@ def main() -> None:
         horizon_days=args.horizon_days,
         context_days=args.context_days,
     )
-    output = format_output(forecast, future, cutoff=cutoff)
+    output = format_output(
+        forecast,
+        future,
+        cutoff=cutoff,
+        history_days=history_days,
+    )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     output.to_csv(args.output, index=False)
