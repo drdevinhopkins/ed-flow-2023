@@ -45,7 +45,7 @@ jobs:
           AUTOGLUON_VALIDATION_WINDOWS: '1'
           AUTOGLUON_HOLDOUT_WINDOWS: '1'
           AUTOGLUON_VAL_STEP_SIZE: '24'
-          AUTOGLUON_TIME_LIMIT: '300'
+          AUTOGLUON_TIME_LIMIT: '900'
           AUTOGLUON_BATCH_SIZE: '8'
         run: python scripts/autogluon_backtest.py
 
