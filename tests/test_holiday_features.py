@@ -26,25 +26,40 @@ class HolidayFeatureTests(unittest.TestCase):
 
     def test_jgh_calendar_has_13_dates_per_reference_year(self):
         calendar, coverage_start, coverage_end = load_jgh_ramq_calendar()
-        self.assertEqual(len(calendar), 78)
-        self.assertEqual(coverage_start, pd.Timestamp("2021-07-01").date())
-        self.assertEqual(coverage_end, pd.Timestamp("2027-06-24").date())
+        self.assertEqual(len(calendar), 91)
+        self.assertEqual(coverage_start, pd.Timestamp("2020-05-18").date())
+        self.assertEqual(coverage_end, pd.Timestamp("2027-04-22").date())
+
+    def test_jgh_calendar_preserves_official_ramq_reassigned_dates(self):
+        exact = build_ramq_calendar([2023, 2024], ramq_calendar="jgh")
+        self.assertEqual(
+            exact[pd.Timestamp("2023-09-15").date()],
+            "Veille de Noël",
+        )
+        self.assertEqual(
+            exact[pd.Timestamp("2023-09-25").date()],
+            "Lendemain du jour de l'An",
+        )
+        self.assertEqual(
+            exact[pd.Timestamp("2024-04-23").date()],
+            "Lundi de Pâques",
+        )
 
     def test_jgh_calendar_replaces_nominal_dates_inside_coverage(self):
         exact = build_ramq_calendar([2025, 2026], ramq_calendar="jgh")
         nominal = build_ramq_calendar([2025, 2026], ramq_calendar="nominal")
 
-        rosh_2025 = pd.Timestamp("2025-09-23").date()
+        jgh_sep_2025 = pd.Timestamp("2025-09-23").date()
         jan2_2026 = pd.Timestamp("2026-01-02").date()
-        passover_2026 = pd.Timestamp("2026-04-02").date()
+        jgh_apr2_2026 = pd.Timestamp("2026-04-02").date()
         easter_monday_2026 = pd.Timestamp("2026-04-06").date()
 
-        self.assertIn(rosh_2025, exact)
-        self.assertNotIn(rosh_2025, nominal)
+        self.assertIn(jgh_sep_2025, exact)
+        self.assertNotIn(jgh_sep_2025, nominal)
         self.assertNotIn(jan2_2026, exact)
         self.assertIn(jan2_2026, nominal)
-        self.assertIn(passover_2026, exact)
-        self.assertNotIn(passover_2026, nominal)
+        self.assertIn(jgh_apr2_2026, exact)
+        self.assertNotIn(jgh_apr2_2026, nominal)
         self.assertNotIn(easter_monday_2026, exact)
         self.assertIn(easter_monday_2026, nominal)
 
