@@ -46,18 +46,19 @@ jobs:
       - name: Validate live forecast inputs
         run: python scripts/validate_forecast_inputs.py
 
-      - name: Smoke-test covariate ablation
+      - name: Full covariate ablation backtest
         run: |
           mkdir -p validation-output
           python scripts/backtest_covariate_ablation.py \
-            --horizon 6 \
-            --num-cutoffs 1 \
-            --max-history-days 30 \
-            --min-history-hours 168 \
+            --horizon 24 \
+            --num-cutoffs 8 \
+            --spacing-hours 168 \
+            --max-history-days 180 \
+            --min-history-hours 336 \
             --output-dir validation-output
 
       - name: Upload ablation results
         uses: actions/upload-artifact@v4
         with:
-          name: covariate-ablation-smoke
+          name: covariate-ablation-full
           path: validation-output/*.csv
