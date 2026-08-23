@@ -3,6 +3,8 @@ name: Forecast validation branch test
 on:
   push:
     branches: ["forecast-validation"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
