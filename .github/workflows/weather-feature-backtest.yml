@@ -8,6 +8,7 @@ on:
       - 'scripts/weather_features.py'
       - 'scripts/build_weather_history.py'
       - 'scripts/backtest_daily_weather_features.py'
+      - 'scripts/backtest_daily_weather_features_dense.py'
       - 'tests/test_weather_features.py'
       - '.github/workflows/weather-feature-backtest.yml'
       - 'scripts/holiday_features.py'
@@ -84,6 +85,7 @@ jobs:
           python -m py_compile scripts/weather_features.py
           python -m py_compile scripts/build_weather_history.py
           python -m py_compile scripts/backtest_daily_weather_features.py
+          python -m py_compile scripts/backtest_daily_weather_features_dense.py
           python -m py_compile tests/test_weather_features.py
 
       - name: Test weather feature logic
@@ -108,7 +110,7 @@ jobs:
           mkdir -p validation-output-weather
           cp validation/weather-feature-backtest/run-id.txt validation-output-weather/run-id.txt
           set +e
-          python scripts/backtest_daily_weather_features.py \
+          python scripts/backtest_daily_weather_features_dense.py \
             --horizon-days "$HORIZON_DAYS" \
             --num-cutoffs "$NUM_CUTOFFS" \
             --context-days 1095 \
