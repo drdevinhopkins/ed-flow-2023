@@ -5,8 +5,8 @@ The model uses the validated calendar/closure covariates plus the promoted
 ``raw_plus_snow`` weather feature set. The weather feature set is shared with the
 backtest through ``daily_weather_feature_set.py``.
 
-Historical weather is backfilled only for the model context window, while future rows
-come from the live Open-Meteo forecast already maintained in ``weather.csv``. Seasonal
+Historical weather is backfilled only for the model context window. Future rows are
+fetched directly from the current Open-Meteo forecast in Montreal local time. Seasonal
 weather climatology is fit strictly through the last complete ED day.
 """
 
@@ -36,11 +36,11 @@ from backtest_holiday_features import (
     contiguous_history,
     load_daily_visits,
 )
-from build_weather_history import LIVE_WEATHER_URL, build_weather_history
 from daily_weather_feature_set import (
     PROMOTED_WEATHER_FEATURE_SET,
     RAW_PLUS_SNOW_COLUMNS,
 )
+from live_weather_forecast import build_operational_weather
 from utils import upload
 from weather_features import add_weather_features, aggregate_hourly_weather, fit_climatology
 
@@ -147,11 +147,8 @@ def build_forecast_frames(
     weather_through_horizon = daily_weather.loc[daily_weather["ds"] <= future_end].copy()
     featured_weather = add_weather_features(weather_through_horizon, climatology)
 
-    missing_dates = [
-        date.date()
-        for date in future_dates
-        if date not in set(featured_weather["ds"])
-    ]
+    featured_dates = set(featured_weather["ds"])
+    missing_dates = [date.date() for date in future_dates if date not in featured_dates]
     if missing_dates:
         raise ValueError(f"Live weather does not cover forecast dates: {missing_dates}")
 
@@ -170,8 +167,12 @@ def build_forecast_frames(
     covariates = [*CALENDAR_CLOSURE_COLUMNS, *weather_columns]
     covariates = list(dict.fromkeys(covariates))
     for column in CALENDAR_CLOSURE_COLUMNS:
-        history[column] = pd.to_numeric(history[column], errors="coerce").fillna(0).astype("float64")
-        future[column] = pd.to_numeric(future[column], errors="coerce").fillna(0).astype("float64")
+        history[column] = (
+            pd.to_numeric(history[column], errors="coerce").fillna(0).astype("float64")
+        )
+        future[column] = (
+            pd.to_numeric(future[column], errors="coerce").fillna(0).astype("float64")
+        )
 
     history["id"] = SERIES_ID
     future["id"] = SERIES_ID
@@ -286,7 +287,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-history-days", type=int, default=DEFAULT_MIN_HISTORY_DAYS)
     parser.add_argument("--model-id", default=MODEL_ID)
     parser.add_argument("--flow-url", default=FLOW_URL)
-    parser.add_argument("--weather-url", default=LIVE_WEATHER_URL)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--dropbox-name", default="daily_visits_forecast.csv")
     parser.add_argument("--no-dropbox", action="store_true")
@@ -307,13 +307,13 @@ def main() -> None:
     # Include enough pre-context weather to calculate 7-day rolling/lagged snow features.
     weather_start = cutoff - pd.Timedelta(days=args.context_days + 14)
     print(
-        f"Building weather context {weather_start.date()}..{cutoff.date()} plus live forecast",
+        f"Building weather context {weather_start.date()}..{cutoff.date()} plus current forecast",
         flush=True,
     )
-    hourly_weather = build_weather_history(
-        live_url=args.weather_url,
+    hourly_weather = build_operational_weather(
         start=weather_start,
         end=cutoff,
+        forecast_days=max(args.horizon_days + 1, 8),
     )
 
     cutoff, history, future = build_forecast_frames(
