@@ -2,13 +2,13 @@
 """Build a continuous hourly weather table for daily-visit backtesting.
 
 The repository's rolling ``weather.csv`` contains the latest Open-Meteo forecast plus a
-sparse history accumulated from periodic updates.  That is sufficient for production
+sparse history accumulated from periodic updates. That is sufficient for production
 forecasting but leaves gaps that make historical weather ablation fragile.
 
 This helper backfills those gaps from Open-Meteo's Historical Forecast API, whose schema
-matches the Forecast API.  Historical Forecast is a stitched near-analysis time series,
+matches the Forecast API. Historical Forecast is a stitched near-analysis time series,
 not the exact 1-7 day forecast snapshot that would have been available at each ED
-forecast cutoff.  It is therefore appropriate for weather-signal/feature screening, but
+forecast cutoff. It is therefore appropriate for weather-signal/feature screening, but
 not for a leakage-free evaluation of weather forecast skill at fixed lead times.
 """
 
@@ -45,7 +45,12 @@ HOURLY_VARIABLES = [
 ]
 
 
-def fetch_chunk(start: pd.Timestamp, end: pd.Timestamp, attempts: int = 5) -> pd.DataFrame:
+def fetch_chunk(
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+    attempts: int = 6,
+    session: requests.Session | None = None,
+) -> pd.DataFrame:
     params = {
         "latitude": LATITUDE,
         "longitude": LONGITUDE,
@@ -57,51 +62,70 @@ def fetch_chunk(start: pd.Timestamp, end: pd.Timestamp, attempts: int = 5) -> pd
         "precipitation_unit": "mm",
     }
     headers = {"User-Agent": "ed-flow-2023 weather feature backtest"}
+    client = session or requests.Session()
+
     for attempt in range(1, attempts + 1):
-        response = requests.get(
-            HISTORICAL_FORECAST_URL,
-            params=params,
-            headers=headers,
-            timeout=120,
-        )
-        if response.status_code == 429 or 500 <= response.status_code < 600:
+        try:
+            response = client.get(
+                HISTORICAL_FORECAST_URL,
+                params=params,
+                headers=headers,
+                timeout=(20, 90),
+            )
+            if response.status_code == 429 or 500 <= response.status_code < 600:
+                if attempt == attempts:
+                    response.raise_for_status()
+                retry_after = response.headers.get("Retry-After")
+                try:
+                    delay = float(retry_after) if retry_after else min(2 ** attempt, 30)
+                except ValueError:
+                    delay = min(2 ** attempt, 30)
+                print(
+                    f"Historical Forecast API HTTP {response.status_code}; "
+                    f"retrying in {delay:.0f}s (attempt {attempt}/{attempts})",
+                    flush=True,
+                )
+                time.sleep(delay)
+                continue
+
+            response.raise_for_status()
+            payload = response.json()
+            hourly = payload.get("hourly")
+            if not hourly or "time" not in hourly:
+                raise ValueError(f"Historical Forecast API returned no hourly data: {payload}")
+            frame = pd.DataFrame(hourly).rename(columns={"time": "ds"})
+            frame["ds"] = pd.to_datetime(frame["ds"], errors="coerce")
+            return frame.dropna(subset=["ds"])
+        except (requests.Timeout, requests.ConnectionError) as exc:
             if attempt == attempts:
-                response.raise_for_status()
-            retry_after = response.headers.get("Retry-After")
-            try:
-                delay = float(retry_after) if retry_after else min(2 ** attempt, 30)
-            except ValueError:
-                delay = min(2 ** attempt, 30)
+                raise
+            delay = min(2 ** attempt, 30)
             print(
-                f"Historical Forecast API HTTP {response.status_code}; "
-                f"retrying in {delay:.0f}s"
+                f"Historical Forecast API connection timeout/error for "
+                f"{start.date()}..{end.date()}: {exc}; retrying in {delay}s "
+                f"(attempt {attempt}/{attempts})",
+                flush=True,
             )
             time.sleep(delay)
-            continue
-        response.raise_for_status()
-        payload = response.json()
-        hourly = payload.get("hourly")
-        if not hourly or "time" not in hourly:
-            raise ValueError(f"Historical Forecast API returned no hourly data: {payload}")
-        frame = pd.DataFrame(hourly).rename(columns={"time": "ds"})
-        frame["ds"] = pd.to_datetime(frame["ds"], errors="coerce")
-        return frame.dropna(subset=["ds"])
+
     raise RuntimeError("Historical Forecast API retries exhausted")
 
 
-def fetch_history(start: pd.Timestamp, end: pd.Timestamp, chunk_days: int = 180) -> pd.DataFrame:
+def fetch_history(start: pd.Timestamp, end: pd.Timestamp, chunk_days: int = 120) -> pd.DataFrame:
     chunks: list[pd.DataFrame] = []
     current = start.normalize()
     end = end.normalize()
     chunk_number = 0
+    session = requests.Session()
     while current <= end:
         chunk_end = min(current + pd.Timedelta(days=chunk_days - 1), end)
         chunk_number += 1
         print(
             f"Fetching historical forecast chunk {chunk_number}: "
-            f"{current.date()} to {chunk_end.date()}"
+            f"{current.date()} to {chunk_end.date()}",
+            flush=True,
         )
-        chunks.append(fetch_chunk(current, chunk_end))
+        chunks.append(fetch_chunk(current, chunk_end, session=session))
         current = chunk_end + pd.Timedelta(days=1)
         if current <= end:
             time.sleep(0.5)
@@ -121,7 +145,7 @@ def build_weather_history(
     live["ds"] = pd.to_datetime(live["ds"], format="mixed", errors="coerce")
     live = live.dropna(subset=["ds"])
 
-    # Align schemas.  Historical Forecast intentionally requests the columns used by the
+    # Align schemas. Historical Forecast intentionally requests the columns used by the
     # daily feature aggregator; extra live columns are retained because they are harmless
     # and may be useful later.
     combined = pd.concat([historical, live], ignore_index=True, sort=False)
