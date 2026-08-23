@@ -8,10 +8,14 @@ same cutoffs, target, context and model. The RAMQ treatment differs:
 * ``calendar_closure_jgh_ramq``: JGH / 0011X institution-specific dates replace nominal.
 * ``calendar_closure_nominal_plus_jgh_flag``: retain nominal RAMQ closure/demand
   structure and add the exact JGH RAMQ date as a separate known-future covariate.
+* ``calendar_closure_nominal_plus_jgh_only``: retain nominal RAMQ structure and add a
+  flag only when JGH is taking a RAMQ holiday that is not a nominal RAMQ holiday.
+* ``calendar_closure_nominal_plus_mismatch_split``: retain nominal RAMQ structure and
+  separately flag JGH-only and nominal-only RAMQ dates.
 
-The last scenario tests the hypothesis that nominal RAMQ dates are primarily a community
-or health-system demand signal while exact JGH dates are an institution-specific staffing
-or access signal. AutoGluon is not used.
+The mismatch scenarios directly test whether an institution-specific staffing/access
+holiday matters most when it does not coincide with the usual RAMQ/community calendar.
+AutoGluon is not used.
 """
 
 from __future__ import annotations
@@ -42,20 +46,42 @@ from backtest_holiday_features import (
 from holiday_features import add_holiday_features
 
 JGH_FLAG_COLUMN = "is_jgh_ramq_holiday"
+JGH_ONLY_COLUMN = "is_jgh_only_ramq_holiday"
+NOMINAL_ONLY_COLUMN = "is_nominal_only_ramq_holiday"
+MISMATCH_COLUMN = "is_ramq_calendar_mismatch"
 
 SCENARIOS = [
     "baseline",
     "calendar_closure_nominal_ramq",
     "calendar_closure_jgh_ramq",
     "calendar_closure_nominal_plus_jgh_flag",
+    "calendar_closure_nominal_plus_jgh_only",
+    "calendar_closure_nominal_plus_mismatch_split",
 ]
+
+
+def _ramq_relationship_flags(frame: pd.DataFrame) -> pd.DataFrame:
+    """Return exact-JGH and nominal/JGH mismatch indicators for the supplied dates."""
+    nominal = add_holiday_features(
+        frame[["ds"]], feature_set="calendars", ramq_calendar="nominal"
+    )["is_ramq_holiday"].astype(np.int8)
+    jgh = add_holiday_features(
+        frame[["ds"]], feature_set="calendars", ramq_calendar="jgh"
+    )["is_ramq_holiday"].astype(np.int8)
+
+    flags = pd.DataFrame(index=frame.index)
+    flags[JGH_FLAG_COLUMN] = jgh.to_numpy(dtype=np.int8)
+    flags[JGH_ONLY_COLUMN] = ((jgh == 1) & (nominal == 0)).to_numpy(dtype=np.int8)
+    flags[NOMINAL_ONLY_COLUMN] = ((nominal == 1) & (jgh == 0)).to_numpy(dtype=np.int8)
+    flags[MISMATCH_COLUMN] = (jgh.ne(nominal)).to_numpy(dtype=np.int8)
+    return flags
 
 
 def _calendar_closure(
     frame: pd.DataFrame,
     *,
     ramq_calendar: str,
-    include_jgh_flag: bool = False,
+    extra_columns: tuple[str, ...] = (),
 ) -> pd.DataFrame:
     featured = add_holiday_features(
         frame,
@@ -63,18 +89,16 @@ def _calendar_closure(
         ramq_calendar=ramq_calendar,
     )
 
-    if include_jgh_flag:
-        exact = add_holiday_features(
-            frame[["ds"]],
-            feature_set="calendars",
-            ramq_calendar="jgh",
-        )
-        featured[JGH_FLAG_COLUMN] = exact["is_ramq_holiday"].to_numpy(dtype=np.int8)
+    if extra_columns:
+        flags = _ramq_relationship_flags(frame)
+        for column in extra_columns:
+            featured[column] = flags[column].to_numpy(dtype=np.int8)
 
     keep = list(frame.columns)
     keep.extend(column for column in CALENDAR_CLOSURE_COLUMNS if column not in keep)
-    if include_jgh_flag and JGH_FLAG_COLUMN not in keep:
-        keep.append(JGH_FLAG_COLUMN)
+    for column in extra_columns:
+        if column not in keep:
+            keep.append(column)
     return featured[keep]
 
 
@@ -103,32 +127,44 @@ def build_frames(
 
     if scenario == "calendar_closure_nominal_ramq":
         ramq_calendar = "nominal"
-        include_jgh_flag = False
+        extra_columns: tuple[str, ...] = ()
     elif scenario == "calendar_closure_jgh_ramq":
         ramq_calendar = "jgh"
-        include_jgh_flag = False
+        extra_columns = ()
     elif scenario == "calendar_closure_nominal_plus_jgh_flag":
         ramq_calendar = "nominal"
-        include_jgh_flag = True
+        extra_columns = (JGH_FLAG_COLUMN,)
+    elif scenario == "calendar_closure_nominal_plus_jgh_only":
+        ramq_calendar = "nominal"
+        extra_columns = (JGH_ONLY_COLUMN,)
+    elif scenario == "calendar_closure_nominal_plus_mismatch_split":
+        ramq_calendar = "nominal"
+        extra_columns = (JGH_ONLY_COLUMN, NOMINAL_ONLY_COLUMN)
     else:
         raise ValueError(f"Unknown scenario: {scenario}")
 
     history = _calendar_closure(
         history,
         ramq_calendar=ramq_calendar,
-        include_jgh_flag=include_jgh_flag,
+        extra_columns=extra_columns,
     )
     future = _calendar_closure(
         future,
         ramq_calendar=ramq_calendar,
-        include_jgh_flag=include_jgh_flag,
+        extra_columns=extra_columns,
     )
     history["id"] = SERIES_ID
     future["id"] = SERIES_ID
 
+    candidate_covariates = [
+        *CALENDAR_CLOSURE_COLUMNS,
+        JGH_FLAG_COLUMN,
+        JGH_ONLY_COLUMN,
+        NOMINAL_ONLY_COLUMN,
+    ]
     covariates = [
         column
-        for column in [*CALENDAR_CLOSURE_COLUMNS, JGH_FLAG_COLUMN]
+        for column in candidate_covariates
         if column in history.columns and column in future.columns
     ]
     for column in covariates:
@@ -155,7 +191,11 @@ def actuals_with_labels(
         if column in labels.columns:
             actual[column] = labels[column].to_numpy()
             available_event_columns.append(column)
-    actual[JGH_FLAG_COLUMN] = labels["is_ramq_holiday"].to_numpy(dtype=np.int8)
+
+    flags = _ramq_relationship_flags(actual[["ds"]])
+    for column in [JGH_FLAG_COLUMN, JGH_ONLY_COLUMN, NOMINAL_ONLY_COLUMN, MISMATCH_COLUMN]:
+        actual[column] = flags[column].to_numpy(dtype=np.int8)
+
     actual["is_event_day"] = actual[available_event_columns].max(axis=1).astype(np.int8)
     actual = actual.rename(columns={TARGET: "actual"})
     actual["target_name"] = TARGET
@@ -212,12 +252,12 @@ def summarize(detail: pd.DataFrame) -> pd.DataFrame:
     ).sort_values(["segment", "mae"])
 
 
-def summarize_ramq_days(detail: pd.DataFrame) -> pd.DataFrame:
-    subset = detail.loc[detail[JGH_FLAG_COLUMN].astype(bool)]
+def summarize_flagged_days(detail: pd.DataFrame, flag_column: str, segment: str) -> pd.DataFrame:
+    subset = detail.loc[detail[flag_column].astype(bool)]
     if subset.empty:
         return pd.DataFrame()
     table = metric_table(subset, ["target_name", "scenario"])
-    table.insert(0, "segment", "jgh_ramq_days")
+    table.insert(0, "segment", segment)
     return add_comparators(table, ["segment", "target_name"]).sort_values("mae")
 
 
@@ -284,17 +324,31 @@ def main() -> None:
 
     detail = pd.concat(frames, ignore_index=True)
     summary = summarize(detail)
-    ramq_days = summarize_ramq_days(detail)
+    ramq_days = summarize_flagged_days(detail, JGH_FLAG_COLUMN, "jgh_ramq_days")
+    jgh_only_days = summarize_flagged_days(detail, JGH_ONLY_COLUMN, "jgh_only_ramq_days")
+    nominal_only_days = summarize_flagged_days(
+        detail, NOMINAL_ONLY_COLUMN, "nominal_only_ramq_days"
+    )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     detail.to_csv(args.output_dir / "daily_visit_jgh_ramq_ablation_detail.csv", index=False)
     summary.to_csv(args.output_dir / "daily_visit_jgh_ramq_ablation_summary.csv", index=False)
     ramq_days.to_csv(args.output_dir / "daily_visit_jgh_ramq_ablation_ramq_days.csv", index=False)
+    jgh_only_days.to_csv(
+        args.output_dir / "daily_visit_jgh_ramq_ablation_jgh_only_days.csv", index=False
+    )
+    nominal_only_days.to_csv(
+        args.output_dir / "daily_visit_jgh_ramq_ablation_nominal_only_days.csv", index=False
+    )
 
     print("\nSummary:")
     print(summary.to_string(index=False))
-    print("\nJGH RAMQ days:")
+    print("\nAll JGH RAMQ days:")
     print(ramq_days.to_string(index=False))
+    print("\nJGH-only RAMQ mismatch days:")
+    print(jgh_only_days.to_string(index=False))
+    print("\nNominal-only RAMQ mismatch days:")
+    print(nominal_only_days.to_string(index=False))
 
 
 if __name__ == "__main__":
