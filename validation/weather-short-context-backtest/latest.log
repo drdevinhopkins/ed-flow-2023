@@ -1,0 +1,39 @@
+Daily target range: 2021-01-01 to 2026-08-22
+Daily weather range: 2021-01-01 to 2026-08-30
+Scenarios: baseline, calendar_closure, raw_weather, raw_plus_thermal, raw_plus_snow, raw_plus_compound, raw_plus_lagged, targeted_weather, all_weather
+WARNING: weather.csv is not archived forecast snapshots; weather results are signal-potential estimates.
+Cutoffs:
+    cutoff  history_days  event_score_next_day selection
+2021-01-29            29              0.550982   regular
+2021-09-27            80              1.152762   regular
+2022-01-16            47              5.975500     event
+2022-02-17            79              8.490631     event
+2022-04-18           139              8.164024     event
+2022-06-03           185              1.595809   regular
+2023-03-21           128              1.742558   regular
+2023-07-12           241             10.830827     event
+2023-10-14           335              0.861230   regular
+2024-01-09           422              7.354087     event
+2024-04-03            44              7.996250     event
+2024-06-13           115              2.123095   regular
+2025-04-20            65              2.197321   regular
+2025-07-16           152              6.472639     event
+2026-06-17            42              8.290144     event
+2026-08-15            47              0.762943   regular
+Loading amazon/chronos-2 on cpu
+Loading weights:   0%|          | 0/170 [00:00<?, ?it/s]Loading weights: 100%|██████████| 170/170 [00:00<00:00, 39151.75it/s]
+Traceback (most recent call last):
+  File "/home/runner/work/ed-flow-2023/ed-flow-2023/scripts/backtest_daily_weather_targeted.py", line 116, in <module>
+    base.main()
+  File "/home/runner/work/ed-flow-2023/ed-flow-2023/scripts/backtest_daily_weather_features.py", line 467, in main
+    actual = actuals_with_weather_labels(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/ed-flow-2023/ed-flow-2023/scripts/backtest_daily_weather_features.py", line 342, in actuals_with_weather_labels
+    featured = weather_at_cutoff(
+               ^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/ed-flow-2023/ed-flow-2023/scripts/backtest_daily_weather_features.py", line 135, in weather_at_cutoff
+    climatology = fit_climatology(history_weather)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/ed-flow-2023/ed-flow-2023/scripts/weather_features.py", line 209, in fit_climatology
+    raise ValueError("At least 60 daily weather rows are required to fit climatology")
+ValueError: At least 60 daily weather rows are required to fit climatology
