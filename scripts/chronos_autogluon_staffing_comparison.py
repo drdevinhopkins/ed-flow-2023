@@ -14,9 +14,9 @@ from chronos_forecast_autogluon import (
     FLOW_TARGETS,
     FLOW_URL,
     SHIFTS_URL,
-    staffing_features,
     validate_flow_targets,
 )
+from forecast_oncall_impact import build_staffing_features
 
 AG_ROWS_PATH = Path(os.environ.get("STAFFING_AG_ROWS_PATH", "staffing_autogluon_backtest_rows.csv"))
 AG_SUMMARY_PATH = Path(os.environ.get("STAFFING_AG_SUMMARY_PATH", "staffing_autogluon_backtest_summary.csv"))
@@ -31,10 +31,10 @@ RUNTIME_PATH = Path(os.environ.get("STAFFING_RUNTIME_PATH", "staffing_chronos_au
 
 
 def prepare_staffing_only_history() -> tuple[pd.DataFrame, list[str], list[str]]:
-    """Build a leakage-safe history with staffing as the only known-future covariate family."""
+    """Build a leakage-safe history with the physician-aware staffing covariates."""
     flow = pd.read_csv(FLOW_URL)
-    flow["ds"] = pd.to_datetime(flow["ds"], errors="coerce")
-    flow = flow.dropna(subset=["ds"]).sort_values("ds")
+    flow["ds"] = pd.to_datetime(flow["ds"], format="mixed", errors="coerce")
+    flow = flow.dropna(subset=["ds"]).sort_values("ds").drop_duplicates("ds", keep="last")
     flow = ag_base.canonicalize_flow_targets(flow)
     targets = validate_flow_targets(flow)
 
@@ -46,11 +46,22 @@ def prepare_staffing_only_history() -> tuple[pd.DataFrame, list[str], list[str]]
         history[observed] = history[target].notna()
         history[target] = pd.to_numeric(history[target], errors="coerce").ffill().fillna(0.0)
 
-    staffing = staffing_features(pd.read_csv(SHIFTS_URL))
+    # Match the staffing representation that improved all six targets in the
+    # covariate-ablation backtest: physician identity/role, role counts, and the
+    # explicitly scheduled on-call physician.
+    staffing = build_staffing_features(pd.read_csv(SHIFTS_URL)).copy()
+    staffing["ds"] = pd.to_datetime(staffing["ds"], format="mixed", errors="coerce").dt.floor("h")
+    staffing = staffing.dropna(subset=["ds"]).drop_duplicates("ds", keep="last").sort_values("ds")
     covariates = [column for column in staffing.columns if column != "ds"]
+
     history = history.merge(staffing, on="ds", how="left")
     for column in covariates:
-        history[column] = pd.to_numeric(history[column], errors="coerce").fillna(0.0)
+        if column.startswith("physician__"):
+            history[column] = history[column].fillna("NotWorking").astype(str)
+        elif column == "oncall_physician_id":
+            history[column] = history[column].fillna("None").astype(str)
+        else:
+            history[column] = pd.to_numeric(history[column], errors="coerce").fillna(0.0)
 
     return history, targets, covariates
 
@@ -201,7 +212,7 @@ def model_summary(native_summary: pd.DataFrame, ag_summary: pd.DataFrame) -> pd.
 
 
 def main() -> None:
-    print("Chronos-2 vs AutoGluon benchmark: staffing-only known-future covariates")
+    print("Chronos-2 vs AutoGluon benchmark: physician-aware staffing-only covariates")
     print(f"Targets: {', '.join(FLOW_TARGETS)}")
     print(
         f"Configuration: {ag_base.HOLDOUT_WINDOWS} external "
@@ -211,7 +222,12 @@ def main() -> None:
 
     history, targets, covariates = prepare_staffing_only_history()
     train_history, holdout_history = ag_base.split_train_holdout(history)
-    print(f"Staffing covariates ({len(covariates)}): {', '.join(covariates)}")
+    categorical = [column for column in covariates if column.startswith("physician__") or column == "oncall_physician_id"]
+    numeric = [column for column in covariates if column not in categorical]
+    print(
+        f"Staffing covariates: {len(covariates)} total "
+        f"({len(categorical)} categorical identity/role, {len(numeric)} numeric counts)"
+    )
     print(
         f"Context ends {train_history['ds'].iloc[-1]}; "
         f"holdout begins {holdout_history['ds'].iloc[0]}"
