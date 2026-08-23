@@ -12,6 +12,7 @@ on:
       - 'scripts/holiday_features.py'
       - 'scripts/backtest_holiday_features.py'
       - 'scripts/backtest_daily_holiday_targeted.py'
+      - 'scripts/fetch_jgh_ramq_calendar.py'
       - 'chronos-requirements.txt'
   workflow_dispatch:
 
@@ -66,6 +67,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r chronos-requirements.txt
+          pip install playwright
+          python -m playwright install --with-deps chromium
 
       - name: Compile calendar context code
         run: |
@@ -74,7 +77,24 @@ jobs:
           python -m py_compile scripts/backtest_daily_holiday_targeted.py
           python -m py_compile scripts/calendar_context_features.py
           python -m py_compile scripts/backtest_daily_calendar_context.py
+          python -m py_compile scripts/fetch_jgh_ramq_calendar.py
           python -m py_compile tests/test_calendar_context_features.py
+
+      - name: Fetch official JGH RAMQ calendar diagnostics
+        shell: bash
+        run: |
+          mkdir -p validation-output-ramq
+          python scripts/fetch_jgh_ramq_calendar.py --output-dir validation-output-ramq
+          mkdir -p validation/jgh-ramq-calendar
+          cp validation-output-ramq/ramq-jgh-diagnostic.json validation/jgh-ramq-calendar/
+          cp validation-output-ramq/ramq-jgh-page.txt validation/jgh-ramq-calendar/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/jgh-ramq-calendar
+          if ! git diff --cached --quiet; then
+            git commit -m "Record official JGH RAMQ calendar diagnostics [skip ci]"
+            git push
+          fi
 
       - name: Test calendar context logic
         run: python tests/test_calendar_context_features.py
@@ -102,7 +122,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: chronos2-daily-calendar-context
-          path: validation-output-social/*
+          path: |
+            validation-output-social/*
+            validation-output-ramq/*
 
       - name: Record latest branch results
         if: always()
