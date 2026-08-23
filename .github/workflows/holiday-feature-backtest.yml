@@ -7,6 +7,7 @@ on:
     paths:
       - 'scripts/holiday_features.py'
       - 'scripts/backtest_holiday_features.py'
+      - 'scripts/backtest_daily_holiday_targeted.py'
       - 'tests/test_holiday_features.py'
       - 'tests/test_daily_visit_backtest.py'
       - '.github/workflows/holiday-feature-backtest.yml'
@@ -69,6 +70,7 @@ jobs:
         run: |
           python -m py_compile scripts/holiday_features.py
           python -m py_compile scripts/backtest_holiday_features.py
+          python -m py_compile scripts/backtest_daily_holiday_targeted.py
           python -m py_compile tests/test_holiday_features.py
           python -m py_compile tests/test_daily_visit_backtest.py
 
@@ -78,14 +80,14 @@ jobs:
       - name: Test daily visit aggregation
         run: python tests/test_daily_visit_backtest.py
 
-      - name: Run daily visit holiday ablation
+      - name: Run targeted daily visit holiday ablation
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         shell: bash
         run: |
           mkdir -p validation-output
           set +e
-          python scripts/backtest_holiday_features.py \
+          python scripts/backtest_daily_holiday_targeted.py \
             --horizon-days 7 \
             --num-cutoffs 24 \
             --context-days 1095 \
@@ -95,11 +97,11 @@ jobs:
           echo "$status" > validation-output/exit_code.txt
           exit 0
 
-      - name: Upload daily holiday backtest results
+      - name: Upload targeted daily holiday backtest results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chronos2-daily-visit-holiday-backtest
+          name: chronos2-daily-visit-holiday-targeted
           path: validation-output/*
 
       - name: Record latest branch results
@@ -108,17 +110,16 @@ jobs:
         run: |
           mkdir -p validation/holiday-feature-backtest
           for file in \
-            daily_visit_holiday_backtest_summary.csv \
-            daily_visit_holiday_backtest_by_event.csv \
-            daily_visit_holiday_backtest_winners.csv \
-            daily_visit_holiday_backtest_cutoffs.csv \
+            daily_visit_holiday_targeted_summary.csv \
+            daily_visit_holiday_targeted_by_event.csv \
+            daily_visit_holiday_targeted_winners.csv \
             exit_code.txt; do
             if [ -f "validation-output/$file" ]; then
               cp "validation-output/$file" "validation/holiday-feature-backtest/$file"
             fi
           done
           if [ -f validation-output/run.log ]; then
-            tail -n 500 validation-output/run.log > validation/holiday-feature-backtest/latest.log
+            tail -n 700 validation-output/run.log > validation/holiday-feature-backtest/targeted-latest.log
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -126,7 +127,7 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m "Record daily holiday backtest results [skip ci]"
+          git commit -m "Record targeted daily holiday backtest results [skip ci]"
           git push
 
       - name: Fail if backtest failed
