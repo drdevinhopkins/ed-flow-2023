@@ -6,7 +6,12 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from holiday_features import add_holiday_features, build_ramq_nominal_calendar
+from holiday_features import (
+    add_holiday_features,
+    build_ramq_calendar,
+    build_ramq_nominal_calendar,
+    load_jgh_ramq_calendar,
+)
 
 
 class HolidayFeatureTests(unittest.TestCase):
@@ -18,6 +23,45 @@ class HolidayFeatureTests(unittest.TestCase):
         self.assertIn(pd.Timestamp("2026-09-07").date(), dates_2026)
         self.assertIn(pd.Timestamp("2026-10-12").date(), dates_2026)
         self.assertIn(pd.Timestamp("2026-12-24").date(), dates_2026)
+
+    def test_jgh_calendar_has_13_dates_per_reference_year(self):
+        calendar, coverage_start, coverage_end = load_jgh_ramq_calendar()
+        self.assertEqual(len(calendar), 78)
+        self.assertEqual(coverage_start, pd.Timestamp("2021-07-01").date())
+        self.assertEqual(coverage_end, pd.Timestamp("2027-06-24").date())
+
+    def test_jgh_calendar_replaces_nominal_dates_inside_coverage(self):
+        exact = build_ramq_calendar([2025, 2026], ramq_calendar="jgh")
+        nominal = build_ramq_calendar([2025, 2026], ramq_calendar="nominal")
+
+        rosh_2025 = pd.Timestamp("2025-09-23").date()
+        jan2_2026 = pd.Timestamp("2026-01-02").date()
+        passover_2026 = pd.Timestamp("2026-04-02").date()
+        easter_monday_2026 = pd.Timestamp("2026-04-06").date()
+
+        self.assertIn(rosh_2025, exact)
+        self.assertNotIn(rosh_2025, nominal)
+        self.assertNotIn(jan2_2026, exact)
+        self.assertIn(jan2_2026, nominal)
+        self.assertIn(passover_2026, exact)
+        self.assertNotIn(passover_2026, nominal)
+        self.assertNotIn(easter_monday_2026, exact)
+        self.assertIn(easter_monday_2026, nominal)
+
+    def test_feature_builder_uses_jgh_ramq_calendar_by_default(self):
+        frame = pd.DataFrame(
+            {
+                "ds": pd.to_datetime(
+                    ["2025-09-23", "2026-01-02", "2026-04-02", "2026-04-06"]
+                )
+            }
+        )
+        exact = add_holiday_features(frame, feature_set="closures")
+        nominal = add_holiday_features(
+            frame, feature_set="closures", ramq_calendar="nominal"
+        )
+        self.assertEqual(exact["is_ramq_holiday"].tolist(), [1, 0, 1, 0])
+        self.assertEqual(nominal["is_ramq_holiday"].tolist(), [0, 1, 0, 1])
 
     def test_long_weekend_shoulders(self):
         frame = pd.DataFrame(
