@@ -31,9 +31,9 @@ def fetch_shifts(start_date, end_date):
 all_shifts_from_dropbox = pd.read_csv(
     'https://www.dropbox.com/scl/fi/yeyr2a7pj6nry8i2q3m0c/all_shifts.csv?rlkey=q1su2h8fqxfnlu7t1l2qe1w0q&raw=1')
 all_shifts_from_dropbox['shift_start'] = pd.to_datetime(
-    all_shifts_from_dropbox['shift_start'], errors='coerce')
+    all_shifts_from_dropbox['shift_start'], format='mixed', errors='coerce')
 all_shifts_from_dropbox['shift_end'] = pd.to_datetime(
-    all_shifts_from_dropbox['shift_end'], errors='coerce')
+    all_shifts_from_dropbox['shift_end'], format='mixed', errors='coerce')
 
 # fetch todays shifts
 today = datetime.now().date()
@@ -42,9 +42,9 @@ nextweek = today + timedelta(days=7)
 shifts = fetch_shifts(str(lastweek), str(nextweek))
 shifts_df = pd.DataFrame(shifts)
 shifts_df['shift_start'] = pd.to_datetime(
-    shifts_df['shift_start'], errors='coerce')
+    shifts_df['shift_start'], format='mixed', errors='coerce')
 shifts_df['shift_end'] = pd.to_datetime(
-    shifts_df['shift_end'], errors='coerce')
+    shifts_df['shift_end'], format='mixed', errors='coerce')
 
 # merge with all_shifts_from_dropbox
 merged_shifts_df = pd.concat([all_shifts_from_dropbox, shifts_df]).drop_duplicates(

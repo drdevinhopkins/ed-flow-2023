@@ -260,13 +260,18 @@ for metric in tbs_columns:
 alerts_df = pd.DataFrame(alerts)
 alerts_df.to_csv('calculated_KPIs_alerts.csv',
                  index=False)  # save alerts to csv
-alerts_df.to_excel('calculated_KPIs_alerts.xlsx', index_label="index")
+# Excel cells are limited to 32,767 characters; the base64 image field can
+# exceed that limit. Keep images in CSV, but omit them from Excel exports.
+alerts_df.drop(columns=['image'], errors='ignore').to_excel(
+    'calculated_KPIs_alerts.xlsx', index_label="index"
+)
 
 critical_alerts_df = pd.DataFrame(critical_alerts)
 critical_alerts_df.to_csv(
     'calculated_KPIs_critical_alerts.csv', index=False)  # save alerts to csv
-critical_alerts_df.to_excel(
-    'calculated_KPIs_critical_alerts.xlsx', index_label="index")
+critical_alerts_df.drop(columns=['image'], errors='ignore').to_excel(
+    'calculated_KPIs_critical_alerts.xlsx', index_label="index"
+)
 
 dropbox_app_key = os.environ.get("DROPBOX_APP_KEY")
 dropbox_app_secret = os.environ.get("DROPBOX_APP_SECRET")
