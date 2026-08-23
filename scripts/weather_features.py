@@ -29,7 +29,6 @@ RAW_DAILY_COLUMNS = [
     "rain_sum",
     "snowfall_sum",
     "snow_depth_max",
-    "precip_probability_max",
     "wind_mean",
     "wind_max",
     "gust_max",
