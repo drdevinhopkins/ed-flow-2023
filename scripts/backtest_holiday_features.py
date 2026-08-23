@@ -5,6 +5,11 @@ The target is total ED arrivals per Montreal calendar day, calculated as the sum
 hourly ``Inflow_Total``. This replaces the legacy notebook's shifted end-of-day
 cumulative-value construction with a direct daily total.
 
+Incomplete source days are never imputed. They remain missing in the daily series and
+act as hard boundaries: a backtest window may only use the contiguous run of complete
+days after the most recent incomplete day. Forecast horizons containing an incomplete
+day are not eligible for scoring.
+
 The backtest deliberately samples cutoffs immediately before holiday or holiday-adjacent
 "shoulder" days. A generic rolling backtest contains relatively few holidays and is
 poorly powered to decide which holiday covariates help. Each scenario uses native
@@ -58,9 +63,9 @@ def load_daily_visits(flow_url: str = FLOW_URL) -> pd.DataFrame:
     """Load hourly inflow and aggregate complete Montreal calendar days.
 
     A valid day has 23, 24, or 25 hourly rows to permit DST transitions, and every row
-    must contain a numeric ``Inflow_Total``. An incomplete final day is expected for a
-    live source and is dropped. Internal incomplete days raise rather than being
-    interpolated because filling arrival counts would corrupt the daily target.
+    must contain a numeric ``Inflow_Total``. Incomplete internal days are retained on the
+    daily calendar with a missing target; they are never filled or interpolated. Leading
+    and trailing partial days outside the first/last complete day are discarded.
     """
     raw = pd.read_csv(flow_url, usecols=["ds", "Inflow_Total"])
 
@@ -84,33 +89,49 @@ def load_daily_visits(flow_url: str = FLOW_URL) -> pd.DataFrame:
         & grouped[TARGET].notna()
     )
 
-    complete_indices = grouped.index[grouped["is_complete"]]
-    if complete_indices.empty:
+    complete = grouped.loc[grouped["is_complete"]]
+    if complete.empty:
         raise ValueError("No complete daily inflow observations found")
 
-    first_complete = int(complete_indices.min())
-    last_complete = int(complete_indices.max())
-    interior = grouped.loc[first_complete:last_complete].copy()
-    incomplete = interior.loc[~interior["is_complete"]]
-    if not incomplete.empty:
-        sample = incomplete[["ds", "observed_rows", "numeric_rows"]].head(10)
-        raise ValueError(
-            "Incomplete daily inflow observations inside the usable history; refusing "
-            "to interpolate arrival counts. Examples:\n"
-            + sample.to_string(index=False)
-        )
-
-    daily = interior[["ds", TARGET, "observed_rows"]].copy()
-    expected = pd.date_range(daily["ds"].min(), daily["ds"].max(), freq="D")
-    missing_days = expected.difference(pd.DatetimeIndex(daily["ds"]))
-    if len(missing_days):
-        raise ValueError(
-            "Missing calendar days inside daily inflow history; refusing to interpolate: "
-            + ", ".join(str(day.date()) for day in missing_days[:10])
-        )
-
+    first_complete = complete["ds"].min()
+    last_complete = complete["ds"].max()
+    index = pd.date_range(first_complete, last_complete, freq="D", name="ds")
+    daily = grouped.set_index("ds").reindex(index).reset_index()
+    daily["observed_rows"] = daily["observed_rows"].fillna(0).astype(int)
+    daily["numeric_rows"] = daily["numeric_rows"].fillna(0).astype(int)
+    daily["is_complete"] = daily["is_complete"].fillna(False).astype(bool)
+    daily[TARGET] = pd.to_numeric(daily[TARGET], errors="coerce").where(daily["is_complete"])
     daily[TARGET] = daily[TARGET].astype("float64")
-    return daily.reset_index(drop=True)
+    return daily[["ds", TARGET, "observed_rows", "numeric_rows", "is_complete"]]
+
+
+def contiguous_history(
+    daily: pd.DataFrame,
+    cutoff: pd.Timestamp,
+    *,
+    context_days: int,
+    min_history_days: int,
+) -> pd.DataFrame:
+    """Return the complete daily run ending at cutoff, bounded by the latest data gap."""
+    available = daily.loc[daily["ds"] <= cutoff, ["ds", TARGET]].copy()
+    if available.empty or available["ds"].iloc[-1] != cutoff:
+        raise ValueError(f"Cutoff {cutoff.date()} is not present in the daily calendar")
+    if pd.isna(available[TARGET].iloc[-1]):
+        raise ValueError(f"Cutoff {cutoff.date()} is incomplete")
+
+    valid = available[TARGET].notna().to_numpy()
+    invalid_positions = np.flatnonzero(~valid)
+    start_position = int(invalid_positions[-1] + 1) if len(invalid_positions) else 0
+    history = available.iloc[start_position:].tail(min(context_days, MAX_CONTEXT_DAYS)).copy()
+
+    if len(history) < min_history_days:
+        raise ValueError(
+            f"Only {len(history)} contiguous complete days before cutoff {cutoff.date()}; "
+            f"need {min_history_days}"
+        )
+    if history[TARGET].isna().any():
+        raise ValueError(f"Unexpected missing target within history ending {cutoff.date()}")
+    return history.reset_index(drop=True)
 
 
 def _event_type(row: pd.Series) -> str:
@@ -130,29 +151,53 @@ def select_holiday_cutoffs(
     *,
     horizon_days: int,
     context_days: int,
+    min_history_days: int,
     num_cutoffs: int,
 ) -> pd.DataFrame:
-    """Choose diverse cutoffs whose first forecast day is a holiday/shoulder event."""
+    """Choose diverse holiday/shoulder events with clean history and actual horizons."""
     labelled = add_event_labels(daily[["ds"]].copy())
     candidates = labelled.loc[labelled["is_event_day"].astype(bool)].copy()
     candidates["cutoff"] = candidates["ds"] - pd.Timedelta(days=1)
 
-    earliest = daily["ds"].min() + pd.Timedelta(days=min(context_days, MAX_CONTEXT_DAYS) - 1)
-    latest = daily["ds"].max() - pd.Timedelta(days=horizon_days)
-    candidates = candidates.loc[
-        (candidates["cutoff"] >= earliest) & (candidates["cutoff"] <= latest)
-    ].reset_index(drop=True)
-    if candidates.empty:
-        raise ValueError("No eligible holiday-focused daily cutoffs found")
+    eligible_rows: list[dict[str, object]] = []
+    for row in candidates.itertuples(index=False):
+        event_day = pd.Timestamp(row.ds)
+        cutoff = pd.Timestamp(row.cutoff)
+        future_dates = pd.date_range(event_day, periods=horizon_days, freq="D")
+        actual = daily.loc[daily["ds"].isin(future_dates), ["ds", TARGET]]
+        if len(actual) != horizon_days or actual[TARGET].isna().any():
+            continue
+        try:
+            history = contiguous_history(
+                daily,
+                cutoff,
+                context_days=context_days,
+                min_history_days=min_history_days,
+            )
+        except ValueError:
+            continue
 
-    if len(candidates) > num_cutoffs:
+        record = row._asdict()
+        record["history_days"] = len(history)
+        eligible_rows.append(record)
+
+    if not eligible_rows:
+        raise ValueError(
+            "No holiday-focused cutoffs have both a complete forecast horizon and the "
+            f"required {min_history_days} contiguous history days"
+        )
+
+    eligible = pd.DataFrame(eligible_rows).sort_values("cutoff").reset_index(drop=True)
+    if len(eligible) > num_cutoffs:
         # Spread selections across the full history rather than clustering in one holiday
         # season or year.
-        positions = np.linspace(0, len(candidates) - 1, num=num_cutoffs)
+        positions = np.linspace(0, len(eligible) - 1, num=num_cutoffs)
         indices = sorted(set(int(round(value)) for value in positions))
-        candidates = candidates.iloc[indices].copy()
+        eligible = eligible.iloc[indices].copy()
 
-    return candidates[["cutoff", "ds", "event_type", *EVENT_COLUMNS]].reset_index(drop=True)
+    return eligible[["cutoff", "ds", "event_type", "history_days", *EVENT_COLUMNS]].reset_index(
+        drop=True
+    )
 
 
 def _legacy_features(frame: pd.DataFrame) -> pd.DataFrame:
@@ -171,19 +216,17 @@ def build_frames(
     cutoff: pd.Timestamp,
     horizon_days: int,
     context_days: int,
+    min_history_days: int,
 ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
-    history_start = cutoff - pd.Timedelta(days=min(context_days, MAX_CONTEXT_DAYS) - 1)
-    history = daily.loc[
-        (daily["ds"] >= history_start) & (daily["ds"] <= cutoff), ["ds", TARGET]
-    ].copy()
+    history = contiguous_history(
+        daily,
+        cutoff,
+        context_days=context_days,
+        min_history_days=min_history_days,
+    )
     future = pd.DataFrame(
         {"ds": pd.date_range(cutoff + pd.Timedelta(days=1), periods=horizon_days, freq="D")}
     )
-
-    if len(history) < 28:
-        raise ValueError(f"Insufficient daily history at cutoff {cutoff.date()}")
-    if history[TARGET].isna().any():
-        raise ValueError(f"Missing daily target history at cutoff {cutoff.date()}")
 
     if scenario == "legacy":
         history = _legacy_features(history)
@@ -249,6 +292,8 @@ def actuals_with_labels(
 ) -> pd.DataFrame:
     dates = pd.date_range(cutoff + pd.Timedelta(days=1), periods=horizon_days, freq="D")
     actual = daily.loc[daily["ds"].isin(dates), ["ds", TARGET]].copy()
+    if len(actual) != horizon_days or actual[TARGET].isna().any():
+        raise ValueError(f"Incomplete actual horizon after cutoff {cutoff.date()}")
     actual = add_event_labels(actual)
     actual = actual.rename(columns={TARGET: "actual"})
     actual["target_name"] = TARGET
@@ -324,6 +369,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--horizon-days", type=int, default=7)
     parser.add_argument("--num-cutoffs", type=int, default=24)
     parser.add_argument("--context-days", type=int, default=1095)
+    parser.add_argument("--min-history-days", type=int, default=180)
     parser.add_argument("--scenarios", nargs="+", choices=SCENARIOS, default=SCENARIOS)
     parser.add_argument("--output-dir", type=Path, default=Path("validation-output"))
     parser.add_argument("--model-id", default=MODEL_ID)
@@ -335,22 +381,30 @@ def main() -> None:
     args = parse_args()
     if args.horizon_days < 1 or args.num_cutoffs < 1 or args.context_days < 28:
         raise ValueError("horizon/cutoffs must be positive and context-days must be >= 28")
+    if args.min_history_days < 28 or args.min_history_days > args.context_days:
+        raise ValueError("min-history-days must be >= 28 and <= context-days")
 
     daily = load_daily_visits(args.flow_url)
+    incomplete = daily.loc[~daily["is_complete"]]
+    print(
+        f"Daily visits calendar: {daily['ds'].min().date()} to {daily['ds'].max().date()} "
+        f"({len(daily)} days; {len(incomplete)} incomplete days excluded from modeling)"
+    )
+    if not incomplete.empty:
+        print("Incomplete-day examples (not imputed):")
+        print(incomplete[["ds", "observed_rows", "numeric_rows"]].head(15).to_string(index=False))
+
     cutoffs = select_holiday_cutoffs(
         daily,
         horizon_days=args.horizon_days,
         context_days=args.context_days,
+        min_history_days=args.min_history_days,
         num_cutoffs=args.num_cutoffs,
     )
 
-    print(
-        f"Daily visits: {daily['ds'].min().date()} to {daily['ds'].max().date()} "
-        f"({len(daily)} complete days)"
-    )
     print(f"Scenarios: {', '.join(args.scenarios)}")
     print("Holiday-focused daily cutoffs:")
-    print(cutoffs[["cutoff", "ds", "event_type"]].to_string(index=False))
+    print(cutoffs[["cutoff", "ds", "event_type", "history_days"]].to_string(index=False))
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Loading {args.model_id} on {device}")
@@ -362,11 +416,6 @@ def main() -> None:
     for cutoff_row in cutoffs.itertuples(index=False):
         cutoff = pd.Timestamp(cutoff_row.cutoff)
         actual = actuals_with_labels(daily, cutoff, args.horizon_days)
-        if len(actual) != args.horizon_days:
-            raise ValueError(
-                f"Expected {args.horizon_days} actual daily rows after {cutoff.date()}, "
-                f"got {len(actual)}"
-            )
 
         for scenario in args.scenarios:
             print(f"Forecasting cutoff={cutoff.date()} scenario={scenario}")
@@ -376,6 +425,7 @@ def main() -> None:
                 cutoff=cutoff,
                 horizon_days=args.horizon_days,
                 context_days=args.context_days,
+                min_history_days=args.min_history_days,
             )
             forecast = run_forecast(
                 pipeline,
@@ -392,6 +442,7 @@ def main() -> None:
 
             joined["cutoff"] = cutoff
             joined["cutoff_event_type"] = cutoff_row.event_type
+            joined["history_days"] = cutoff_row.history_days
             joined["scenario"] = scenario
             joined["horizon_day"] = ((joined["ds"] - cutoff) / pd.Timedelta(days=1)).astype(int)
             joined["error"] = joined["prediction"] - joined["actual"]
