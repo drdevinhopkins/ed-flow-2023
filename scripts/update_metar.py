@@ -1,10 +1,12 @@
 import io
 import os
-import requests
-import pandas as pd
-from utils import upload
+
 import dropbox
+import pandas as pd
+import requests
 from dotenv import load_dotenv
+
+from utils import upload
 
 
 load_dotenv()
@@ -22,31 +24,36 @@ params = {
 }
 token_response = requests.post(token_url, data=params, timeout=30)
 token_response.raise_for_status()
-dropbox_access_token = token_response.json()['access_token']
+dropbox_access_token = token_response.json()["access_token"]
 dbx = dropbox.Dropbox(dropbox_access_token)
 
 # Read the canonical METAR history through the authenticated Dropbox API.
 # This avoids transient HTML/error responses from the public share URL being
 # handed to pandas as if they were CSV.
-_, metar_response = dbx.files_download('/metar/full_metar_data.csv')
+_, metar_response = dbx.files_download("/metar/full_metar_data.csv")
 metar_df = pd.read_csv(io.BytesIO(metar_response.content))
-metar_df.valid = pd.to_datetime(
-    metar_df.valid, format='mixed', errors='coerce')
+metar_df["valid"] = pd.to_datetime(
+    metar_df["valid"], format="mixed", errors="coerce"
+)
+metar_df = metar_df.dropna(subset=["valid"]).copy()
 print("METAR data shape:", metar_df.shape)
-print(metar_df.tail(1).valid)
 
-
-# get the most recent date in metar_df
-most_recent_date = metar_df['valid'].max()
+most_recent_date = metar_df["valid"].max()
+if pd.isna(most_recent_date):
+    raise ValueError("METAR history contains no valid timestamps.")
 print("Most recent date in METAR data:", most_recent_date)
 
-# get the day before the most recent date
-day_before_most_recent = most_recent_date - pd.Timedelta(days=7)
-print("Day before most recent date:", day_before_most_recent)
-
-# get the day after the most recent date
-day_after_most_recent = most_recent_date + pd.Timedelta(days=7)
-print("Day after most recent date:", day_after_most_recent)
+# Always overlap the existing history by one day so revised observations are
+# picked up. If the history is stale, fetch all missing dates through today in
+# bounded chunks rather than advancing only one week per hourly run.
+fetch_start = most_recent_date.normalize() - pd.Timedelta(days=1)
+fetch_end = (
+    pd.Timestamp.now(tz="America/Montreal")
+    .normalize()
+    .tz_localize(None)
+    + pd.Timedelta(days=1)
+)
+print("METAR catch-up range:", fetch_start, "to", fetch_end)
 
 base_url = (
     "https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py?"
@@ -65,29 +72,59 @@ base_url = (
     "&report_type=3"
 )
 
-# Example usage:
-url = base_url.format(
-    y1=day_before_most_recent.year, m1=day_before_most_recent.month, d1=day_before_most_recent.day,
-    y2=day_after_most_recent.year, m2=day_after_most_recent.month, d2=day_after_most_recent.day
-)
+recent_chunks = []
+chunk_start = fetch_start
+chunk_number = 0
+while chunk_start < fetch_end:
+    chunk_end = min(chunk_start + pd.Timedelta(days=30), fetch_end)
+    chunk_number += 1
+    url = base_url.format(
+        y1=chunk_start.year,
+        m1=chunk_start.month,
+        d1=chunk_start.day,
+        y2=chunk_end.year,
+        m2=chunk_end.month,
+        d2=chunk_end.day,
+    )
+    print(
+        f"Fetching METAR chunk {chunk_number}: "
+        f"{chunk_start.date()} to {chunk_end.date()}"
+    )
+    response = requests.get(url, timeout=60)
+    response.raise_for_status()
+    chunk_df = pd.read_csv(io.StringIO(response.text))
+    chunk_df["valid"] = pd.to_datetime(
+        chunk_df["valid"], format="mixed", errors="coerce"
+    )
+    chunk_df = chunk_df.dropna(subset=["valid"])
+    print(f"METAR chunk {chunk_number} rows:", len(chunk_df))
+    recent_chunks.append(chunk_df)
 
-print(url)
+    if chunk_end >= fetch_end:
+        break
+    # Reuse the boundary date intentionally; duplicates are removed below.
+    chunk_start = chunk_end
 
+if recent_chunks:
+    recent_metar_df = pd.concat(recent_chunks, ignore_index=True)
+    metar_df = (
+        pd.concat([metar_df, recent_metar_df], ignore_index=True)
+        .drop_duplicates(subset=["valid"], keep="last")
+        .sort_values("valid")
+        .reset_index(drop=True)
+    )
 
-recent_metar_df = pd.read_csv(url)
-print("Recent METAR data shape:", recent_metar_df.shape)
-recent_metar_df.valid = pd.to_datetime(
-    recent_metar_df.valid, format='mixed', errors='coerce')
-print(recent_metar_df.tail(1).valid)
-
-# merge recent_metar_df with metar_df, avoiding duplicates
-metar_df = pd.concat([metar_df, recent_metar_df]).drop_duplicates(
-    subset=['valid'], keep='last').sort_values('valid').reset_index(drop=True)
 print("Updated METAR dataframe shape:", metar_df.shape)
+print("Updated most recent METAR timestamp:", metar_df["valid"].max())
 
-metar_df.to_csv('full_metar_data.csv', index=False)
+metar_df.to_csv("full_metar_data.csv", index=False)
 
 # Reuse the authenticated Dropbox client created above.
-
-upload(dbx, 'full_metar_data.csv', 'metar', '',
-            'full_metar_data.csv', overwrite=True)
+upload(
+    dbx,
+    "full_metar_data.csv",
+    "metar",
+    "",
+    "full_metar_data.csv",
+    overwrite=True,
+)
