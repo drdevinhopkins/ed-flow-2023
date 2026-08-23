@@ -8,6 +8,7 @@ on:
       - 'scripts/holiday_features.py'
       - 'scripts/backtest_holiday_features.py'
       - 'tests/test_holiday_features.py'
+      - 'tests/test_daily_visit_backtest.py'
       - '.github/workflows/holiday-feature-backtest.yml'
       - 'chronos-requirements.txt'
   workflow_dispatch:
@@ -50,9 +51,13 @@ jobs:
           python -m py_compile scripts/holiday_features.py
           python -m py_compile scripts/backtest_holiday_features.py
           python -m py_compile tests/test_holiday_features.py
+          python -m py_compile tests/test_daily_visit_backtest.py
 
       - name: Test holiday calendar logic
         run: python tests/test_holiday_features.py
+
+      - name: Test daily visit aggregation
+        run: python tests/test_daily_visit_backtest.py
 
       - name: Run daily visit holiday ablation
         env:
