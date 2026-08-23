@@ -1,0 +1,305 @@
+Scenarios: baseline, calendars, closures, calendar_closure, targeted_edges, targeted_block
+Targeted daily cutoffs:
+    cutoff         ds                                                            event_type  history_days
+2021-06-29 2021-06-30                           day_before_holiday|quebec_canada_day_period           180
+2022-06-04 2022-06-05                                                           any_holiday           186
+2022-06-23 2022-06-24                                  any_holiday|quebec_canada_day_period           205
+2022-06-27 2022-06-28                                              quebec_canada_day_period           209
+2022-07-01 2022-07-02                            day_after_holiday|quebec_canada_day_period           213
+2022-09-04 2022-09-05                                                           any_holiday           278
+2023-05-20 2023-05-21                                                    day_before_holiday           188
+2023-05-25 2023-05-26                                                           any_holiday           193
+2023-06-23 2023-06-24                                  any_holiday|quebec_canada_day_period           222
+2023-06-27 2023-06-28                                              quebec_canada_day_period           226
+2023-06-30 2023-07-01                                  any_holiday|quebec_canada_day_period           229
+2023-09-03 2023-09-04                                                           any_holiday           294
+2023-09-16 2023-09-17                                         any_holiday|day_after_holiday           307
+2023-09-24 2023-09-25                                                           any_holiday           315
+2023-09-29 2023-09-30                                                           any_holiday           320
+2023-10-07 2023-10-08                                  day_before_holiday|day_after_holiday           328
+2023-12-22 2023-12-23                           day_before_holiday|christmas_newyear_period           404
+2023-12-26 2023-12-27 day_after_holiday|christmas_newyear_period|rebound_after_long_closure           408
+2023-12-29 2023-12-30                           day_before_holiday|christmas_newyear_period           411
+2024-01-02 2024-01-03 day_after_holiday|christmas_newyear_period|rebound_after_long_closure           415
+2025-09-01 2025-09-02        day_after_holiday|long_weekend_edge|rebound_after_long_closure           199
+2025-09-24 2025-09-25                                                     day_after_holiday           222
+2025-10-02 2025-10-03                                                     day_after_holiday           230
+2025-10-09 2025-10-10                                    long_weekend_edge|pre_long_closure           237
+Loading amazon/chronos-2 on cpu
+Loading weights:   0%|          | 0/170 [00:00<?, ?it/s]Loading weights: 100%|██████████| 170/170 [00:00<00:00, 7676.33it/s]
+Forecasting cutoff=2021-06-29 scenario=baseline
+Forecasting cutoff=2021-06-29 scenario=calendars
+Forecasting cutoff=2021-06-29 scenario=closures
+Forecasting cutoff=2021-06-29 scenario=calendar_closure
+Forecasting cutoff=2021-06-29 scenario=targeted_edges
+Forecasting cutoff=2021-06-29 scenario=targeted_block
+Forecasting cutoff=2022-06-04 scenario=baseline
+Forecasting cutoff=2022-06-04 scenario=calendars
+Forecasting cutoff=2022-06-04 scenario=closures
+Forecasting cutoff=2022-06-04 scenario=calendar_closure
+Forecasting cutoff=2022-06-04 scenario=targeted_edges
+Forecasting cutoff=2022-06-04 scenario=targeted_block
+Forecasting cutoff=2022-06-23 scenario=baseline
+Forecasting cutoff=2022-06-23 scenario=calendars
+Forecasting cutoff=2022-06-23 scenario=closures
+Forecasting cutoff=2022-06-23 scenario=calendar_closure
+Forecasting cutoff=2022-06-23 scenario=targeted_edges
+Forecasting cutoff=2022-06-23 scenario=targeted_block
+Forecasting cutoff=2022-06-27 scenario=baseline
+Forecasting cutoff=2022-06-27 scenario=calendars
+Forecasting cutoff=2022-06-27 scenario=closures
+Forecasting cutoff=2022-06-27 scenario=calendar_closure
+Forecasting cutoff=2022-06-27 scenario=targeted_edges
+Forecasting cutoff=2022-06-27 scenario=targeted_block
+Forecasting cutoff=2022-07-01 scenario=baseline
+Forecasting cutoff=2022-07-01 scenario=calendars
+Forecasting cutoff=2022-07-01 scenario=closures
+Forecasting cutoff=2022-07-01 scenario=calendar_closure
+Forecasting cutoff=2022-07-01 scenario=targeted_edges
+Forecasting cutoff=2022-07-01 scenario=targeted_block
+Forecasting cutoff=2022-09-04 scenario=baseline
+Forecasting cutoff=2022-09-04 scenario=calendars
+Forecasting cutoff=2022-09-04 scenario=closures
+Forecasting cutoff=2022-09-04 scenario=calendar_closure
+Forecasting cutoff=2022-09-04 scenario=targeted_edges
+Forecasting cutoff=2022-09-04 scenario=targeted_block
+Forecasting cutoff=2023-05-20 scenario=baseline
+Forecasting cutoff=2023-05-20 scenario=calendars
+Forecasting cutoff=2023-05-20 scenario=closures
+Forecasting cutoff=2023-05-20 scenario=calendar_closure
+Forecasting cutoff=2023-05-20 scenario=targeted_edges
+Forecasting cutoff=2023-05-20 scenario=targeted_block
+Forecasting cutoff=2023-05-25 scenario=baseline
+Forecasting cutoff=2023-05-25 scenario=calendars
+Forecasting cutoff=2023-05-25 scenario=closures
+Forecasting cutoff=2023-05-25 scenario=calendar_closure
+Forecasting cutoff=2023-05-25 scenario=targeted_edges
+Forecasting cutoff=2023-05-25 scenario=targeted_block
+Forecasting cutoff=2023-06-23 scenario=baseline
+Forecasting cutoff=2023-06-23 scenario=calendars
+Forecasting cutoff=2023-06-23 scenario=closures
+Forecasting cutoff=2023-06-23 scenario=calendar_closure
+Forecasting cutoff=2023-06-23 scenario=targeted_edges
+Forecasting cutoff=2023-06-23 scenario=targeted_block
+Forecasting cutoff=2023-06-27 scenario=baseline
+Forecasting cutoff=2023-06-27 scenario=calendars
+Forecasting cutoff=2023-06-27 scenario=closures
+Forecasting cutoff=2023-06-27 scenario=calendar_closure
+Forecasting cutoff=2023-06-27 scenario=targeted_edges
+Forecasting cutoff=2023-06-27 scenario=targeted_block
+Forecasting cutoff=2023-06-30 scenario=baseline
+Forecasting cutoff=2023-06-30 scenario=calendars
+Forecasting cutoff=2023-06-30 scenario=closures
+Forecasting cutoff=2023-06-30 scenario=calendar_closure
+Forecasting cutoff=2023-06-30 scenario=targeted_edges
+Forecasting cutoff=2023-06-30 scenario=targeted_block
+Forecasting cutoff=2023-09-03 scenario=baseline
+Forecasting cutoff=2023-09-03 scenario=calendars
+Forecasting cutoff=2023-09-03 scenario=closures
+Forecasting cutoff=2023-09-03 scenario=calendar_closure
+Forecasting cutoff=2023-09-03 scenario=targeted_edges
+Forecasting cutoff=2023-09-03 scenario=targeted_block
+Forecasting cutoff=2023-09-16 scenario=baseline
+Forecasting cutoff=2023-09-16 scenario=calendars
+Forecasting cutoff=2023-09-16 scenario=closures
+Forecasting cutoff=2023-09-16 scenario=calendar_closure
+Forecasting cutoff=2023-09-16 scenario=targeted_edges
+Forecasting cutoff=2023-09-16 scenario=targeted_block
+Forecasting cutoff=2023-09-24 scenario=baseline
+Forecasting cutoff=2023-09-24 scenario=calendars
+Forecasting cutoff=2023-09-24 scenario=closures
+Forecasting cutoff=2023-09-24 scenario=calendar_closure
+Forecasting cutoff=2023-09-24 scenario=targeted_edges
+Forecasting cutoff=2023-09-24 scenario=targeted_block
+Forecasting cutoff=2023-09-29 scenario=baseline
+Forecasting cutoff=2023-09-29 scenario=calendars
+Forecasting cutoff=2023-09-29 scenario=closures
+Forecasting cutoff=2023-09-29 scenario=calendar_closure
+Forecasting cutoff=2023-09-29 scenario=targeted_edges
+Forecasting cutoff=2023-09-29 scenario=targeted_block
+Forecasting cutoff=2023-10-07 scenario=baseline
+Forecasting cutoff=2023-10-07 scenario=calendars
+Forecasting cutoff=2023-10-07 scenario=closures
+Forecasting cutoff=2023-10-07 scenario=calendar_closure
+Forecasting cutoff=2023-10-07 scenario=targeted_edges
+Forecasting cutoff=2023-10-07 scenario=targeted_block
+Forecasting cutoff=2023-12-22 scenario=baseline
+Forecasting cutoff=2023-12-22 scenario=calendars
+Forecasting cutoff=2023-12-22 scenario=closures
+Forecasting cutoff=2023-12-22 scenario=calendar_closure
+Forecasting cutoff=2023-12-22 scenario=targeted_edges
+Forecasting cutoff=2023-12-22 scenario=targeted_block
+Forecasting cutoff=2023-12-26 scenario=baseline
+Forecasting cutoff=2023-12-26 scenario=calendars
+Forecasting cutoff=2023-12-26 scenario=closures
+Forecasting cutoff=2023-12-26 scenario=calendar_closure
+Forecasting cutoff=2023-12-26 scenario=targeted_edges
+Forecasting cutoff=2023-12-26 scenario=targeted_block
+Forecasting cutoff=2023-12-29 scenario=baseline
+Forecasting cutoff=2023-12-29 scenario=calendars
+Forecasting cutoff=2023-12-29 scenario=closures
+Forecasting cutoff=2023-12-29 scenario=calendar_closure
+Forecasting cutoff=2023-12-29 scenario=targeted_edges
+Forecasting cutoff=2023-12-29 scenario=targeted_block
+Forecasting cutoff=2024-01-02 scenario=baseline
+Forecasting cutoff=2024-01-02 scenario=calendars
+Forecasting cutoff=2024-01-02 scenario=closures
+Forecasting cutoff=2024-01-02 scenario=calendar_closure
+Forecasting cutoff=2024-01-02 scenario=targeted_edges
+Forecasting cutoff=2024-01-02 scenario=targeted_block
+Forecasting cutoff=2025-09-01 scenario=baseline
+Forecasting cutoff=2025-09-01 scenario=calendars
+Forecasting cutoff=2025-09-01 scenario=closures
+Forecasting cutoff=2025-09-01 scenario=calendar_closure
+Forecasting cutoff=2025-09-01 scenario=targeted_edges
+Forecasting cutoff=2025-09-01 scenario=targeted_block
+Forecasting cutoff=2025-09-24 scenario=baseline
+Forecasting cutoff=2025-09-24 scenario=calendars
+Forecasting cutoff=2025-09-24 scenario=closures
+Forecasting cutoff=2025-09-24 scenario=calendar_closure
+Forecasting cutoff=2025-09-24 scenario=targeted_edges
+Forecasting cutoff=2025-09-24 scenario=targeted_block
+Forecasting cutoff=2025-10-02 scenario=baseline
+Forecasting cutoff=2025-10-02 scenario=calendars
+Forecasting cutoff=2025-10-02 scenario=closures
+Forecasting cutoff=2025-10-02 scenario=calendar_closure
+Forecasting cutoff=2025-10-02 scenario=targeted_edges
+Forecasting cutoff=2025-10-02 scenario=targeted_block
+Forecasting cutoff=2025-10-09 scenario=baseline
+Forecasting cutoff=2025-10-09 scenario=calendars
+Forecasting cutoff=2025-10-09 scenario=closures
+Forecasting cutoff=2025-10-09 scenario=calendar_closure
+Forecasting cutoff=2025-10-09 scenario=targeted_edges
+Forecasting cutoff=2025-10-09 scenario=targeted_block
+
+Summary:
+       segment  target_name         scenario   n       mae  mean_error      rmse     wape  baseline_mae  mae_improvement  mae_improvement_pct
+      all_days daily_visits calendar_closure 168 18.393003   -1.894069 24.609275 0.072275     19.499401         1.106398             5.674009
+      all_days daily_visits   targeted_edges 168 18.405360   -1.713291 24.449412 0.072323     19.499401         1.094041             5.610639
+      all_days daily_visits         closures 168 18.490708   -1.697573 24.447373 0.072658     19.499401         1.008693             5.172944
+      all_days daily_visits   targeted_block 168 18.566389   -1.815754 24.522747 0.072956     19.499401         0.933012             4.784826
+      all_days daily_visits        calendars 168 18.651936   -2.353111 25.727391 0.073292     19.499401         0.847465             4.346108
+      all_days daily_visits         baseline 168 19.499401   -2.548897 26.093963 0.076622     19.499401         0.000000             0.000000
+holiday_window daily_visits   targeted_edges 103 21.497713   -2.862132 27.960493 0.085105     23.110898         1.613185             6.980191
+holiday_window daily_visits calendar_closure 103 21.591318   -3.205039 28.284132 0.085476     23.110898         1.519580             6.575168
+holiday_window daily_visits         closures 103 21.666900   -3.007314 27.949795 0.085775     23.110898         1.443998             6.248128
+holiday_window daily_visits   targeted_block 103 21.772707   -2.993271 28.067529 0.086194     23.110898         1.338191             5.790304
+holiday_window daily_visits        calendars 103 22.148543   -3.932636 29.934894 0.087682     23.110898         0.962355             4.164074
+holiday_window daily_visits         baseline 103 23.110898   -2.878645 30.260082 0.091491     23.110898         0.000000             0.000000
+ ordinary_days daily_visits        calendars  65 13.111158    0.149829 17.052358 0.050922     13.776567         0.665409             4.830004
+ ordinary_days daily_visits calendar_closure  65 13.324905    0.183316 17.251251 0.051752     13.776567         0.451662             3.278482
+ ordinary_days daily_visits         closures  65 13.457666    0.377861 17.517711 0.052267     13.776567         0.318901             2.314810
+ ordinary_days daily_visits   targeted_block  65 13.485607    0.050156 17.491696 0.052376     13.776567         0.290960             2.111990
+ ordinary_days daily_visits   targeted_edges  65 13.505169    0.107179 17.498003 0.052452     13.776567         0.271398             1.969995
+ ordinary_days daily_visits         baseline  65 13.776567   -2.026372 17.574487 0.053506     13.776567         0.000000             0.000000
+
+Winners:
+       segment         scenario       mae  baseline_mae  mae_improvement_pct
+      all_days calendar_closure 18.393003     19.499401             5.674009
+holiday_window   targeted_edges 21.497713     23.110898             6.980191
+ ordinary_days        calendars 13.111158     13.776567             4.830004
+
+By event:
+                           event  target_name         scenario  n       mae  mean_error      rmse     wape  baseline_mae  mae_improvement  mae_improvement_pct
+                     any_holiday daily_visits         baseline 29 20.791810    7.883462 27.794699 0.087602     20.791810         0.000000             0.000000
+                     any_holiday daily_visits   targeted_edges 29 21.413102    0.331848 25.971970 0.090219     20.791810        -0.621292            -2.988155
+                     any_holiday daily_visits calendar_closure 29 21.538282   -0.085693 26.691341 0.090747     20.791810        -0.746472            -3.590219
+                     any_holiday daily_visits   targeted_block 29 21.891166   -0.475531 26.230552 0.092234     20.791810        -1.099356            -5.287449
+                     any_holiday daily_visits         closures 29 22.200726   -1.407445 26.462664 0.093538     20.791810        -1.408916            -6.776301
+                     any_holiday daily_visits        calendars 29 23.260496    1.188134 31.193580 0.098003     20.791810        -2.468686           -11.873359
+        christmas_newyear_period daily_visits   targeted_edges 20 30.451151  -22.039124 33.397090 0.120005     34.156563         3.705412            10.848317
+        christmas_newyear_period daily_visits   targeted_block 20 30.923544  -22.181333 33.936539 0.121866     34.156563         3.233019             9.465294
+        christmas_newyear_period daily_visits         closures 20 30.990347  -22.436900 33.105265 0.122129     34.156563         3.166216             9.269716
+        christmas_newyear_period daily_visits calendar_closure 20 31.505692  -23.099448 35.211763 0.124160     34.156563         2.650871             7.760943
+        christmas_newyear_period daily_visits         baseline 20 34.156563  -19.093195 39.040225 0.134607     34.156563         0.000000             0.000000
+        christmas_newyear_period daily_visits        calendars 20 39.013347  -28.504805 44.564530 0.153747     34.156563        -4.856784           -14.219183
+first_business_day_after_closure daily_visits         closures 27 18.919791   -3.078328 24.836964 0.071606     22.722534         3.802742            16.735556
+first_business_day_after_closure daily_visits   targeted_edges 27 19.158739   -3.056975 25.239436 0.072510     22.722534         3.563795            15.683967
+first_business_day_after_closure daily_visits   targeted_block 27 19.208961   -2.329276 25.083186 0.072700     22.722534         3.513572            15.462943
+first_business_day_after_closure daily_visits calendar_closure 27 19.456673   -3.338788 25.764649 0.073638     22.722534         3.265861            14.372784
+first_business_day_after_closure daily_visits        calendars 27 20.273422   -5.677573 26.917025 0.076729     22.722534         2.449111            10.778338
+first_business_day_after_closure daily_visits         baseline 27 22.722534   -8.852140 30.016112 0.085998     22.722534         0.000000             0.000000
+          first_day_long_closure daily_visits         baseline  6 27.838689   -7.019124 31.743125 0.117794     27.838689         0.000000             0.000000
+          first_day_long_closure daily_visits         closures  6 29.815043  -12.183228 32.770463 0.126157     27.838689        -1.976354            -7.099307
+          first_day_long_closure daily_visits   targeted_edges  6 30.412862  -14.968191 34.308948 0.128686     27.838689        -2.574173            -9.246746
+          first_day_long_closure daily_visits calendar_closure  6 31.519539  -17.450595 35.380001 0.133369     27.838689        -3.680850           -13.222065
+          first_day_long_closure daily_visits        calendars  6 32.211177  -18.737193 40.406894 0.136296     27.838689        -4.372487           -15.706513
+          first_day_long_closure daily_visits   targeted_block  6 33.974645  -18.612996 36.654372 0.143757     27.838689        -6.135956           -22.041109
+    friday_before_monday_holiday daily_visits        calendars  5 50.271420  -30.043356 60.582112 0.171809     51.560593         1.289172             2.500306
+    friday_before_monday_holiday daily_visits         closures  5 50.436130  -29.340280 62.105277 0.172372     51.560593         1.124463             2.180857
+    friday_before_monday_holiday daily_visits   targeted_edges  5 50.915375  -28.400873 62.152764 0.174010     51.560593         0.645218             1.251378
+    friday_before_monday_holiday daily_visits         baseline  5 51.560593  -30.468845 61.022293 0.176215     51.560593         0.000000             0.000000
+    friday_before_monday_holiday daily_visits   targeted_block  5 51.581613  -28.778574 62.019067 0.176287     51.560593        -0.021021            -0.040769
+    friday_before_monday_holiday daily_visits calendar_closure  5 52.385516  -29.703314 62.701053 0.179035     51.560593        -0.824924            -1.599911
+last_business_day_before_closure daily_visits   targeted_edges 25 27.257444   -2.558922 37.074404 0.102287     28.660125         1.402681             4.894189
+last_business_day_before_closure daily_visits        calendars 25 27.398771   -2.862706 36.762252 0.102817     28.660125         1.261354             4.401076
+last_business_day_before_closure daily_visits   targeted_block 25 27.423466   -2.698876 36.841745 0.102910     28.660125         1.236659             4.314911
+last_business_day_before_closure daily_visits calendar_closure 25 27.526686   -2.661983 37.267405 0.103297     28.660125         1.133439             3.954758
+last_business_day_before_closure daily_visits         closures 25 27.742969   -2.752900 37.414106 0.104109     28.660125         0.917156             3.200113
+last_business_day_before_closure daily_visits         baseline 25 28.660125   -4.842194 37.966700 0.107551     28.660125         0.000000             0.000000
+           last_day_long_closure daily_visits calendar_closure 11 19.155635   -8.643883 24.301402 0.079304     21.878537         2.722902            12.445538
+           last_day_long_closure daily_visits   targeted_block 11 19.737452   -7.831618 23.907966 0.081713     21.878537         2.141086             9.786237
+           last_day_long_closure daily_visits   targeted_edges 11 20.093137   -7.752766 24.366421 0.083186     21.878537         1.785400             8.160511
+           last_day_long_closure daily_visits         closures 11 20.971497   -8.119302 25.333314 0.086822     21.878537         0.907041             4.145801
+           last_day_long_closure daily_visits         baseline 11 21.878537   -5.918637 27.283736 0.090577     21.878537         0.000000             0.000000
+           last_day_long_closure daily_visits        calendars 11 25.630192  -10.982631 34.067528 0.106109     21.878537        -3.751655           -17.147649
+            major_jewish_holiday daily_visits         baseline  9 21.453729   14.508108 28.262684 0.090522     21.453729         0.000000             0.000000
+            major_jewish_holiday daily_visits        calendars  9 22.126870   17.651708 28.496740 0.093362     21.453729        -0.673141            -3.137643
+            major_jewish_holiday daily_visits   targeted_block  9 22.916794   17.102788 28.488731 0.096695     21.453729        -1.463065            -6.819632
+            major_jewish_holiday daily_visits   targeted_edges  9 23.517680   17.803955 29.455598 0.099231     21.453729        -2.063951            -9.620478
+            major_jewish_holiday daily_visits         closures  9 23.609804   16.565455 29.492803 0.099619     21.453729        -2.156075           -10.049887
+            major_jewish_holiday daily_visits calendar_closure  9 23.923072   18.095476 29.867106 0.100941     21.453729        -2.469343           -11.510090
+        major_jewish_holiday_eve daily_visits        calendars  6 34.198308   -7.793889 51.996175 0.122282     37.753743         3.555435             9.417437
+        major_jewish_holiday_eve daily_visits calendar_closure  6 34.414164   -7.048848 53.399787 0.123054     37.753743         3.339579             8.845690
+        major_jewish_holiday_eve daily_visits   targeted_block  6 34.541916   -6.494898 53.337413 0.123511     37.753743         3.211828             8.507309
+        major_jewish_holiday_eve daily_visits   targeted_edges  6 35.223989   -6.698283 54.377088 0.125950     37.753743         2.529755             6.700672
+        major_jewish_holiday_eve daily_visits         closures  6 35.338537   -6.716497 54.544199 0.126359     37.753743         2.415207             6.397265
+        major_jewish_holiday_eve daily_visits         baseline  6 37.753743   -8.916046 52.739216 0.134996     37.753743         0.000000             0.000000
+     monday_after_friday_holiday daily_visits        calendars  4 10.285637   -6.589790 12.868727 0.038095     16.063637         5.778000            35.969438
+     monday_after_friday_holiday daily_visits calendar_closure  4 10.499405   -5.594528 12.426886 0.038887     16.063637         5.564232            34.638681
+     monday_after_friday_holiday daily_visits   targeted_edges  4 11.437183   -6.385601 13.606490 0.042360     16.063637         4.626453            28.800784
+     monday_after_friday_holiday daily_visits   targeted_block  4 11.516865   -4.799145 13.072409 0.042655     16.063637         4.546772            28.304749
+     monday_after_friday_holiday daily_visits         closures  4 11.748447   -3.975933 12.735953 0.043513     16.063637         4.315189            26.863091
+     monday_after_friday_holiday daily_visits         baseline  4 16.063637  -15.664955 21.529600 0.059495     16.063637         0.000000             0.000000
+                pre_long_closure daily_visits   targeted_edges  6 45.500982  -32.385432 57.232526 0.155117     47.182961         1.681979             3.564801
+                pre_long_closure daily_visits        calendars  6 45.514066  -35.550331 56.012706 0.155162     47.182961         1.668894             3.537070
+                pre_long_closure daily_visits         closures  6 45.716774  -32.811399 57.370239 0.155853     47.182961         1.466187             3.107449
+                pre_long_closure daily_visits   targeted_block  6 46.087781  -32.687960 57.121271 0.157117     47.182961         1.095179             2.321133
+                pre_long_closure daily_visits calendar_closure  6 46.436376  -33.433446 57.645289 0.158306     47.182961         0.746585             1.582318
+                pre_long_closure daily_visits         baseline  6 47.182961  -35.073270 56.613454 0.160851     47.182961         0.000000             0.000000
+                      qc_holiday daily_visits        calendars 14 16.812309    5.816614 25.269418 0.071239     19.866105         3.053796            15.371891
+                      qc_holiday daily_visits calendar_closure 14 17.841722   -2.833349 23.047295 0.075601     19.866105         2.024384            10.190138
+                      qc_holiday daily_visits   targeted_edges 14 18.572502   -2.672500 22.720044 0.078697     19.866105         1.293603             6.511609
+                      qc_holiday daily_visits         closures 14 19.221804   -4.729298 22.717131 0.081448     19.866105         0.644301             3.243219
+                      qc_holiday daily_visits         baseline 14 19.866105   12.392701 27.603323 0.084178     19.866105         0.000000             0.000000
+                      qc_holiday daily_visits   targeted_block 14 20.351718   -4.324880 24.394472 0.086236     19.866105        -0.485613            -2.444431
+        quebec_canada_day_period daily_visits        calendars 30 12.914308   -1.922771 15.401122 0.052278     15.341013         2.426705            15.818414
+        quebec_canada_day_period daily_visits   targeted_edges 30 14.990925   -1.712119 17.941350 0.060684     15.341013         0.350088             2.282040
+        quebec_canada_day_period daily_visits         closures 30 15.257225   -1.109895 18.276976 0.061762     15.341013         0.083788             0.546170
+        quebec_canada_day_period daily_visits         baseline 30 15.341013    1.760046 19.156984 0.062101     15.341013         0.000000             0.000000
+        quebec_canada_day_period daily_visits calendar_closure 30 15.459803   -2.717293 18.385249 0.062582     15.341013        -0.118790            -0.774331
+        quebec_canada_day_period daily_visits   targeted_block 30 15.584541   -2.264775 18.765692 0.063087     15.341013        -0.243528            -1.587433
+                    ramq_holiday daily_visits calendar_closure 20 20.465126   -8.267220 25.131660 0.086169     20.493947         0.028821             0.140631
+                    ramq_holiday daily_visits   targeted_edges 20 20.466042   -7.530600 24.241558 0.086173     20.493947         0.027905             0.136163
+                    ramq_holiday daily_visits         baseline 20 20.493947    4.902371 27.581515 0.086290     20.493947         0.000000             0.000000
+                    ramq_holiday daily_visits   targeted_block 20 21.429634   -8.385774 25.148304 0.090230     20.493947        -0.935687            -4.565676
+                    ramq_holiday daily_visits         closures 20 21.566640   -9.495251 24.979468 0.090807     20.493947        -1.072694            -5.234197
+                    ramq_holiday daily_visits        calendars 20 23.770628   -6.220474 32.333856 0.100087     20.493947        -3.276682           -15.988533
+      rebound_after_long_closure daily_visits   targeted_block 13 27.963581   -6.617056 32.233614 0.098624     33.876414         5.912834            17.454131
+      rebound_after_long_closure daily_visits         closures 13 28.031614   -7.105373 31.858762 0.098864     33.876414         5.844801            17.253303
+      rebound_after_long_closure daily_visits   targeted_edges 13 28.190004   -7.439722 32.499122 0.099422     33.876414         5.686411            16.785752
+      rebound_after_long_closure daily_visits calendar_closure 13 28.659518   -8.095313 33.304518 0.101078     33.876414         5.216897            15.399790
+      rebound_after_long_closure daily_visits        calendars 13 30.926721  -12.194966 35.845666 0.109074     33.876414         2.949693             8.707217
+      rebound_after_long_closure daily_visits         baseline 13 33.876414  -13.833953 37.892890 0.119477     33.876414         0.000000             0.000000
+  thursday_before_friday_holiday daily_visits calendar_closure  3 12.021891  -10.903035 14.103858 0.044526     15.138184         3.116292            20.585642
+  thursday_before_friday_holiday daily_visits   targeted_edges  3 12.089732  -11.489349 14.448795 0.044777     15.138184         3.048452            20.137500
+  thursday_before_friday_holiday daily_visits   targeted_block  3 12.128011  -11.489827 14.475770 0.044919     15.138184         3.010173            19.884635
+  thursday_before_friday_holiday daily_visits         closures  3 12.154185  -12.154185 14.826763 0.045015     15.138184         2.983999            19.711735
+  thursday_before_friday_holiday daily_visits        calendars  3 14.460032  -13.810801 17.341142 0.053556     15.138184         0.678151             4.479741
+  thursday_before_friday_holiday daily_visits         baseline  3 15.138184  -12.658549 17.269455 0.056067     15.138184         0.000000             0.000000
+    tuesday_after_monday_holiday daily_visits   targeted_block 10 28.426256    0.418306 33.221790 0.102437     28.528207         0.101952             0.357371
+    tuesday_after_monday_holiday daily_visits         baseline 10 28.528207   -0.981363 33.861296 0.102804     28.528207         0.000000             0.000000
+    tuesday_after_monday_holiday daily_visits   targeted_edges 10 29.102455   -0.681264 33.545173 0.104874     28.528207        -0.574248            -2.012912
+    tuesday_after_monday_holiday daily_visits         closures 10 29.210435   -2.104936 33.852296 0.105263     28.528207        -0.682228            -2.391416
+    tuesday_after_monday_holiday daily_visits calendar_closure 10 29.728436   -1.258124 34.179464 0.107130     28.528207        -1.200229            -4.207165
+    tuesday_after_monday_holiday daily_visits        calendars 10 35.721056   -9.205705 41.224454 0.128725     28.528207        -7.192848           -25.213110
