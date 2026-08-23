@@ -1,0 +1,139 @@
+name: Hourly final feature-family ablation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - chronos2-hourly-final-ablation
+    paths:
+      - '.github/workflows/hourly-final-feature-ablation.yml'
+      - 'chronos-requirements.txt'
+      - 'scripts/backtest_covariate_ablation.py'
+      - 'scripts/backtest_hourly_final_features.py'
+      - 'scripts/backtest_hourly_calendar_features.py'
+      - 'scripts/backtest_hourly_weather_features.py'
+      - 'scripts/backtest_staffing_features.py'
+      - 'scripts/hourly_calendar_features.py'
+      - 'scripts/hourly_weather_features.py'
+      - 'scripts/staffing_features.py'
+      - 'scripts/holiday_features.py'
+      - 'scripts/forecast_oncall_impact.py'
+      - 'tests/test_hourly_calendar_features.py'
+      - 'tests/test_hourly_weather_features.py'
+      - 'tests/test_staffing_features.py'
+
+permissions:
+  contents: write
+
+jobs:
+  backtest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Check out comparison branch
+        uses: actions/checkout@v7
+
+      - name: Record run id
+        run: |
+          mkdir -p validation/hourly-final-ablation
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/hourly-final-ablation/run-id.txt
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-hourly-final-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-hourly-final-${{ runner.os }}-
+            huggingface-staffing-${{ runner.os }}-
+            huggingface-hourly-calendar-${{ runner.os }}-
+            huggingface-hourly-weather-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+
+      - name: Compile and test integrated feature code
+        run: |
+          python -m py_compile scripts/backtest_hourly_final_features.py
+          python -m py_compile scripts/hourly_calendar_features.py
+          python -m py_compile scripts/hourly_weather_features.py
+          python -m py_compile scripts/staffing_features.py
+          python tests/test_hourly_calendar_features.py
+          python tests/test_hourly_weather_features.py
+          python tests/test_staffing_features.py
+
+      - name: Run apples-to-apples hourly feature ablation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          mkdir -p validation-output-hourly-final
+          set +e
+          python scripts/backtest_hourly_final_features.py \
+            --horizon 24 \
+            --num-cutoffs 8 \
+            --spacing-hours 168 \
+            --max-history-days 365 \
+            --min-history-hours 672 \
+            --effect-min-hours 24 \
+            --effect-shrinkage-hours 72 \
+            --output-dir validation-output-hourly-final \
+            2>&1 | tee validation-output-hourly-final/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output-hourly-final/exit_code.txt
+          exit 0
+
+      - name: Upload comparison results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos2-hourly-final-feature-ablation
+          path: validation-output-hourly-final/*
+          if-no-files-found: warn
+
+      - name: Record latest aggregate results on branch
+        if: always()
+        run: |
+          mkdir -p validation/hourly-final-ablation
+          for file in \
+            cutoffs.csv \
+            summary.csv \
+            by_horizon_band.csv \
+            by_horizon_hour.csv \
+            winners_by_target.csv \
+            winners_by_target_horizon_band.csv \
+            best_feature_family_by_target.csv \
+            exit_code.txt; do
+            if [ -f "validation-output-hourly-final/$file" ]; then
+              cp "validation-output-hourly-final/$file" "validation/hourly-final-ablation/$file"
+            fi
+          done
+          if [ -f validation-output-hourly-final/run.log ]; then
+            tail -n 1600 validation-output-hourly-final/run.log \
+              > validation/hourly-final-ablation/latest.log
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/hourly-final-ablation
+          if ! git diff --cached --quiet; then
+            git commit -m "Record final hourly feature ablation results [skip ci]"
+            git push
+          fi
+
+      - name: Fail if comparison failed
+        if: always()
+        run: |
+          test -f validation-output-hourly-final/exit_code.txt
+          test "$(cat validation-output-hourly-final/exit_code.txt)" = "0"
