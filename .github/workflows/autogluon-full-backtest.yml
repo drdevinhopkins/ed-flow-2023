@@ -22,7 +22,7 @@ on:
 jobs:
   backtest:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,10 +42,10 @@ jobs:
       - name: Compile scripts
         run: python -m compileall -q scripts
 
-      - name: Run full leakage-safe backtest
+      - name: Run 14-day leakage-safe backtest
         env:
           AUTOGLUON_VALIDATION_WINDOWS: '3'
-          AUTOGLUON_HOLDOUT_WINDOWS: '4'
+          AUTOGLUON_HOLDOUT_WINDOWS: '14'
           AUTOGLUON_VAL_STEP_SIZE: '24'
           AUTOGLUON_TIME_LIMIT: '1800'
           AUTOGLUON_BATCH_SIZE: '8'
@@ -59,7 +59,7 @@ jobs:
           for f in autogluon_leaderboard.csv autogluon_backtest_overview.csv autogluon_backtest_summary.csv autogluon_backtest_horizons.csv; do
             if [ -f "$f" ]; then
               echo "===== $f ====="
-              head -n 80 "$f"
+              head -n 100 "$f"
             fi
           done
 
@@ -67,6 +67,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: autogluon-full-backtest-no-weather
+          name: autogluon-14day-backtest-no-weather
           path: autogluon_*.csv
           if-no-files-found: warn
