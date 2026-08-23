@@ -101,7 +101,7 @@ jobs:
           python scripts/forecast_daily_visits.py \
             --horizon-days 7 \
             --context-days 1095 \
-            --min-history-days 120 \
+            --min-history-days 28 \
             --output daily_visits_forecast.csv \
             "${extra_args[@]}" \
             2>&1 | tee daily_visits_forecast.log
@@ -116,6 +116,7 @@ jobs:
           assert df['daily_visits_prediction'].notna().all()
           assert (df['weather_feature_set'] == 'raw_plus_snow').all()
           assert df['horizon_day'].tolist() == list(range(1, 8))
+          assert df['history_days'].min() >= 28
           assert df['snowfall_sum'].notna().all()
           assert df['snow_depth_max'].notna().all()
           print(df.to_string(index=False))
