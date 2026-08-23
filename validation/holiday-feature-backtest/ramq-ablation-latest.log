@@ -1,0 +1,117 @@
+RAMQ calendar ablation scenarios: baseline, calendar_closure_nominal_ramq, calendar_closure_jgh_ramq
+    cutoff         ds                                                               event_type  history_days
+2021-06-29 2021-06-30                              day_before_holiday|quebec_canada_day_period           180
+2022-06-04 2022-06-05                                                              any_holiday           186
+2022-06-24 2022-06-25                               day_after_holiday|quebec_canada_day_period           206
+2022-06-28 2022-06-29                                                 quebec_canada_day_period           210
+2022-07-01 2022-07-02                               day_after_holiday|quebec_canada_day_period           213
+2022-09-04 2022-09-05                                                              any_holiday           278
+2023-05-21 2023-05-22                                                              any_holiday           189
+2023-05-26 2023-05-27                                                        day_after_holiday           194
+2023-06-23 2023-06-24                   any_holiday|day_after_holiday|quebec_canada_day_period           222
+2023-06-27 2023-06-28                                                 quebec_canada_day_period           226
+2023-07-01 2023-07-02                               day_after_holiday|quebec_canada_day_period           230
+2023-09-03 2023-09-04                                                              any_holiday           294
+2023-09-14 2023-09-15                  any_holiday|day_before_holiday|major_jewish_holiday_eve           305
+2023-09-21 2023-09-22                                       long_weekend_edge|pre_long_closure           312
+2023-09-28 2023-09-29                              day_before_holiday|major_jewish_holiday_eve           319
+2023-10-06 2023-10-07                                                              any_holiday           327
+2023-12-21 2023-12-22                                       long_weekend_edge|pre_long_closure           403
+2023-12-25 2023-12-26 any_holiday|day_after_holiday|long_weekend_edge|christmas_newyear_period           407
+2023-12-29 2023-12-30                                                 christmas_newyear_period           411
+2024-01-02 2024-01-03    day_after_holiday|christmas_newyear_period|rebound_after_long_closure           415
+2025-08-31 2025-09-01                                                              any_holiday           198
+2025-09-23 2025-09-24                                            any_holiday|day_after_holiday           221
+2025-10-02 2025-10-03                                                        day_after_holiday           230
+2025-10-09 2025-10-10                                       long_weekend_edge|pre_long_closure           237
+Loading weights:   0%|          | 0/170 [00:00<?, ?it/s]Loading weights: 100%|██████████| 170/170 [00:00<00:00, 3620.96it/s]
+Forecasting cutoff=2021-06-29 scenario=baseline
+Forecasting cutoff=2021-06-29 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2021-06-29 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2022-06-04 scenario=baseline
+Forecasting cutoff=2022-06-04 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2022-06-04 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2022-06-24 scenario=baseline
+Forecasting cutoff=2022-06-24 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2022-06-24 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2022-06-28 scenario=baseline
+Forecasting cutoff=2022-06-28 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2022-06-28 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2022-07-01 scenario=baseline
+Forecasting cutoff=2022-07-01 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2022-07-01 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2022-09-04 scenario=baseline
+Forecasting cutoff=2022-09-04 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2022-09-04 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2023-05-21 scenario=baseline
+Forecasting cutoff=2023-05-21 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2023-05-21 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2023-05-26 scenario=baseline
+Forecasting cutoff=2023-05-26 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2023-05-26 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2023-06-23 scenario=baseline
+Forecasting cutoff=2023-06-23 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2023-06-23 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2023-06-27 scenario=baseline
+Forecasting cutoff=2023-06-27 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2023-06-27 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2023-07-01 scenario=baseline
+Forecasting cutoff=2023-07-01 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2023-07-01 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2023-09-03 scenario=baseline
+Forecasting cutoff=2023-09-03 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2023-09-03 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2023-09-14 scenario=baseline
+Forecasting cutoff=2023-09-14 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2023-09-14 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2023-09-21 scenario=baseline
+Forecasting cutoff=2023-09-21 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2023-09-21 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2023-09-28 scenario=baseline
+Forecasting cutoff=2023-09-28 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2023-09-28 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2023-10-06 scenario=baseline
+Forecasting cutoff=2023-10-06 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2023-10-06 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2023-12-21 scenario=baseline
+Forecasting cutoff=2023-12-21 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2023-12-21 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2023-12-25 scenario=baseline
+Forecasting cutoff=2023-12-25 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2023-12-25 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2023-12-29 scenario=baseline
+Forecasting cutoff=2023-12-29 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2023-12-29 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2024-01-02 scenario=baseline
+Forecasting cutoff=2024-01-02 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2024-01-02 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2025-08-31 scenario=baseline
+Forecasting cutoff=2025-08-31 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2025-08-31 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2025-09-23 scenario=baseline
+Forecasting cutoff=2025-09-23 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2025-09-23 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2025-10-02 scenario=baseline
+Forecasting cutoff=2025-10-02 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2025-10-02 scenario=calendar_closure_jgh_ramq
+Forecasting cutoff=2025-10-09 scenario=baseline
+Forecasting cutoff=2025-10-09 scenario=calendar_closure_nominal_ramq
+Forecasting cutoff=2025-10-09 scenario=calendar_closure_jgh_ramq
+
+Summary:
+       segment  target_name                      scenario   n       mae  mean_error      rmse     wape  baseline_mae  nominal_ramq_mae  mae_improvement_vs_baseline  mae_improvement_vs_baseline_pct  mae_improvement_vs_nominal_ramq  mae_improvement_vs_nominal_ramq_pct
+      all_days daily_visits calendar_closure_nominal_ramq 168 16.548150   -0.819746 21.640065 0.065260     18.281989         16.548150                     1.733839                         9.483864                         0.000000                             0.000000
+      all_days daily_visits     calendar_closure_jgh_ramq 168 17.075564   -0.576616 22.515695 0.067340     18.281989         16.548150                     1.206425                         6.598979                        -0.527414                            -3.187150
+      all_days daily_visits                      baseline 168 18.281989   -1.489599 24.076936 0.072098     18.281989         16.548150                     0.000000                         0.000000                        -1.733839                           -10.477540
+holiday_window daily_visits calendar_closure_nominal_ramq 100 18.955288   -1.288943 24.372563 0.075363     21.306690         18.955288                     2.351402                        11.035979                         0.000000                             0.000000
+holiday_window daily_visits     calendar_closure_jgh_ramq 100 19.795008   -1.328449 25.590745 0.078702     21.306690         18.955288                     1.511682                         7.094871                        -0.839720                            -4.430002
+holiday_window daily_visits                      baseline 100 21.306690   -0.878275 27.755459 0.084712     21.306690         18.955288                     0.000000                         0.000000                        -2.351402                           -12.404992
+ ordinary_days daily_visits calendar_closure_nominal_ramq  68 13.008240   -0.129751 16.834375 0.050697     13.833898         13.008240                     0.825658                         5.968369                         0.000000                             0.000000
+ ordinary_days daily_visits     calendar_closure_jgh_ramq  68 13.076381    0.529021 17.012137 0.050963     13.833898         13.008240                     0.757516                         5.475798                        -0.068142                            -0.523835
+ ordinary_days daily_visits                      baseline  68 13.833898   -2.388604 17.300481 0.053915     13.833898         13.008240                     0.000000                         0.000000                        -0.825658                            -6.347192
+
+JGH RAMQ days:
+      segment  target_name                      scenario  n       mae  mean_error      rmse     wape  baseline_mae  nominal_ramq_mae  mae_improvement_vs_baseline  mae_improvement_vs_baseline_pct  mae_improvement_vs_nominal_ramq  mae_improvement_vs_nominal_ramq_pct
+jgh_ramq_days daily_visits calendar_closure_nominal_ramq 19 17.929348   -3.648846 22.090332 0.073449     20.295188         17.929348                     2.365840                        11.657147                         0.000000                             0.000000
+jgh_ramq_days daily_visits     calendar_closure_jgh_ramq 19 19.401577   -1.953685 24.193864 0.079480     20.295188         17.929348                     0.893611                         4.403068                        -1.472229                            -8.211280
+jgh_ramq_days daily_visits                      baseline 19 20.295188    7.082872 26.622351 0.083141     20.295188         17.929348                     0.000000                         0.000000                        -2.365840                           -13.195348
