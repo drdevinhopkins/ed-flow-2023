@@ -13,6 +13,10 @@ The research backtests required at least 120 contiguous complete target days. Pr
 uses a 28-day hard floor so a single older incomplete source day does not suppress the
 forecast entirely; output explicitly records whether the current context is shorter than
 the 120-day validated-context threshold.
+
+Each operational run also writes the exact D+1..D+7 covariate snapshot passed to
+Chronos. Once scheduled on main, date-stamped forecast and weather snapshots are archived
+to Dropbox so future accuracy validation can use genuinely forecast-time-available inputs.
 """
 
 from __future__ import annotations
@@ -54,6 +58,7 @@ DEFAULT_CONTEXT_DAYS = 1095
 DEFAULT_MIN_HISTORY_DAYS = 28
 VALIDATED_MIN_HISTORY_DAYS = 120
 DEFAULT_OUTPUT = Path("daily_visits_forecast.csv")
+DEFAULT_WEATHER_SNAPSHOT_OUTPUT = Path("daily_visits_weather_snapshot.csv")
 
 
 def _calendar_features(frame: pd.DataFrame) -> pd.DataFrame:
@@ -218,6 +223,7 @@ def format_output(
     *,
     cutoff: pd.Timestamp,
     history_days: int,
+    generated_at: pd.Timestamp,
 ) -> pd.DataFrame:
     out = forecast.copy()
     if "predictions" in out.columns:
@@ -229,12 +235,19 @@ def format_output(
     out["history_days"] = history_days
     out["validated_context_threshold_days"] = VALIDATED_MIN_HISTORY_DAYS
     out["short_context_warning"] = history_days < VALIDATED_MIN_HISTORY_DAYS
-    out["forecast_generated_at_utc"] = pd.Timestamp.now(tz="UTC").isoformat()
+    out["forecast_generated_at_utc"] = generated_at.isoformat()
 
     context_columns = [
         "ds",
+        "temp_mean",
+        "temp_min",
+        "temp_max",
+        "apparent_temp_mean",
+        "precip_sum",
         "snowfall_sum",
         "snow_depth_max",
+        "wind_max",
+        "gust_max",
         "major_snow_event",
         "day_after_major_snow",
         "two_days_after_major_snow",
@@ -267,14 +280,32 @@ def format_output(
     return out[ordered]
 
 
-def upload_to_dropbox(path: Path, name: str) -> bool:
+def build_weather_snapshot(
+    future: pd.DataFrame,
+    *,
+    cutoff: pd.Timestamp,
+    generated_at: pd.Timestamp,
+) -> pd.DataFrame:
+    """Persist the exact known-future covariates supplied to Chronos at this run."""
+    columns = [
+        column
+        for column in [*CALENDAR_CLOSURE_COLUMNS, *RAW_PLUS_SNOW_COLUMNS]
+        if column in future.columns
+    ]
+    out = future[["ds", *columns]].copy()
+    out["data_cutoff"] = cutoff
+    out["horizon_day"] = ((out["ds"] - cutoff) / pd.Timedelta(days=1)).astype(int)
+    out["weather_feature_set"] = PROMOTED_WEATHER_FEATURE_SET
+    out["forecast_generated_at_utc"] = generated_at.isoformat()
+    return out
+
+
+def _dropbox_client() -> dropbox.Dropbox | None:
     key = os.environ.get("DROPBOX_APP_KEY")
     secret = os.environ.get("DROPBOX_APP_SECRET")
     refresh = os.environ.get("DROPBOX_REFRESH_TOKEN")
     if not all([key, secret, refresh]):
-        print("Dropbox credentials not present; leaving forecast as local CSV")
-        return False
-
+        return None
     response = requests.post(
         "https://api.dropboxapi.com/oauth2/token",
         data={
@@ -286,11 +317,20 @@ def upload_to_dropbox(path: Path, name: str) -> bool:
         timeout=30,
     )
     response.raise_for_status()
-    dbx = dropbox.Dropbox(response.json()["access_token"])
-    result = upload(dbx, str(path), "", "", name, overwrite=True)
+    return dropbox.Dropbox(response.json()["access_token"])
+
+
+def upload_to_dropbox(
+    dbx: dropbox.Dropbox,
+    path: Path,
+    *,
+    name: str,
+    folder: str = "",
+    overwrite: bool = True,
+) -> None:
+    result = upload(dbx, str(path), folder, "", name, overwrite=overwrite)
     if result is None:
-        raise RuntimeError("Dropbox upload failed")
-    return True
+        raise RuntimeError(f"Dropbox upload failed for {folder}/{name}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -301,6 +341,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-id", default=MODEL_ID)
     parser.add_argument("--flow-url", default=FLOW_URL)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--weather-snapshot-output",
+        type=Path,
+        default=DEFAULT_WEATHER_SNAPSHOT_OUTPUT,
+    )
     parser.add_argument("--dropbox-name", default="daily_visits_forecast.csv")
     parser.add_argument("--no-dropbox", action="store_true")
     return parser.parse_args()
@@ -362,22 +407,54 @@ def main() -> None:
         horizon_days=args.horizon_days,
         context_days=args.context_days,
     )
+    generated_at = pd.Timestamp.now(tz="UTC")
     output = format_output(
         forecast,
         future,
         cutoff=cutoff,
         history_days=history_days,
+        generated_at=generated_at,
+    )
+    weather_snapshot = build_weather_snapshot(
+        future,
+        cutoff=cutoff,
+        generated_at=generated_at,
     )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.weather_snapshot_output.parent.mkdir(parents=True, exist_ok=True)
     output.to_csv(args.output, index=False)
-    print(f"Wrote {len(output)} rows to {args.output}", flush=True)
+    weather_snapshot.to_csv(args.weather_snapshot_output, index=False)
+    print(f"Wrote {len(output)} forecast rows to {args.output}", flush=True)
+    print(
+        f"Wrote {len(weather_snapshot)} exact future-covariate rows to "
+        f"{args.weather_snapshot_output}",
+        flush=True,
+    )
     print(output.to_string(index=False), flush=True)
 
     if not args.no_dropbox:
-        uploaded = upload_to_dropbox(args.output, args.dropbox_name)
-        if uploaded:
-            print(f"Uploaded Dropbox /{args.dropbox_name}", flush=True)
+        dbx = _dropbox_client()
+        if dbx is None:
+            print("Dropbox credentials not present; leaving forecast as local CSV", flush=True)
+        else:
+            upload_to_dropbox(dbx, args.output, name=args.dropbox_name, overwrite=True)
+            stamp = generated_at.strftime("%Y%m%dT%H%M%SZ")
+            upload_to_dropbox(
+                dbx,
+                args.output,
+                folder="daily_visits_forecast_snapshots",
+                name=f"daily_visits_forecast_{stamp}.csv",
+                overwrite=False,
+            )
+            upload_to_dropbox(
+                dbx,
+                args.weather_snapshot_output,
+                folder="weather_forecast_snapshots",
+                name=f"daily_visits_weather_{stamp}.csv",
+                overwrite=False,
+            )
+            print("Archived forecast and weather snapshots to Dropbox", flush=True)
 
 
 if __name__ == "__main__":
