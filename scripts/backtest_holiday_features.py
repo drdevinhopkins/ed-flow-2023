@@ -2,11 +2,11 @@
 """Holiday-focused native Chronos-2 ablation for JGH ED inflow.
 
 This backtest deliberately samples forecast cutoffs whose 24-hour horizons contain
-holiday effects or holiday-adjacent "shoulder" days.  A generic weekly rolling backtest
+holiday effects or holiday-adjacent "shoulder" days. A generic weekly rolling backtest
 can contain almost no holidays and is therefore poorly powered to choose holiday
 covariates.
 
-The primary target is Inflow_Total.  Additional targets can be supplied with --targets.
+The primary target is Inflow_Total. Additional targets can be supplied with --targets.
 No AutoGluon wrapper is used: forecasts go directly through Chronos2Pipeline.predict_df
 with known future covariates.
 """
@@ -28,7 +28,7 @@ FLOW_URL = (
     "allDataWithCalculatedColumns.csv?rlkey=9mm4zwaugxyj2r4ooyd39y4nl&raw=1"
 )
 MODEL_ID = "amazon/chronos-2"
-SCENARIOS = ["baseline", "legacy", "calendars", "shoulders", "rich"]
+SCENARIOS = ["baseline", "legacy", "calendars", "shoulders", "rich", "closures"]
 DEFAULT_TARGETS = ["Inflow_Total"]
 MAX_CONTEXT = 8192
 
@@ -40,6 +40,8 @@ EVENT_COLUMNS = [
     "is_major_jewish_holiday_eve",
     "is_christmas_newyear_period",
     "is_quebec_canada_day_period",
+    "is_rebound_after_long_closure",
+    "is_pre_long_closure",
 ]
 
 
@@ -84,7 +86,7 @@ def select_holiday_cutoffs(
     first_day = flow["ds"].min().normalize()
     last_day = flow["ds"].max().normalize()
     daily = pd.DataFrame({"ds": pd.date_range(first_day, last_day, freq="D")})
-    daily = add_holiday_features(daily, feature_set="rich")
+    daily = add_holiday_features(daily, feature_set="closures")
     daily["is_event_day"] = daily[EVENT_COLUMNS].max(axis=1).astype(bool)
     candidates = daily.loc[daily["is_event_day"]].copy()
     candidates["cutoff"] = candidates["ds"] - pd.Timedelta(hours=1)
