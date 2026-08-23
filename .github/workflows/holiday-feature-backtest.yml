@@ -16,12 +16,31 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: chronos2-daily-holiday-backtest
+  cancel-in-progress: true
+
 jobs:
   backtest:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v7
+
+      - name: Publish run id
+        shell: bash
+        run: |
+          mkdir -p validation/holiday-feature-backtest
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/holiday-feature-backtest/run-id.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add validation/holiday-feature-backtest/run-id.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Record daily holiday backtest run id [skip ci]"
+            git push
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v7
