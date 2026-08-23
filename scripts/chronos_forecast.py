@@ -173,13 +173,17 @@ shift_types_dict = {'W1':'flow',
 # Load hourly data
 df = pd.read_csv(
     'https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/allDataWithCalculatedColumns.csv?rlkey=9mm4zwaugxyj2r4ooyd39y4nl&raw=1')
-df.ds = pd.to_datetime(df.ds, errors="coerce")
+df.ds = pd.to_datetime(df.ds, format="mixed", errors="coerce")
 df['id'] = 'jgh'
 
 # Load shift data
 all_shifts_df = pd.read_csv('https://www.dropbox.com/scl/fi/yeyr2a7pj6nry8i2q3m0c/all_shifts.csv?rlkey=q1su2h8fqxfnlu7t1l2qe1w0q&raw=1')
-all_shifts_df['shift_start'] = pd.to_datetime(all_shifts_df['shift_start']).dt.round('h')
-all_shifts_df['shift_end'] = pd.to_datetime(all_shifts_df['shift_end']).dt.round('h')
+all_shifts_df['shift_start'] = pd.to_datetime(
+    all_shifts_df['shift_start'], format="mixed", errors="coerce"
+).dt.round('h')
+all_shifts_df['shift_end'] = pd.to_datetime(
+    all_shifts_df['shift_end'], format="mixed", errors="coerce"
+).dt.round('h')
 all_shifts_df['shift_type'] = all_shifts_df['shift_short_name'].map(shift_types_dict)
 
 # Create hourly rows
@@ -220,7 +224,7 @@ TS_COL = "ds"
 TARGETS = [col for col in df.columns.tolist() if col != TS_COL and col != ID_COL]
 
 df = df.copy()
-df[TS_COL] = pd.to_datetime(df[TS_COL], errors="coerce")
+df[TS_COL] = pd.to_datetime(df[TS_COL], format="mixed", errors="coerce")
 df = df.dropna(subset=[TS_COL])
 
 # Snap to exact hours (lowercase 'h' to avoid FutureWarning)
@@ -271,8 +275,11 @@ basic_forecast = pipeline.predict_df(
 
 df_with_holidays = add_holiday_flags(df, ts_col='ds', include_names=True)
 
-#create a dataframe with the next 24 hours timestamps hourly as column 'ds', with column 'id' jgh
-future_df = hourly_shifts_by_user_df.reset_index()[hourly_shifts_by_user_df.reset_index()['ds'] > df['ds'].max()]
+# Create future staffing rows as an owned dataframe before adding columns.
+staffing_future_df = hourly_shifts_by_user_df.reset_index()
+future_df = staffing_future_df.loc[
+    staffing_future_df['ds'] > df['ds'].max()
+].copy()
 future_df['id'] = 'jgh'
 future_df = add_holiday_flags(future_df, ts_col='ds', include_names=True)
 
@@ -303,7 +310,9 @@ forecast_with_holidays = pipeline.predict_df(
 
 
 df_with_staffing = df.merge(hourly_shifts_by_user_df, on='ds')
-future_df_with_staffing = hourly_shifts_by_user_df.reset_index()[hourly_shifts_by_user_df.reset_index()['ds'] > df['ds'].max()]
+future_df_with_staffing = staffing_future_df.loc[
+    staffing_future_df['ds'] > df['ds'].max()
+].copy()
 future_df_with_staffing['id'] = 'jgh'
 
 df_with_staffing, future_df_with_staffing = normalize_numeric_covariates(
@@ -324,10 +333,12 @@ forecast_with_staffing = pipeline.predict_df(
 # forecast_with_staffing
 
 weather_df = pd.read_csv('https://www.dropbox.com/scl/fi/gmhwwld9z9yychg4r0yuk/weather.csv?rlkey=66c78m90aviamr0x0uu72pfr8&raw=1')
-weather_df.ds = pd.to_datetime(weather_df.ds, errors="coerce")
+weather_df.ds = pd.to_datetime(weather_df.ds, format="mixed", errors="coerce")
 
 
-future_weather_df = weather_df[weather_df.ds > df.ds.max()].head(24)
+future_weather_df = weather_df.loc[
+    weather_df.ds > df.ds.max()
+].head(24).copy()
 future_weather_df['id']='jgh'
 
 df_with_weather = df.merge(weather_df, on='ds')
@@ -418,7 +429,9 @@ comparison_df_mean = comparison_df.groupby('target_name')[['%diff_holidays', '%d
 comparison_df_mean.to_csv('forecast_variable_effects.csv', index=False)
 
 anomaly_detection_ranges_df = pd.read_csv('https://www.dropbox.com/scl/fi/fjz0am427gw35sz7l994m/anomaly_detection_ranges.csv?rlkey=lib9w0jz2zei5n566jv76o7ol&raw=1')
-anomaly_detection_ranges_df.ds = pd.to_datetime(anomaly_detection_ranges_df.ds, errors="coerce")
+anomaly_detection_ranges_df.ds = pd.to_datetime(
+    anomaly_detection_ranges_df.ds, format="mixed", errors="coerce"
+)
 anomaly_detection_ranges_df.tail()
 
 recent_df = df.tail(24).copy()
