@@ -150,11 +150,13 @@ def actuals_with_labels(
         raise ValueError(f"Incomplete actual horizon after cutoff {cutoff.date()}")
 
     labels = add_holiday_features(actual[["ds"]], feature_set="closures", ramq_calendar="jgh")
+    available_event_columns: list[str] = []
     for column in EVENT_COLUMNS:
         if column in labels.columns:
             actual[column] = labels[column].to_numpy()
+            available_event_columns.append(column)
     actual[JGH_FLAG_COLUMN] = labels["is_ramq_holiday"].to_numpy(dtype=np.int8)
-    actual["is_event_day"] = actual[EVENT_COLUMNS].max(axis=1).astype(np.int8)
+    actual["is_event_day"] = actual[available_event_columns].max(axis=1).astype(np.int8)
     actual = actual.rename(columns={TARGET: "actual"})
     actual["target_name"] = TARGET
     return actual
