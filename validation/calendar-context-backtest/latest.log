@@ -1,0 +1,263 @@
+Scenarios: baseline, calendar_closure, construction, school_core, school_systems, social_calendar
+Social-calendar cutoffs:
+    cutoff         ds                                                                                                                             event_type  history_days
+2022-06-03 2022-06-04                                                                                                    jewish_school_religious_break_proxy           185
+2022-07-16 2022-07-17                                                                                                       week_before_construction_holiday           228
+2022-08-06 2022-08-07                                                                                                        week_after_construction_holiday           249
+2022-08-18 2022-08-19                                                                                                           french_back_to_school_window           261
+2022-08-22 2022-08-23                                                                             french_back_to_school_window|english_back_to_school_window           265
+2022-08-25 2022-08-26                                                         french_school_start|french_back_to_school_window|english_back_to_school_window           268
+2022-09-05 2022-09-06                      jewish_school_start_proxy|french_back_to_school_window|english_back_to_school_window|jewish_back_to_school_window           279
+2023-05-24 2023-05-25                                                                                                    jewish_school_religious_break_proxy           192
+2023-07-15 2023-07-16                                                                                                       week_before_construction_holiday           244
+2023-07-22 2023-07-23                                                                                                                   construction_holiday           251
+2023-08-20 2023-08-21                                                                                                           french_back_to_school_window           280
+2023-08-22 2023-08-23                                                                             french_back_to_school_window|english_back_to_school_window           282
+2023-08-27 2023-08-28                                                         french_school_start|french_back_to_school_window|english_back_to_school_window           287
+2023-08-28 2023-08-29                                                french_back_to_school_window|english_back_to_school_window|jewish_back_to_school_window           288
+2023-09-04 2023-09-05                      jewish_school_start_proxy|french_back_to_school_window|english_back_to_school_window|jewish_back_to_school_window           295
+2023-09-14 2023-09-15                                                                       jewish_back_to_school_window|jewish_school_religious_break_proxy           305
+2023-09-23 2023-09-24                                                                                                    jewish_school_religious_break_proxy           314
+2023-09-28 2023-09-29                                                                                                    jewish_school_religious_break_proxy           319
+2025-08-19 2025-08-20                                                                                                           french_back_to_school_window           186
+2025-08-25 2025-08-26                                                french_back_to_school_window|english_back_to_school_window|jewish_back_to_school_window           192
+2025-08-26 2025-08-27                            french_school_start|french_back_to_school_window|english_back_to_school_window|jewish_back_to_school_window           193
+2025-09-01 2025-09-02 english_school_start|jewish_school_start_proxy|french_back_to_school_window|english_back_to_school_window|jewish_back_to_school_window           199
+2025-09-30 2025-10-01                                                                                                    jewish_school_religious_break_proxy           228
+2025-10-05 2025-10-06                                                                                                    jewish_school_religious_break_proxy           233
+Loading amazon/chronos-2 on cpu
+Loading weights:   0%|          | 0/170 [00:00<?, ?it/s]Loading weights: 100%|██████████| 170/170 [00:00<00:00, 5379.63it/s]
+Forecasting cutoff=2022-06-03 scenario=baseline
+Forecasting cutoff=2022-06-03 scenario=calendar_closure
+Forecasting cutoff=2022-06-03 scenario=construction
+Forecasting cutoff=2022-06-03 scenario=school_core
+Forecasting cutoff=2022-06-03 scenario=school_systems
+Forecasting cutoff=2022-06-03 scenario=social_calendar
+Forecasting cutoff=2022-07-16 scenario=baseline
+Forecasting cutoff=2022-07-16 scenario=calendar_closure
+Forecasting cutoff=2022-07-16 scenario=construction
+Forecasting cutoff=2022-07-16 scenario=school_core
+Forecasting cutoff=2022-07-16 scenario=school_systems
+Forecasting cutoff=2022-07-16 scenario=social_calendar
+Forecasting cutoff=2022-08-06 scenario=baseline
+Forecasting cutoff=2022-08-06 scenario=calendar_closure
+Forecasting cutoff=2022-08-06 scenario=construction
+Forecasting cutoff=2022-08-06 scenario=school_core
+Forecasting cutoff=2022-08-06 scenario=school_systems
+Forecasting cutoff=2022-08-06 scenario=social_calendar
+Forecasting cutoff=2022-08-18 scenario=baseline
+Forecasting cutoff=2022-08-18 scenario=calendar_closure
+Forecasting cutoff=2022-08-18 scenario=construction
+Forecasting cutoff=2022-08-18 scenario=school_core
+Forecasting cutoff=2022-08-18 scenario=school_systems
+Forecasting cutoff=2022-08-18 scenario=social_calendar
+Forecasting cutoff=2022-08-22 scenario=baseline
+Forecasting cutoff=2022-08-22 scenario=calendar_closure
+Forecasting cutoff=2022-08-22 scenario=construction
+Forecasting cutoff=2022-08-22 scenario=school_core
+Forecasting cutoff=2022-08-22 scenario=school_systems
+Forecasting cutoff=2022-08-22 scenario=social_calendar
+Forecasting cutoff=2022-08-25 scenario=baseline
+Forecasting cutoff=2022-08-25 scenario=calendar_closure
+Forecasting cutoff=2022-08-25 scenario=construction
+Forecasting cutoff=2022-08-25 scenario=school_core
+Forecasting cutoff=2022-08-25 scenario=school_systems
+Forecasting cutoff=2022-08-25 scenario=social_calendar
+Forecasting cutoff=2022-09-05 scenario=baseline
+Forecasting cutoff=2022-09-05 scenario=calendar_closure
+Forecasting cutoff=2022-09-05 scenario=construction
+Forecasting cutoff=2022-09-05 scenario=school_core
+Forecasting cutoff=2022-09-05 scenario=school_systems
+Forecasting cutoff=2022-09-05 scenario=social_calendar
+Forecasting cutoff=2023-05-24 scenario=baseline
+Forecasting cutoff=2023-05-24 scenario=calendar_closure
+Forecasting cutoff=2023-05-24 scenario=construction
+Forecasting cutoff=2023-05-24 scenario=school_core
+Forecasting cutoff=2023-05-24 scenario=school_systems
+Forecasting cutoff=2023-05-24 scenario=social_calendar
+Forecasting cutoff=2023-07-15 scenario=baseline
+Forecasting cutoff=2023-07-15 scenario=calendar_closure
+Forecasting cutoff=2023-07-15 scenario=construction
+Forecasting cutoff=2023-07-15 scenario=school_core
+Forecasting cutoff=2023-07-15 scenario=school_systems
+Forecasting cutoff=2023-07-15 scenario=social_calendar
+Forecasting cutoff=2023-07-22 scenario=baseline
+Forecasting cutoff=2023-07-22 scenario=calendar_closure
+Forecasting cutoff=2023-07-22 scenario=construction
+Forecasting cutoff=2023-07-22 scenario=school_core
+Forecasting cutoff=2023-07-22 scenario=school_systems
+Forecasting cutoff=2023-07-22 scenario=social_calendar
+Forecasting cutoff=2023-08-20 scenario=baseline
+Forecasting cutoff=2023-08-20 scenario=calendar_closure
+Forecasting cutoff=2023-08-20 scenario=construction
+Forecasting cutoff=2023-08-20 scenario=school_core
+Forecasting cutoff=2023-08-20 scenario=school_systems
+Forecasting cutoff=2023-08-20 scenario=social_calendar
+Forecasting cutoff=2023-08-22 scenario=baseline
+Forecasting cutoff=2023-08-22 scenario=calendar_closure
+Forecasting cutoff=2023-08-22 scenario=construction
+Forecasting cutoff=2023-08-22 scenario=school_core
+Forecasting cutoff=2023-08-22 scenario=school_systems
+Forecasting cutoff=2023-08-22 scenario=social_calendar
+Forecasting cutoff=2023-08-27 scenario=baseline
+Forecasting cutoff=2023-08-27 scenario=calendar_closure
+Forecasting cutoff=2023-08-27 scenario=construction
+Forecasting cutoff=2023-08-27 scenario=school_core
+Forecasting cutoff=2023-08-27 scenario=school_systems
+Forecasting cutoff=2023-08-27 scenario=social_calendar
+Forecasting cutoff=2023-08-28 scenario=baseline
+Forecasting cutoff=2023-08-28 scenario=calendar_closure
+Forecasting cutoff=2023-08-28 scenario=construction
+Forecasting cutoff=2023-08-28 scenario=school_core
+Forecasting cutoff=2023-08-28 scenario=school_systems
+Forecasting cutoff=2023-08-28 scenario=social_calendar
+Forecasting cutoff=2023-09-04 scenario=baseline
+Forecasting cutoff=2023-09-04 scenario=calendar_closure
+Forecasting cutoff=2023-09-04 scenario=construction
+Forecasting cutoff=2023-09-04 scenario=school_core
+Forecasting cutoff=2023-09-04 scenario=school_systems
+Forecasting cutoff=2023-09-04 scenario=social_calendar
+Forecasting cutoff=2023-09-14 scenario=baseline
+Forecasting cutoff=2023-09-14 scenario=calendar_closure
+Forecasting cutoff=2023-09-14 scenario=construction
+Forecasting cutoff=2023-09-14 scenario=school_core
+Forecasting cutoff=2023-09-14 scenario=school_systems
+Forecasting cutoff=2023-09-14 scenario=social_calendar
+Forecasting cutoff=2023-09-23 scenario=baseline
+Forecasting cutoff=2023-09-23 scenario=calendar_closure
+Forecasting cutoff=2023-09-23 scenario=construction
+Forecasting cutoff=2023-09-23 scenario=school_core
+Forecasting cutoff=2023-09-23 scenario=school_systems
+Forecasting cutoff=2023-09-23 scenario=social_calendar
+Forecasting cutoff=2023-09-28 scenario=baseline
+Forecasting cutoff=2023-09-28 scenario=calendar_closure
+Forecasting cutoff=2023-09-28 scenario=construction
+Forecasting cutoff=2023-09-28 scenario=school_core
+Forecasting cutoff=2023-09-28 scenario=school_systems
+Forecasting cutoff=2023-09-28 scenario=social_calendar
+Forecasting cutoff=2025-08-19 scenario=baseline
+Forecasting cutoff=2025-08-19 scenario=calendar_closure
+Forecasting cutoff=2025-08-19 scenario=construction
+Forecasting cutoff=2025-08-19 scenario=school_core
+Forecasting cutoff=2025-08-19 scenario=school_systems
+Forecasting cutoff=2025-08-19 scenario=social_calendar
+Forecasting cutoff=2025-08-25 scenario=baseline
+Forecasting cutoff=2025-08-25 scenario=calendar_closure
+Forecasting cutoff=2025-08-25 scenario=construction
+Forecasting cutoff=2025-08-25 scenario=school_core
+Forecasting cutoff=2025-08-25 scenario=school_systems
+Forecasting cutoff=2025-08-25 scenario=social_calendar
+Forecasting cutoff=2025-08-26 scenario=baseline
+Forecasting cutoff=2025-08-26 scenario=calendar_closure
+Forecasting cutoff=2025-08-26 scenario=construction
+Forecasting cutoff=2025-08-26 scenario=school_core
+Forecasting cutoff=2025-08-26 scenario=school_systems
+Forecasting cutoff=2025-08-26 scenario=social_calendar
+Forecasting cutoff=2025-09-01 scenario=baseline
+Forecasting cutoff=2025-09-01 scenario=calendar_closure
+Forecasting cutoff=2025-09-01 scenario=construction
+Forecasting cutoff=2025-09-01 scenario=school_core
+Forecasting cutoff=2025-09-01 scenario=school_systems
+Forecasting cutoff=2025-09-01 scenario=social_calendar
+Forecasting cutoff=2025-09-30 scenario=baseline
+Forecasting cutoff=2025-09-30 scenario=calendar_closure
+Forecasting cutoff=2025-09-30 scenario=construction
+Forecasting cutoff=2025-09-30 scenario=school_core
+Forecasting cutoff=2025-09-30 scenario=school_systems
+Forecasting cutoff=2025-09-30 scenario=social_calendar
+Forecasting cutoff=2025-10-05 scenario=baseline
+Forecasting cutoff=2025-10-05 scenario=calendar_closure
+Forecasting cutoff=2025-10-05 scenario=construction
+Forecasting cutoff=2025-10-05 scenario=school_core
+Forecasting cutoff=2025-10-05 scenario=school_systems
+Forecasting cutoff=2025-10-05 scenario=social_calendar
+
+Summary:
+              segment  target_name         scenario   n       mae  mean_error      rmse     wape  baseline_mae  mae_improvement  mae_improvement_pct  calendar_closure_mae  mae_improvement_vs_calendar_closure  mae_improvement_vs_calendar_closure_pct
+             all_days daily_visits calendar_closure 168 14.314390    2.390067 17.952641 0.055707     14.770928         0.456538             3.090787             14.314390                             0.000000                                 0.000000
+             all_days daily_visits      school_core 168 14.466396    2.411266 18.073655 0.056299     14.770928         0.304532             2.061698             14.314390                            -0.152006                                -1.061910
+             all_days daily_visits     construction 168 14.519187    2.566632 18.147634 0.056504     14.770928         0.251742             1.704304             14.314390                            -0.204796                                -1.430702
+             all_days daily_visits   school_systems 168 14.608877    2.270533 18.260543 0.056853     14.770928         0.162051             1.097093             14.314390                            -0.294487                                -2.057280
+             all_days daily_visits  social_calendar 168 14.675093    2.614652 18.333149 0.057111     14.770928         0.095835             0.648810             14.314390                            -0.360703                                -2.519861
+             all_days daily_visits         baseline 168 14.770928    1.831127 18.382354 0.057484     14.770928         0.000000             0.000000             14.314390                            -0.456538                                -3.189363
+outside_social_window daily_visits         baseline  28 16.091793    0.195200 19.372037 0.062354     16.091793         0.000000             0.000000             16.853766                             0.761973                                 4.521086
+outside_social_window daily_visits calendar_closure  28 16.853766    4.002476 20.170372 0.065307     16.091793        -0.761973            -4.735167             16.853766                             0.000000                                 0.000000
+outside_social_window daily_visits      school_core  28 16.856656    3.462264 20.058541 0.065318     16.091793        -0.764863            -4.753126             16.853766                            -0.002890                                -0.017147
+outside_social_window daily_visits   school_systems  28 17.082785    3.069297 20.193656 0.066194     16.091793        -0.990993            -6.158375             16.853766                            -0.229020                                -1.358864
+outside_social_window daily_visits     construction  28 17.224723    3.782143 20.450068 0.066744     16.091793        -1.132930            -7.040423             16.853766                            -0.370957                                -2.201033
+outside_social_window daily_visits  social_calendar  28 17.273845    2.742960 20.322038 0.066934     16.091793        -1.182053            -7.345686             16.853766                            -0.420079                                -2.492496
+        social_window daily_visits calendar_closure 140 13.806515    2.067585 17.475355 0.053777     14.506755         0.700240             4.826993             13.806515                             0.000000                                 0.000000
+        social_window daily_visits     construction 140 13.978079    2.323529 17.651144 0.054445     14.506755         0.528676             3.644343             13.806515                            -0.171564                                -1.242632
+        social_window daily_visits      school_core 140 13.988344    2.201066 17.649913 0.054485     14.506755         0.518411             3.573583             13.806515                            -0.181829                                -1.316981
+        social_window daily_visits   school_systems 140 14.114096    2.110780 17.848814 0.054975     14.506755         0.392660             2.706736             13.806515                            -0.307581                                -2.227793
+        social_window daily_visits  social_calendar 140 14.155343    2.588991 17.908886 0.055136     14.506755         0.351413             2.422408             13.806515                            -0.348827                                -2.526542
+        social_window daily_visits         baseline 140 14.506755    2.158312 18.177953 0.056505     14.506755         0.000000             0.000000             13.806515                            -0.700240                                -5.071809
+
+Winners:
+              segment         scenario       mae  baseline_mae  calendar_closure_mae  mae_improvement_vs_calendar_closure_pct
+             all_days calendar_closure 14.314390     14.770928             14.314390                                 0.000000
+outside_social_window         baseline 16.091793     16.091793             16.853766                                 4.521086
+        social_window calendar_closure 13.806515     14.506755             13.806515                                 0.000000
+
+By event:
+                              event  target_name         scenario  n       mae  mean_error      rmse     wape  baseline_mae  mae_improvement  mae_improvement_pct  calendar_closure_mae  mae_improvement_vs_calendar_closure  mae_improvement_vs_calendar_closure_pct
+               construction_holiday daily_visits         baseline  7  4.958607    0.253917  7.409434 0.019644      4.958607         0.000000             0.000000              6.457757                             1.499150                                23.214714
+               construction_holiday daily_visits  social_calendar  7  5.915248   -0.719051  8.667162 0.023433      4.958607        -0.956641           -19.292535              6.457757                             0.542509                                 8.400886
+               construction_holiday daily_visits   school_systems  7  6.184311   -0.574090  8.700450 0.024499      4.958607        -1.225704           -24.718708              6.457757                             0.273446                                 4.234384
+               construction_holiday daily_visits      school_core  7  6.391554   -0.952305  8.903993 0.025320      4.958607        -1.432946           -28.898162              6.457757                             0.066204                                 1.025178
+               construction_holiday daily_visits     construction  7  6.427449   -1.037822  9.195539 0.025462      4.958607        -1.468842           -29.622059              6.457757                             0.030308                                 0.469332
+               construction_holiday daily_visits calendar_closure  7  6.457757   -1.180261  9.016393 0.025583      4.958607        -1.499150           -30.233285              6.457757                             0.000000                                 0.000000
+      english_back_to_school_window daily_visits calendar_closure 79 13.984050   -0.497819 17.100235 0.053696     15.869255         1.885206            11.879611             13.984050                             0.000000                                 0.000000
+      english_back_to_school_window daily_visits      school_core 79 14.180803   -0.168515 17.263377 0.054451     15.869255         1.688452            10.639771             13.984050                            -0.196753                                -1.406984
+      english_back_to_school_window daily_visits     construction 79 14.212859   -0.037451 17.366721 0.054575     15.869255         1.656396            10.437770             13.984050                            -0.228809                                -1.636217
+      english_back_to_school_window daily_visits   school_systems 79 14.456021   -0.181017 17.732093 0.055508     15.869255         1.413235             8.905489             13.984050                            -0.471971                                -3.375066
+      english_back_to_school_window daily_visits  social_calendar 79 14.683042    0.770916 18.073059 0.056380     15.869255         1.186213             7.474916             13.984050                            -0.698992                                -4.998498
+      english_back_to_school_window daily_visits         baseline 79 15.869255    0.640591 19.059274 0.060935     15.869255         0.000000             0.000000             13.984050                            -1.885206                               -13.481115
+               english_school_start daily_visits calendar_closure  5 17.608160    1.425189 22.286086 0.062440     22.540063         4.931903            21.880609             17.608160                             0.000000                                 0.000000
+               english_school_start daily_visits      school_core  5 18.738184    1.445593 23.239097 0.066447     22.540063         3.801880            16.867210             17.608160                            -1.130023                                -6.417611
+               english_school_start daily_visits     construction  5 19.033710    1.314044 23.577316 0.067495     22.540063         3.506354            15.556095             17.608160                            -1.425549                                -8.095958
+               english_school_start daily_visits   school_systems  5 20.131427   -0.350214 24.978824 0.071388     22.540063         2.408636            10.686023             17.608160                            -2.523267                               -14.330098
+               english_school_start daily_visits  social_calendar  5 21.705707    0.724908 26.058920 0.076971     22.540063         0.834357             3.701661             17.608160                            -4.097546                               -23.270724
+               english_school_start daily_visits         baseline  5 22.540063    1.876941 25.454326 0.079929     22.540063         0.000000             0.000000             17.608160                            -4.931903                               -28.009190
+       french_back_to_school_window daily_visits calendar_closure 88 13.569025   -0.204069 16.623598 0.052045     15.163066         1.594041            10.512656             13.569025                             0.000000                                 0.000000
+       french_back_to_school_window daily_visits      school_core 88 13.773143    0.024721 16.801081 0.052828     15.163066         1.389923             9.166506             13.569025                            -0.204118                                -1.504290
+       french_back_to_school_window daily_visits     construction 88 13.824051    0.164620 16.918595 0.053023     15.163066         1.339015             8.830767             13.569025                            -0.255026                                -1.879471
+       french_back_to_school_window daily_visits   school_systems 88 14.020188   -0.041685 17.241747 0.053776     15.163066         1.142878             7.537252             13.569025                            -0.451163                                -3.324944
+       french_back_to_school_window daily_visits  social_calendar 88 14.164448    0.843900 17.516654 0.054329     15.163066         0.998618             6.585860             13.569025                            -0.595423                                -4.388101
+       french_back_to_school_window daily_visits         baseline 88 15.163066    0.899647 18.378901 0.058159     15.163066         0.000000             0.000000             13.569025                            -1.594041                               -11.747645
+                french_school_start daily_visits         baseline  6 13.103945   10.231305 14.909155 0.054074     13.103945         0.000000             0.000000             13.906494                             0.802549                                 5.771036
+                french_school_start daily_visits     construction  6 13.117401   10.057159 14.600712 0.054130     13.103945        -0.013456            -0.102684             13.906494                             0.789093                                 5.674277
+                french_school_start daily_visits   school_systems  6 13.703702    9.944598 14.944701 0.056549     13.103945        -0.599757            -4.576918             13.906494                             0.202792                                 1.458253
+                french_school_start daily_visits  social_calendar  6 13.773392   10.505432 15.304666 0.056837     13.103945        -0.669446            -5.108739             13.906494                             0.133102                                 0.957124
+                french_school_start daily_visits calendar_closure  6 13.906494   10.191065 15.193283 0.057386     13.103945        -0.802549            -6.124482             13.906494                             0.000000                                 0.000000
+                french_school_start daily_visits      school_core  6 14.153099   10.356153 15.465693 0.058403     13.103945        -1.049154            -8.006395             13.906494                            -0.246605                                -1.773308
+       jewish_back_to_school_window daily_visits calendar_closure 58 14.659558   -1.482305 18.120984 0.055478     16.600640         1.941082            11.692815             14.659558                             0.000000                                 0.000000
+       jewish_back_to_school_window daily_visits      school_core 58 14.806222   -1.171454 18.285942 0.056033     16.600640         1.794418            10.809332             14.659558                            -0.146664                                -1.000465
+       jewish_back_to_school_window daily_visits     construction 58 14.903542   -1.019445 18.403979 0.056401     16.600640         1.697098            10.223088             14.659558                            -0.243984                                -1.664335
+       jewish_back_to_school_window daily_visits   school_systems 58 15.146723   -1.294292 18.892389 0.057322     16.600640         1.453917             8.758199             14.659558                            -0.487165                                -3.323190
+       jewish_back_to_school_window daily_visits  social_calendar 58 15.416030   -0.320106 19.238151 0.058341     16.600640         1.184610             7.135927             14.659558                            -0.756473                                -5.160269
+       jewish_back_to_school_window daily_visits         baseline 58 16.600640   -0.039906 20.285952 0.062824     16.600640         0.000000             0.000000             14.659558                            -1.941082                               -13.241069
+jewish_school_religious_break_proxy daily_visits         baseline 19 14.473778    6.067157 20.183764 0.057388     14.473778         0.000000             0.000000             15.060271                             0.586492                                 3.894302
+jewish_school_religious_break_proxy daily_visits  social_calendar 19 14.746501    7.108831 20.559163 0.058469     14.473778        -0.272723            -1.884254             15.060271                             0.313770                                 2.083427
+jewish_school_religious_break_proxy daily_visits calendar_closure 19 15.060271    8.868391 21.816505 0.059713     14.473778        -0.586492            -4.052103             15.060271                             0.000000                                 0.000000
+jewish_school_religious_break_proxy daily_visits     construction 19 15.236262    8.787254 21.733760 0.060411     14.473778        -0.762484            -5.268038             15.060271                            -0.175992                                -1.168582
+jewish_school_religious_break_proxy daily_visits   school_systems 19 15.259102    7.412185 21.467269 0.060501     14.473778        -0.785324            -5.425840             15.060271                            -0.198832                                -1.320240
+jewish_school_religious_break_proxy daily_visits      school_core 19 15.491543    8.289619 22.087912 0.061423     14.473778        -1.017764            -7.031781             15.060271                            -0.431272                                -2.863640
+          jewish_school_start_proxy daily_visits calendar_closure  4 26.089905  -10.411194 26.744378 0.089349     34.224869         8.134964            23.769160             26.089905                             0.000000                                 0.000000
+          jewish_school_start_proxy daily_visits      school_core  4 27.766243   -9.247108 28.524815 0.095090     34.224869         6.458626            18.871148             26.089905                            -1.676338                                -6.425237
+          jewish_school_start_proxy daily_visits     construction  4 28.728775   -8.940536 29.626926 0.098386     34.224869         5.496094            16.058772             26.089905                            -2.638870                               -10.114526
+          jewish_school_start_proxy daily_visits   school_systems  4 31.609985   -9.026276 32.616183 0.108253     34.224869         2.614883             7.640302             26.089905                            -5.520081                               -21.157918
+          jewish_school_start_proxy daily_visits  social_calendar  4 33.247322   -8.999245 34.476790 0.113861     34.224869         0.977547             2.856247             26.089905                            -7.157417                               -27.433666
+          jewish_school_start_proxy daily_visits         baseline  4 34.224869  -10.840118 35.456772 0.117208     34.224869         0.000000             0.000000             26.089905                            -8.134964                               -31.180505
+    week_after_construction_holiday daily_visits         baseline  7 13.459466    7.891543 15.165696 0.054777     13.459466         0.000000             0.000000             13.778902                             0.319436                                 2.318299
+    week_after_construction_holiday daily_visits calendar_closure  7 13.778902    9.917347 15.863783 0.056077     13.459466        -0.319436            -2.373320             13.778902                             0.000000                                 0.000000
+    week_after_construction_holiday daily_visits      school_core  7 13.887724   10.139947 15.982495 0.056520     13.459466        -0.428258            -3.181832             13.778902                            -0.108821                                -0.789768
+    week_after_construction_holiday daily_visits   school_systems  7 13.951603   10.119690 15.989829 0.056780     13.459466        -0.492137            -3.656440             13.778902                            -0.172701                                -1.253374
+    week_after_construction_holiday daily_visits     construction  7 14.026446    9.984096 16.196376 0.057084     13.459466        -0.566980            -4.212497             13.778902                            -0.247543                                -1.796539
+    week_after_construction_holiday daily_visits  social_calendar  7 14.686399   11.056294 16.935269 0.059770     13.459466        -1.226933            -9.115763             13.778902                            -0.907497                                -6.586133
+   week_before_construction_holiday daily_visits         baseline 14 17.248217    6.748845 20.530468 0.069549     17.248217         0.000000             0.000000             18.484960                             1.236743                                 6.690538
+   week_before_construction_holiday daily_visits calendar_closure 14 18.484960    7.746001 21.235236 0.074536     17.248217        -1.236743            -7.170268             18.484960                             0.000000                                 0.000000
+   week_before_construction_holiday daily_visits      school_core 14 18.652120    8.196214 21.520760 0.075210     17.248217        -1.403903            -8.139412             18.484960                            -0.167160                                -0.904303
+   week_before_construction_holiday daily_visits     construction 14 18.668350    7.800550 21.409292 0.075276     17.248217        -1.420133            -8.233508             18.484960                            -0.183390                                -0.992103
+   week_before_construction_holiday daily_visits  social_calendar 14 18.812240    8.025717 21.833647 0.075856     17.248217        -1.564023            -9.067735             18.484960                            -0.327279                                -1.770516
+   week_before_construction_holiday daily_visits   school_systems 14 18.887428    8.702917 21.924217 0.076159     17.248217        -1.639211            -9.503657             18.484960                            -0.402468                                -2.177273

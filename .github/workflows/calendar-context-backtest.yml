@@ -1,0 +1,143 @@
+name: Chronos-2 daily calendar context backtest
+
+on:
+  push:
+    branches:
+      - chronos2-holiday-features
+    paths:
+      - 'data/jgh_ramq_holidays.csv'
+      - 'scripts/calendar_context_features.py'
+      - 'scripts/backtest_daily_calendar_context.py'
+      - 'tests/test_calendar_context_features.py'
+      - '.github/workflows/calendar-context-backtest.yml'
+      - 'scripts/holiday_features.py'
+      - 'scripts/backtest_holiday_features.py'
+      - 'scripts/backtest_daily_holiday_targeted.py'
+      - 'chronos-requirements.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chronos2-daily-calendar-context-backtest
+  cancel-in-progress: true
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Publish run id
+        shell: bash
+        run: |
+          mkdir -p validation/calendar-context-backtest
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/calendar-context-backtest/run-id.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/calendar-context-backtest/run-id.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Record calendar context backtest run id [skip ci]"
+            git push
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-daily-calendar-context-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-daily-calendar-context-${{ runner.os }}-
+            huggingface-daily-holiday-backtest-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+
+      - name: Compile calendar context code
+        run: |
+          python -m py_compile scripts/holiday_features.py
+          python -m py_compile scripts/backtest_holiday_features.py
+          python -m py_compile scripts/backtest_daily_holiday_targeted.py
+          python -m py_compile scripts/calendar_context_features.py
+          python -m py_compile scripts/backtest_daily_calendar_context.py
+          python -m py_compile tests/test_calendar_context_features.py
+
+      - name: Test holiday calendar logic
+        run: python tests/test_holiday_features.py
+
+      - name: Test calendar context logic
+        run: python tests/test_calendar_context_features.py
+
+      - name: Run daily construction and school calendar ablation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        shell: bash
+        run: |
+          mkdir -p validation-output-social
+          cp validation/calendar-context-backtest/run-id.txt validation-output-social/run-id.txt
+          set +e
+          python scripts/backtest_daily_calendar_context.py \
+            --horizon-days 7 \
+            --num-cutoffs 24 \
+            --context-days 1095 \
+            --output-dir validation-output-social \
+            2>&1 | tee validation-output-social/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output-social/exit_code.txt
+          exit 0
+
+      - name: Upload calendar context results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos2-daily-calendar-context
+          path: validation-output-social/*
+
+      - name: Record latest branch results
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p validation/calendar-context-backtest
+          for file in \
+            run-id.txt \
+            daily_visit_calendar_context_cutoffs.csv \
+            daily_visit_calendar_context_summary.csv \
+            daily_visit_calendar_context_by_event.csv \
+            daily_visit_calendar_context_winners.csv \
+            exit_code.txt; do
+            if [ -f "validation-output-social/$file" ]; then
+              cp "validation-output-social/$file" "validation/calendar-context-backtest/$file"
+            fi
+          done
+          if [ -f validation-output-social/run.log ]; then
+            tail -n 900 validation-output-social/run.log > validation/calendar-context-backtest/latest.log
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/calendar-context-backtest
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record daily calendar context backtest results [skip ci]"
+          git push
+
+      - name: Fail if backtest failed
+        if: always()
+        run: |
+          test -f validation-output-social/exit_code.txt
+          test "$(cat validation-output-social/exit_code.txt)" = "0"

@@ -1,0 +1,275 @@
+Daily visits calendar: 2021-01-01 to 2026-08-22 (2060 days; 36 incomplete days excluded from modeling)
+Incomplete-day examples (not imputed):
+        ds  observed_rows  numeric_rows
+2021-07-09             20            20
+2021-11-25             21            21
+2021-11-30             20            20
+2022-09-24             21            21
+2022-09-25             22            22
+2022-09-26             21            21
+2022-10-29             15            15
+2022-11-07             22            22
+2022-11-13             22            22
+2024-02-19             22            22
+2024-07-15             22            22
+2024-12-14             18            18
+2025-02-14             18            18
+2025-10-18             18            18
+2025-10-19             22            22
+Scenarios: baseline, legacy, calendars, shoulders, rich, closures
+Holiday-focused daily cutoffs:
+    cutoff         ds                                                            event_type  history_days
+2021-06-29 2021-06-30                           day_before_holiday|quebec_canada_day_period           180
+2022-06-04 2022-06-05                                                           any_holiday           186
+2022-06-23 2022-06-24                                  any_holiday|quebec_canada_day_period           205
+2022-06-27 2022-06-28                                              quebec_canada_day_period           209
+2022-07-01 2022-07-02                            day_after_holiday|quebec_canada_day_period           213
+2022-09-04 2022-09-05                                                           any_holiday           278
+2023-05-20 2023-05-21                                                    day_before_holiday           188
+2023-05-25 2023-05-26                                                           any_holiday           193
+2023-06-23 2023-06-24                                  any_holiday|quebec_canada_day_period           222
+2023-06-27 2023-06-28                                              quebec_canada_day_period           226
+2023-06-30 2023-07-01                                  any_holiday|quebec_canada_day_period           229
+2023-09-03 2023-09-04                                                           any_holiday           294
+2023-09-16 2023-09-17                                         any_holiday|day_after_holiday           307
+2023-09-24 2023-09-25                                                           any_holiday           315
+2023-09-29 2023-09-30                                                           any_holiday           320
+2023-10-07 2023-10-08                                  day_before_holiday|day_after_holiday           328
+2023-12-22 2023-12-23                           day_before_holiday|christmas_newyear_period           404
+2023-12-26 2023-12-27 day_after_holiday|christmas_newyear_period|rebound_after_long_closure           408
+2023-12-29 2023-12-30                           day_before_holiday|christmas_newyear_period           411
+2024-01-02 2024-01-03 day_after_holiday|christmas_newyear_period|rebound_after_long_closure           415
+2025-09-01 2025-09-02        day_after_holiday|long_weekend_edge|rebound_after_long_closure           199
+2025-09-24 2025-09-25                                                     day_after_holiday           222
+2025-10-02 2025-10-03                                                     day_after_holiday           230
+2025-10-09 2025-10-10                                    long_weekend_edge|pre_long_closure           237
+Loading amazon/chronos-2 on cpu
+Loading weights:   0%|          | 0/170 [00:00<?, ?it/s]Loading weights: 100%|██████████| 170/170 [00:00<00:00, 4748.19it/s]
+Forecasting cutoff=2021-06-29 scenario=baseline
+Forecasting cutoff=2021-06-29 scenario=legacy
+Forecasting cutoff=2021-06-29 scenario=calendars
+Forecasting cutoff=2021-06-29 scenario=shoulders
+Forecasting cutoff=2021-06-29 scenario=rich
+Forecasting cutoff=2021-06-29 scenario=closures
+Forecasting cutoff=2022-06-04 scenario=baseline
+Forecasting cutoff=2022-06-04 scenario=legacy
+Forecasting cutoff=2022-06-04 scenario=calendars
+Forecasting cutoff=2022-06-04 scenario=shoulders
+Forecasting cutoff=2022-06-04 scenario=rich
+Forecasting cutoff=2022-06-04 scenario=closures
+Forecasting cutoff=2022-06-23 scenario=baseline
+Forecasting cutoff=2022-06-23 scenario=legacy
+Forecasting cutoff=2022-06-23 scenario=calendars
+Forecasting cutoff=2022-06-23 scenario=shoulders
+Forecasting cutoff=2022-06-23 scenario=rich
+Forecasting cutoff=2022-06-23 scenario=closures
+Forecasting cutoff=2022-06-27 scenario=baseline
+Forecasting cutoff=2022-06-27 scenario=legacy
+Forecasting cutoff=2022-06-27 scenario=calendars
+Forecasting cutoff=2022-06-27 scenario=shoulders
+Forecasting cutoff=2022-06-27 scenario=rich
+Forecasting cutoff=2022-06-27 scenario=closures
+Forecasting cutoff=2022-07-01 scenario=baseline
+Forecasting cutoff=2022-07-01 scenario=legacy
+Forecasting cutoff=2022-07-01 scenario=calendars
+Forecasting cutoff=2022-07-01 scenario=shoulders
+Forecasting cutoff=2022-07-01 scenario=rich
+Forecasting cutoff=2022-07-01 scenario=closures
+Forecasting cutoff=2022-09-04 scenario=baseline
+Forecasting cutoff=2022-09-04 scenario=legacy
+Forecasting cutoff=2022-09-04 scenario=calendars
+Forecasting cutoff=2022-09-04 scenario=shoulders
+Forecasting cutoff=2022-09-04 scenario=rich
+Forecasting cutoff=2022-09-04 scenario=closures
+Forecasting cutoff=2023-05-20 scenario=baseline
+Forecasting cutoff=2023-05-20 scenario=legacy
+Forecasting cutoff=2023-05-20 scenario=calendars
+Forecasting cutoff=2023-05-20 scenario=shoulders
+Forecasting cutoff=2023-05-20 scenario=rich
+Forecasting cutoff=2023-05-20 scenario=closures
+Forecasting cutoff=2023-05-25 scenario=baseline
+Forecasting cutoff=2023-05-25 scenario=legacy
+Forecasting cutoff=2023-05-25 scenario=calendars
+Forecasting cutoff=2023-05-25 scenario=shoulders
+Forecasting cutoff=2023-05-25 scenario=rich
+Forecasting cutoff=2023-05-25 scenario=closures
+Forecasting cutoff=2023-06-23 scenario=baseline
+Forecasting cutoff=2023-06-23 scenario=legacy
+Forecasting cutoff=2023-06-23 scenario=calendars
+Forecasting cutoff=2023-06-23 scenario=shoulders
+Forecasting cutoff=2023-06-23 scenario=rich
+Forecasting cutoff=2023-06-23 scenario=closures
+Forecasting cutoff=2023-06-27 scenario=baseline
+Forecasting cutoff=2023-06-27 scenario=legacy
+Forecasting cutoff=2023-06-27 scenario=calendars
+Forecasting cutoff=2023-06-27 scenario=shoulders
+Forecasting cutoff=2023-06-27 scenario=rich
+Forecasting cutoff=2023-06-27 scenario=closures
+Forecasting cutoff=2023-06-30 scenario=baseline
+Forecasting cutoff=2023-06-30 scenario=legacy
+Forecasting cutoff=2023-06-30 scenario=calendars
+Forecasting cutoff=2023-06-30 scenario=shoulders
+Forecasting cutoff=2023-06-30 scenario=rich
+Forecasting cutoff=2023-06-30 scenario=closures
+Forecasting cutoff=2023-09-03 scenario=baseline
+Forecasting cutoff=2023-09-03 scenario=legacy
+Forecasting cutoff=2023-09-03 scenario=calendars
+Forecasting cutoff=2023-09-03 scenario=shoulders
+Forecasting cutoff=2023-09-03 scenario=rich
+Forecasting cutoff=2023-09-03 scenario=closures
+Forecasting cutoff=2023-09-16 scenario=baseline
+Forecasting cutoff=2023-09-16 scenario=legacy
+Forecasting cutoff=2023-09-16 scenario=calendars
+Forecasting cutoff=2023-09-16 scenario=shoulders
+Forecasting cutoff=2023-09-16 scenario=rich
+Forecasting cutoff=2023-09-16 scenario=closures
+Forecasting cutoff=2023-09-24 scenario=baseline
+Forecasting cutoff=2023-09-24 scenario=legacy
+Forecasting cutoff=2023-09-24 scenario=calendars
+Forecasting cutoff=2023-09-24 scenario=shoulders
+Forecasting cutoff=2023-09-24 scenario=rich
+Forecasting cutoff=2023-09-24 scenario=closures
+Forecasting cutoff=2023-09-29 scenario=baseline
+Forecasting cutoff=2023-09-29 scenario=legacy
+Forecasting cutoff=2023-09-29 scenario=calendars
+Forecasting cutoff=2023-09-29 scenario=shoulders
+Forecasting cutoff=2023-09-29 scenario=rich
+Forecasting cutoff=2023-09-29 scenario=closures
+Forecasting cutoff=2023-10-07 scenario=baseline
+Forecasting cutoff=2023-10-07 scenario=legacy
+Forecasting cutoff=2023-10-07 scenario=calendars
+Forecasting cutoff=2023-10-07 scenario=shoulders
+Forecasting cutoff=2023-10-07 scenario=rich
+Forecasting cutoff=2023-10-07 scenario=closures
+Forecasting cutoff=2023-12-22 scenario=baseline
+Forecasting cutoff=2023-12-22 scenario=legacy
+Forecasting cutoff=2023-12-22 scenario=calendars
+Forecasting cutoff=2023-12-22 scenario=shoulders
+Forecasting cutoff=2023-12-22 scenario=rich
+Forecasting cutoff=2023-12-22 scenario=closures
+Forecasting cutoff=2023-12-26 scenario=baseline
+Forecasting cutoff=2023-12-26 scenario=legacy
+Forecasting cutoff=2023-12-26 scenario=calendars
+Forecasting cutoff=2023-12-26 scenario=shoulders
+Forecasting cutoff=2023-12-26 scenario=rich
+Forecasting cutoff=2023-12-26 scenario=closures
+Forecasting cutoff=2023-12-29 scenario=baseline
+Forecasting cutoff=2023-12-29 scenario=legacy
+Forecasting cutoff=2023-12-29 scenario=calendars
+Forecasting cutoff=2023-12-29 scenario=shoulders
+Forecasting cutoff=2023-12-29 scenario=rich
+Forecasting cutoff=2023-12-29 scenario=closures
+Forecasting cutoff=2024-01-02 scenario=baseline
+Forecasting cutoff=2024-01-02 scenario=legacy
+Forecasting cutoff=2024-01-02 scenario=calendars
+Forecasting cutoff=2024-01-02 scenario=shoulders
+Forecasting cutoff=2024-01-02 scenario=rich
+Forecasting cutoff=2024-01-02 scenario=closures
+Forecasting cutoff=2025-09-01 scenario=baseline
+Forecasting cutoff=2025-09-01 scenario=legacy
+Forecasting cutoff=2025-09-01 scenario=calendars
+Forecasting cutoff=2025-09-01 scenario=shoulders
+Forecasting cutoff=2025-09-01 scenario=rich
+Forecasting cutoff=2025-09-01 scenario=closures
+Forecasting cutoff=2025-09-24 scenario=baseline
+Forecasting cutoff=2025-09-24 scenario=legacy
+Forecasting cutoff=2025-09-24 scenario=calendars
+Forecasting cutoff=2025-09-24 scenario=shoulders
+Forecasting cutoff=2025-09-24 scenario=rich
+Forecasting cutoff=2025-09-24 scenario=closures
+Forecasting cutoff=2025-10-02 scenario=baseline
+Forecasting cutoff=2025-10-02 scenario=legacy
+Forecasting cutoff=2025-10-02 scenario=calendars
+Forecasting cutoff=2025-10-02 scenario=shoulders
+Forecasting cutoff=2025-10-02 scenario=rich
+Forecasting cutoff=2025-10-02 scenario=closures
+Forecasting cutoff=2025-10-09 scenario=baseline
+Forecasting cutoff=2025-10-09 scenario=legacy
+Forecasting cutoff=2025-10-09 scenario=calendars
+Forecasting cutoff=2025-10-09 scenario=shoulders
+Forecasting cutoff=2025-10-09 scenario=rich
+Forecasting cutoff=2025-10-09 scenario=closures
+
+Summary:
+       segment  target_name  scenario   n       mae  mean_error      rmse     wape  baseline_mae  mae_improvement  mae_improvement_pct
+      all_days daily_visits  closures 168 18.490708   -1.697573 24.447373 0.072658     19.499401         1.008693             5.172944
+      all_days daily_visits calendars 168 18.651936   -2.353111 25.727391 0.073292     19.499401         0.847465             4.346108
+      all_days daily_visits      rich 168 18.859901   -1.846907 25.159749 0.074109     19.499401         0.639500             3.279587
+      all_days daily_visits shoulders 168 18.860076   -2.027972 25.425833 0.074110     19.499401         0.639325             3.278690
+      all_days daily_visits    legacy 168 19.499144   -2.754669 26.043846 0.076621     19.499401         0.000257             0.001318
+      all_days daily_visits  baseline 168 19.499401   -2.548897 26.093963 0.076622     19.499401         0.000000             0.000000
+holiday_window daily_visits  closures  93 21.364628   -2.640071 27.611413 0.085151     22.117638         0.753010             3.404568
+holiday_window daily_visits shoulders  93 21.808713   -3.105690 29.165513 0.086921     22.117638         0.308925             1.396735
+holiday_window daily_visits    legacy  93 21.972582   -2.771622 29.228660 0.087574     22.117638         0.145056             0.655839
+holiday_window daily_visits calendars  93 21.980640   -3.732198 29.896035 0.087606     22.117638         0.136998             0.619406
+holiday_window daily_visits      rich  93 22.038652   -2.921886 28.773393 0.087837     22.117638         0.078986             0.357119
+holiday_window daily_visits  baseline  93 22.117638   -1.767371 29.370763 0.088152     22.117638         0.000000             0.000000
+ ordinary_days daily_visits calendars  75 14.524343   -0.643042 19.348760 0.056093     16.252787         1.728444            10.634755
+ ordinary_days daily_visits      rich  75 14.918251   -0.513934 19.782390 0.057614     16.252787         1.334537             8.211124
+ ordinary_days daily_visits  closures  75 14.927047   -0.528876 19.834972 0.057648     16.252787         1.325740             8.157002
+ ordinary_days daily_visits shoulders  75 15.203766   -0.691601 19.832343 0.058717     16.252787         1.049021             6.454408
+ ordinary_days daily_visits  baseline  75 16.252787   -3.517988 21.343122 0.062768     16.252787         0.000000             0.000000
+ ordinary_days daily_visits    legacy  75 16.432081   -2.733649 21.447644 0.063461     16.252787        -0.179294            -1.103157
+
+Winners by evaluation segment:
+       segment  scenario       mae  baseline_mae  mae_improvement_pct
+      all_days  closures 18.490708     19.499401             5.172944
+holiday_window  closures 21.364628     22.117638             3.404568
+ ordinary_days calendars 14.524343     16.252787            10.634755
+
+Performance by holiday/shoulder type:
+                     event  target_name  scenario  n       mae  mean_error      rmse     wape  baseline_mae  mae_improvement  mae_improvement_pct
+               any_holiday daily_visits  baseline 29 20.791810    7.883462 27.794699 0.087602     20.791810         0.000000             0.000000
+               any_holiday daily_visits    legacy 29 20.978967    6.175041 27.325159 0.088390     20.791810        -0.187156            -0.900145
+               any_holiday daily_visits shoulders 29 22.194877    1.244923 28.556090 0.093513     20.791810        -1.403067            -6.748173
+               any_holiday daily_visits  closures 29 22.200726   -1.407445 26.462664 0.093538     20.791810        -1.408916            -6.776301
+               any_holiday daily_visits      rich 29 22.518991   -0.481648 27.910867 0.094879     20.791810        -1.727181            -8.307024
+               any_holiday daily_visits calendars 29 23.260496    1.188134 31.193580 0.098003     20.791810        -2.468686           -11.873359
+  christmas_newyear_period daily_visits  closures 20 30.990347  -22.436900 33.105265 0.122129     34.156563         3.166216             9.269716
+  christmas_newyear_period daily_visits    legacy 20 34.142564  -21.157859 40.339596 0.134552     34.156563         0.013999             0.040985
+  christmas_newyear_period daily_visits  baseline 20 34.156563  -19.093195 39.040225 0.134607     34.156563         0.000000             0.000000
+  christmas_newyear_period daily_visits      rich 20 34.793107  -26.755209 37.409438 0.137116     34.156563        -0.636544            -1.863607
+  christmas_newyear_period daily_visits shoulders 20 35.581361  -26.000498 39.357450 0.140222     34.156563        -1.424798            -4.171374
+  christmas_newyear_period daily_visits calendars 20 39.013347  -28.504805 44.564530 0.153747     34.156563        -4.856784           -14.219183
+         day_after_holiday daily_visits  closures 36 21.020664   -3.235189 25.581771 0.083186     22.246753         1.226089             5.511317
+         day_after_holiday daily_visits  baseline 36 22.246753   -3.348913 29.165511 0.088038     22.246753         0.000000             0.000000
+         day_after_holiday daily_visits      rich 36 22.413969   -4.451088 27.530827 0.088700     22.246753        -0.167216            -0.751642
+         day_after_holiday daily_visits shoulders 36 22.433986   -3.969296 28.446658 0.088779     22.246753        -0.187233            -0.841621
+         day_after_holiday daily_visits    legacy 36 22.500320   -1.362532 28.998964 0.089042     22.246753        -0.253567            -1.139792
+         day_after_holiday daily_visits calendars 36 23.384326   -4.818610 31.185090 0.092540     22.246753        -1.137573            -5.113433
+        day_before_holiday daily_visits  baseline 23 26.461583   -1.032591 36.969866 0.108720     26.461583         0.000000             0.000000
+        day_before_holiday daily_visits  closures 23 26.554112   -6.400933 35.920360 0.109100     26.461583        -0.092529            -0.349672
+        day_before_holiday daily_visits    legacy 23 27.900292   -6.171691 39.154954 0.114631     26.461583        -1.438709            -5.436972
+        day_before_holiday daily_visits calendars 23 28.518085   -8.177648 39.332833 0.117170     26.461583        -2.056502            -7.771651
+        day_before_holiday daily_visits      rich 23 28.621260   -8.098610 37.848796 0.117594     26.461583        -2.159677            -8.161555
+        day_before_holiday daily_visits shoulders 23 29.408436   -7.473721 39.562714 0.120828     26.461583        -2.946853           -11.136344
+         long_weekend_edge daily_visits  closures 22 28.533698  -10.005320 38.170326 0.102438     29.670643         1.136945             3.831885
+         long_weekend_edge daily_visits      rich 22 29.247246  -11.620285 38.854023 0.105000     29.670643         0.423396             1.426986
+         long_weekend_edge daily_visits shoulders 22 29.249810  -11.809708 38.964112 0.105009     29.670643         0.420833             1.418347
+         long_weekend_edge daily_visits  baseline 22 29.670643  -11.945151 38.631871 0.106520     29.670643         0.000000             0.000000
+         long_weekend_edge daily_visits    legacy 22 29.792613  -11.300231 38.862571 0.106958     29.670643        -0.121970            -0.411081
+         long_weekend_edge daily_visits calendars 22 31.504105  -14.093882 40.960113 0.113102     29.670643        -1.833462            -6.179381
+  major_jewish_holiday_eve daily_visits    legacy  6 34.125326  -11.316416 53.031547 0.122021     37.753743         3.628418             9.610750
+  major_jewish_holiday_eve daily_visits calendars  6 34.198308   -7.793889 51.996175 0.122282     37.753743         3.555435             9.417437
+  major_jewish_holiday_eve daily_visits  closures  6 35.338537   -6.716497 54.544199 0.126359     37.753743         2.415207             6.397265
+  major_jewish_holiday_eve daily_visits      rich  6 36.976842   -5.438471 54.917967 0.132218     37.753743         0.776901             2.057812
+  major_jewish_holiday_eve daily_visits shoulders  6 37.392059   -6.171041 55.447219 0.133702     37.753743         0.361684             0.958009
+  major_jewish_holiday_eve daily_visits  baseline  6 37.753743   -8.916046 52.739216 0.134996     37.753743         0.000000             0.000000
+          pre_long_closure daily_visits shoulders  6 45.325096  -32.853274 57.060542 0.154517     47.182961         1.857864             3.937575
+          pre_long_closure daily_visits calendars  6 45.514066  -35.550331 56.012706 0.155162     47.182961         1.668894             3.537070
+          pre_long_closure daily_visits  closures  6 45.716774  -32.811399 57.370239 0.155853     47.182961         1.466187             3.107449
+          pre_long_closure daily_visits      rich  6 46.290413  -33.472786 57.171962 0.157808     47.182961         0.892548             1.891674
+          pre_long_closure daily_visits    legacy  6 46.667254  -36.381223 58.757830 0.159093     47.182961         0.515706             1.092993
+          pre_long_closure daily_visits  baseline  6 47.182961  -35.073270 56.613454 0.160851     47.182961         0.000000             0.000000
+  quebec_canada_day_period daily_visits calendars 30 12.914308   -1.922771 15.401122 0.052278     15.341013         2.426705            15.818414
+  quebec_canada_day_period daily_visits shoulders 30 13.051038   -1.302566 16.006107 0.052831     15.341013         2.289975            14.927146
+  quebec_canada_day_period daily_visits    legacy 30 14.220300   -3.164744 17.072208 0.057564     15.341013         1.120713             7.305338
+  quebec_canada_day_period daily_visits      rich 30 14.409236   -0.182461 17.530594 0.058329     15.341013         0.931777             6.073764
+  quebec_canada_day_period daily_visits  closures 30 15.257225   -1.109895 18.276976 0.061762     15.341013         0.083788             0.546170
+  quebec_canada_day_period daily_visits  baseline 30 15.341013    1.760046 19.156984 0.062101     15.341013         0.000000             0.000000
+rebound_after_long_closure daily_visits  closures 13 28.031614   -7.105373 31.858762 0.098864     33.876414         5.844801            17.253303
+rebound_after_long_closure daily_visits      rich 13 29.472344   -9.772928 33.926179 0.103945     33.876414         4.404070            13.000403
+rebound_after_long_closure daily_visits shoulders 13 30.135320  -10.387789 34.821875 0.106283     33.876414         3.741095            11.043361
+rebound_after_long_closure daily_visits calendars 13 30.926721  -12.194966 35.845666 0.109074     33.876414         2.949693             8.707217
+rebound_after_long_closure daily_visits    legacy 13 32.347019  -13.581821 36.987424 0.114083     33.876414         1.529395             4.514632
+rebound_after_long_closure daily_visits  baseline 13 33.876414  -13.833953 37.892890 0.119477     33.876414         0.000000             0.000000

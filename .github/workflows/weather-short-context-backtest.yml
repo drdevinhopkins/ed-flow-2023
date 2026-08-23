@@ -1,0 +1,143 @@
+name: Chronos-2 weather short-context backtest
+
+on:
+  push:
+    branches:
+      - chronos2-weather-features
+    paths:
+      - 'scripts/daily_weather_feature_set.py'
+      - 'scripts/backtest_daily_weather_targeted.py'
+      - 'scripts/backtest_daily_weather_features.py'
+      - 'scripts/backtest_daily_weather_features_dense.py'
+      - '.github/workflows/weather-short-context-backtest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chronos2-weather-short-context-backtest
+  cancel-in-progress: true
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Publish run id
+        shell: bash
+        run: |
+          mkdir -p validation/weather-short-context-backtest
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/weather-short-context-backtest/run-id.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/weather-short-context-backtest/run-id.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Record short-context weather backtest run id [skip ci]"
+            git push
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-daily-weather-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-daily-weather-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+
+      - name: Compile backtest code
+        run: |
+          python -m py_compile scripts/daily_weather_feature_set.py
+          python -m py_compile scripts/weather_features.py
+          python -m py_compile scripts/build_weather_history.py
+          python -m py_compile scripts/backtest_daily_weather_features.py
+          python -m py_compile scripts/backtest_daily_weather_features_dense.py
+          python -m py_compile scripts/backtest_daily_weather_targeted.py
+
+      - name: Build continuous historical forecast weather
+        shell: bash
+        run: |
+          WEATHER_BACKFILL="$RUNNER_TEMP/weather_backfilled.csv"
+          python scripts/build_weather_history.py \
+            --start-date 2021-01-01 \
+            --output "$WEATHER_BACKFILL"
+          echo "WEATHER_BACKFILL=$WEATHER_BACKFILL" >> "$GITHUB_ENV"
+
+      - name: Run 28-day-floor weather ablation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        shell: bash
+        run: |
+          mkdir -p validation-output-weather-short-context
+          set +e
+          python scripts/backtest_daily_weather_targeted.py \
+            --horizon-days 7 \
+            --num-cutoffs 16 \
+            --context-days 1095 \
+            --min-history-days 28 \
+            --weather-url "$WEATHER_BACKFILL" \
+            --output-dir validation-output-weather-short-context \
+            2>&1 | tee validation-output-weather-short-context/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output-weather-short-context/exit_code.txt
+          exit 0
+
+      - name: Upload short-context results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos2-weather-short-context
+          path: validation-output-weather-short-context/*
+
+      - name: Record latest short-context results
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p validation/weather-short-context-backtest
+          for file in \
+            daily_visit_weather_cutoffs.csv \
+            daily_visit_weather_summary.csv \
+            daily_visit_weather_by_event.csv \
+            daily_visit_weather_by_horizon.csv \
+            daily_visit_weather_winners.csv \
+            exit_code.txt; do
+            if [ -f "validation-output-weather-short-context/$file" ]; then
+              cp "validation-output-weather-short-context/$file" \
+                "validation/weather-short-context-backtest/$file"
+            fi
+          done
+          if [ -f validation-output-weather-short-context/run.log ]; then
+            tail -n 1200 validation-output-weather-short-context/run.log \
+              > validation/weather-short-context-backtest/latest.log
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/weather-short-context-backtest
+          if ! git diff --cached --quiet; then
+            git commit -m "Record short-context weather backtest results [skip ci]"
+            git push
+          fi
+
+      - name: Fail if short-context backtest failed
+        if: always()
+        run: |
+          test -f validation-output-weather-short-context/exit_code.txt
+          test "$(cat validation-output-weather-short-context/exit_code.txt)" = "0"

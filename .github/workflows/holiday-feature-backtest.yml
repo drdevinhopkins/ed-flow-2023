@@ -1,0 +1,179 @@
+name: Chronos-2 daily visit holiday backtest
+
+on:
+  push:
+    branches:
+      - chronos2-holiday-features
+    paths:
+      - 'data/jgh_ramq_holidays.csv'
+      - 'scripts/holiday_features.py'
+      - 'scripts/backtest_holiday_features.py'
+      - 'scripts/backtest_daily_holiday_targeted.py'
+      - 'scripts/backtest_jgh_ramq_ablation.py'
+      - 'tests/test_holiday_features.py'
+      - 'tests/test_daily_visit_backtest.py'
+      - '.github/workflows/holiday-feature-backtest.yml'
+      - 'chronos-requirements.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chronos2-daily-holiday-backtest
+  cancel-in-progress: true
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Publish run id
+        shell: bash
+        run: |
+          mkdir -p validation/holiday-feature-backtest
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/holiday-feature-backtest/run-id.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add validation/holiday-feature-backtest/run-id.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Record daily holiday backtest run id [skip ci]"
+            git push
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-daily-holiday-backtest-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-daily-holiday-backtest-${{ runner.os }}-
+            huggingface-holiday-backtest-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+
+      - name: Compile holiday feature scripts
+        run: |
+          python -m py_compile scripts/holiday_features.py
+          python -m py_compile scripts/backtest_holiday_features.py
+          python -m py_compile scripts/backtest_daily_holiday_targeted.py
+          python -m py_compile scripts/backtest_jgh_ramq_ablation.py
+          python -m py_compile tests/test_holiday_features.py
+          python -m py_compile tests/test_daily_visit_backtest.py
+
+      - name: Test holiday calendar logic
+        run: python tests/test_holiday_features.py
+
+      - name: Test daily visit aggregation
+        run: python tests/test_daily_visit_backtest.py
+
+      - name: Run targeted daily visit holiday ablation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        shell: bash
+        run: |
+          mkdir -p validation-output
+          set +e
+          python scripts/backtest_daily_holiday_targeted.py \
+            --horizon-days 7 \
+            --num-cutoffs 24 \
+            --context-days 1095 \
+            --output-dir validation-output \
+            2>&1 | tee validation-output/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output/exit_code.txt
+          exit 0
+
+      - name: Run JGH versus nominal RAMQ ablation
+        if: always()
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        shell: bash
+        run: |
+          mkdir -p validation-output-ramq
+          set +e
+          python scripts/backtest_jgh_ramq_ablation.py \
+            --horizon-days 7 \
+            --num-cutoffs 24 \
+            --context-days 1095 \
+            --output-dir validation-output-ramq \
+            2>&1 | tee validation-output-ramq/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output-ramq/exit_code.txt
+          exit 0
+
+      - name: Upload daily holiday backtest results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos2-daily-visit-holiday-targeted
+          path: |
+            validation-output/*
+            validation-output-ramq/*
+
+      - name: Record latest branch results
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p validation/holiday-feature-backtest
+          for file in \
+            daily_visit_holiday_targeted_summary.csv \
+            daily_visit_holiday_targeted_by_event.csv \
+            daily_visit_holiday_targeted_winners.csv; do
+            if [ -f "validation-output/$file" ]; then
+              cp "validation-output/$file" "validation/holiday-feature-backtest/$file"
+            fi
+          done
+          for file in \
+            daily_visit_jgh_ramq_ablation_summary.csv \
+            daily_visit_jgh_ramq_ablation_ramq_days.csv \
+            daily_visit_jgh_ramq_ablation_jgh_only_days.csv \
+            daily_visit_jgh_ramq_ablation_nominal_only_days.csv; do
+            if [ -f "validation-output-ramq/$file" ]; then
+              cp "validation-output-ramq/$file" "validation/holiday-feature-backtest/$file"
+            fi
+          done
+          if [ -f validation-output/exit_code.txt ]; then
+            cp validation-output/exit_code.txt validation/holiday-feature-backtest/exit_code.txt
+          fi
+          if [ -f validation-output-ramq/exit_code.txt ]; then
+            cp validation-output-ramq/exit_code.txt validation/holiday-feature-backtest/ramq_ablation_exit_code.txt
+          fi
+          if [ -f validation-output/run.log ]; then
+            tail -n 700 validation-output/run.log > validation/holiday-feature-backtest/targeted-latest.log
+          fi
+          if [ -f validation-output-ramq/run.log ]; then
+            tail -n 700 validation-output-ramq/run.log > validation/holiday-feature-backtest/ramq-ablation-latest.log
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/holiday-feature-backtest
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record JGH-specific RAMQ daily backtest results [skip ci]"
+          git push
+
+      - name: Fail if backtests failed
+        if: always()
+        run: |
+          test -f validation-output/exit_code.txt
+          test "$(cat validation-output/exit_code.txt)" = "0"
+          test -f validation-output-ramq/exit_code.txt
+          test "$(cat validation-output-ramq/exit_code.txt)" = "0"
