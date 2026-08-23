@@ -7,6 +7,7 @@ on:
     paths:
       - 'scripts/forecast_daily_visits.py'
       - 'scripts/daily_weather_feature_set.py'
+      - 'scripts/live_weather_forecast.py'
       - 'scripts/weather_features.py'
       - 'scripts/build_weather_history.py'
       - 'scripts/holiday_features.py'
@@ -78,6 +79,7 @@ jobs:
       - name: Compile production forecast code
         run: |
           python -m py_compile scripts/daily_weather_feature_set.py
+          python -m py_compile scripts/live_weather_forecast.py
           python -m py_compile scripts/forecast_daily_visits.py
           python -m py_compile tests/test_daily_visit_forecast.py
 
@@ -114,6 +116,8 @@ jobs:
           assert df['daily_visits_prediction'].notna().all()
           assert (df['weather_feature_set'] == 'raw_plus_snow').all()
           assert df['horizon_day'].tolist() == list(range(1, 8))
+          assert df['snowfall_sum'].notna().all()
+          assert df['snow_depth_max'].notna().all()
           print(df.to_string(index=False))
           PY
 
