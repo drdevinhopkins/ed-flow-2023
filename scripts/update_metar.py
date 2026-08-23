@@ -1,5 +1,6 @@
 import io
 import os
+import time
 
 import dropbox
 import pandas as pd
@@ -44,8 +45,7 @@ if pd.isna(most_recent_date):
 print("Most recent date in METAR data:", most_recent_date)
 
 # Always overlap the existing history by one day so revised observations are
-# picked up. If the history is stale, fetch all missing dates through today in
-# bounded chunks rather than advancing only one week per hourly run.
+# picked up. If the history is stale, fetch all missing dates through today.
 fetch_start = most_recent_date.normalize() - pd.Timedelta(days=1)
 fetch_end = (
     pd.Timestamp.now(tz="America/Montreal")
@@ -72,11 +72,38 @@ base_url = (
     "&report_type=3"
 )
 
+
+def fetch_iem_csv(url: str, max_attempts: int = 5) -> pd.DataFrame:
+    """Fetch an IEM CSV, respecting rate limiting and retrying transient errors."""
+    headers = {"User-Agent": "ed-flow-2023 METAR updater"}
+    for attempt in range(1, max_attempts + 1):
+        response = requests.get(url, timeout=90, headers=headers)
+        if response.status_code == 429 or 500 <= response.status_code < 600:
+            if attempt == max_attempts:
+                response.raise_for_status()
+            retry_after = response.headers.get("Retry-After")
+            try:
+                delay = float(retry_after) if retry_after else min(5 * (2 ** (attempt - 1)), 60)
+            except ValueError:
+                delay = min(5 * (2 ** (attempt - 1)), 60)
+            print(
+                f"IEM returned HTTP {response.status_code}; "
+                f"retrying in {delay:.0f}s (attempt {attempt}/{max_attempts})"
+            )
+            time.sleep(delay)
+            continue
+        response.raise_for_status()
+        return pd.read_csv(io.StringIO(response.text))
+    raise RuntimeError("IEM METAR request exhausted retries.")
+
+
 recent_chunks = []
 chunk_start = fetch_start
 chunk_number = 0
 while chunk_start < fetch_end:
-    chunk_end = min(chunk_start + pd.Timedelta(days=30), fetch_end)
+    # A single station produces only ~24 rows/day, so six-month chunks remain
+    # small while minimizing requests to IEM and avoiding rate limiting.
+    chunk_end = min(chunk_start + pd.Timedelta(days=180), fetch_end)
     chunk_number += 1
     url = base_url.format(
         y1=chunk_start.year,
@@ -90,9 +117,7 @@ while chunk_start < fetch_end:
         f"Fetching METAR chunk {chunk_number}: "
         f"{chunk_start.date()} to {chunk_end.date()}"
     )
-    response = requests.get(url, timeout=60)
-    response.raise_for_status()
-    chunk_df = pd.read_csv(io.StringIO(response.text))
+    chunk_df = fetch_iem_csv(url)
     chunk_df["valid"] = pd.to_datetime(
         chunk_df["valid"], format="mixed", errors="coerce"
     )
@@ -104,6 +129,7 @@ while chunk_start < fetch_end:
         break
     # Reuse the boundary date intentionally; duplicates are removed below.
     chunk_start = chunk_end
+    time.sleep(2)
 
 if recent_chunks:
     recent_metar_df = pd.concat(recent_chunks, ignore_index=True)
