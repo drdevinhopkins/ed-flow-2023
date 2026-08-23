@@ -12,12 +12,8 @@ from __future__ import annotations
 
 import backtest_daily_weather_features as base
 from backtest_daily_weather_features_dense import select_cutoffs
-from weather_features import (
-    ANOMALY_COLUMNS,
-    COMPOUND_COLUMNS,
-    LAGGED_COLUMNS,
-    RAW_DAILY_COLUMNS,
-)
+from daily_weather_feature_set import RAW_PLUS_SNOW_COLUMNS
+from weather_features import COMPOUND_COLUMNS, LAGGED_COLUMNS, RAW_DAILY_COLUMNS
 
 TARGETED_THERMAL = [
     "temp_anomaly",
@@ -80,9 +76,7 @@ TARGETED_COLUMNS = list(
 )
 
 RAW_PLUS_COMPOUND = list(dict.fromkeys([*RAW_DAILY_COLUMNS, *COMPOUND_COLUMNS]))
-RAW_PLUS_SNOW = list(
-    dict.fromkeys([*RAW_DAILY_COLUMNS, *TARGETED_SNOW_RECOVERY, *TARGETED_SURFACE])
-)
+RAW_PLUS_SNOW = RAW_PLUS_SNOW_COLUMNS
 RAW_PLUS_THERMAL = list(dict.fromkeys([*RAW_DAILY_COLUMNS, *TARGETED_THERMAL]))
 RAW_PLUS_LAGGED = list(dict.fromkeys([*RAW_DAILY_COLUMNS, *LAGGED_COLUMNS]))
 
