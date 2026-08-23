@@ -1,0 +1,141 @@
+name: Chronos-2 daily visits forecast
+
+on:
+  push:
+    branches:
+      - chronos2-weather-features
+    paths:
+      - 'scripts/forecast_daily_visits.py'
+      - 'scripts/daily_weather_feature_set.py'
+      - 'scripts/weather_features.py'
+      - 'scripts/build_weather_history.py'
+      - 'scripts/holiday_features.py'
+      - 'scripts/backtest_holiday_features.py'
+      - 'scripts/backtest_daily_holiday_targeted.py'
+      - 'tests/test_daily_visit_forecast.py'
+      - '.github/workflows/daily-visits-forecast.yml'
+      - 'data/jgh_ramq_holidays.csv'
+      - 'chronos-requirements.txt'
+  workflow_dispatch:
+  # GitHub schedules run from the default branch only. Once merged, this becomes the
+  # operational daily forecast and uploads /daily_visits_forecast.csv to Dropbox.
+  schedule:
+    - cron: '15 10 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chronos2-daily-visits-forecast
+  cancel-in-progress: true
+
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Publish branch validation run id
+        if: github.ref_name != 'main'
+        shell: bash
+        run: |
+          mkdir -p validation/daily-visits-forecast
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/daily-visits-forecast/run-id.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/daily-visits-forecast/run-id.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Record daily visits forecast run id [skip ci]"
+            git push
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-daily-visits-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-daily-weather-${{ runner.os }}-
+            huggingface-daily-calendar-context-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+
+      - name: Compile production forecast code
+        run: |
+          python -m py_compile scripts/daily_weather_feature_set.py
+          python -m py_compile scripts/forecast_daily_visits.py
+          python -m py_compile tests/test_daily_visit_forecast.py
+
+      - name: Test promoted feature contract
+        run: python tests/test_daily_visit_forecast.py
+
+      - name: Run current 7-day forecast
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        shell: bash
+        run: |
+          extra_args=()
+          if [ "${GITHUB_REF_NAME}" != "main" ]; then
+            extra_args+=(--no-dropbox)
+          fi
+          python scripts/forecast_daily_visits.py \
+            --horizon-days 7 \
+            --context-days 1095 \
+            --min-history-days 120 \
+            --output daily_visits_forecast.csv \
+            "${extra_args[@]}" \
+            2>&1 | tee daily_visits_forecast.log
+
+      - name: Validate forecast output
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          df = pd.read_csv('daily_visits_forecast.csv')
+          assert len(df) == 7, f'expected 7 forecast days, got {len(df)}'
+          assert df['ds'].nunique() == 7
+          assert df['daily_visits_prediction'].notna().all()
+          assert (df['weather_feature_set'] == 'raw_plus_snow').all()
+          assert df['horizon_day'].tolist() == list(range(1, 8))
+          print(df.to_string(index=False))
+          PY
+
+      - name: Upload forecast artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos2-daily-visits-forecast
+          path: |
+            daily_visits_forecast.csv
+            daily_visits_forecast.log
+
+      - name: Record latest branch forecast
+        if: github.ref_name != 'main'
+        shell: bash
+        run: |
+          mkdir -p validation/daily-visits-forecast
+          cp daily_visits_forecast.csv validation/daily-visits-forecast/latest.csv
+          tail -n 500 daily_visits_forecast.log > validation/daily-visits-forecast/latest.log
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/daily-visits-forecast
+          if ! git diff --cached --quiet; then
+            git commit -m "Record daily visits forecast smoke test [skip ci]"
+            git push
+          fi
