@@ -1,10 +1,6 @@
-name: Chronos wrapper vs native staffing test
+name: Chronos wrapper vs native staffing full test
 
 on:
-  push:
-    branches: ["autogluon-staffing-benchmark"]
-  pull_request:
-    branches: ["autogluon"]
   workflow_dispatch:
 
 permissions:
