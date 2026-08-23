@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 
 import autogluon_backtest as ag_base
-from chronos_forecast_autogluon import BATCH_SIZE if False else None
 from chronos_forecast_autogluon import DEVICE, MODEL_PATH
 
 
