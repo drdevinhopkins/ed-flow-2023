@@ -1,22 +1,6 @@
 name: AutoGluon full backtest
 
 on:
-  push:
-    branches: [autogluon]
-    paths:
-      - '.github/workflows/autogluon-full-backtest.yml'
-      - 'scripts/autogluon_backtest.py'
-      - 'scripts/autogluon_backtest_safe.py'
-      - 'scripts/chronos_forecast_autogluon.py'
-      - 'requirements-autogluon.txt'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/autogluon-full-backtest.yml'
-      - 'scripts/autogluon_backtest.py'
-      - 'scripts/autogluon_backtest_safe.py'
-      - 'scripts/chronos_forecast_autogluon.py'
-      - 'requirements-autogluon.txt'
   workflow_dispatch:
 
 jobs:
