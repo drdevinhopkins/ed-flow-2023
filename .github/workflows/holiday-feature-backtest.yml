@@ -142,7 +142,9 @@ jobs:
           done
           for file in \
             daily_visit_jgh_ramq_ablation_summary.csv \
-            daily_visit_jgh_ramq_ablation_ramq_days.csv; do
+            daily_visit_jgh_ramq_ablation_ramq_days.csv \
+            daily_visit_jgh_ramq_ablation_jgh_only_days.csv \
+            daily_visit_jgh_ramq_ablation_nominal_only_days.csv; do
             if [ -f "validation-output-ramq/$file" ]; then
               cp "validation-output-ramq/$file" "validation/holiday-feature-backtest/$file"
             fi
@@ -157,7 +159,7 @@ jobs:
             tail -n 700 validation-output/run.log > validation/holiday-feature-backtest/targeted-latest.log
           fi
           if [ -f validation-output-ramq/run.log ]; then
-            tail -n 500 validation-output-ramq/run.log > validation/holiday-feature-backtest/ramq-ablation-latest.log
+            tail -n 700 validation-output-ramq/run.log > validation/holiday-feature-backtest/ramq-ablation-latest.log
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
