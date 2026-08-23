@@ -7,9 +7,10 @@ source inflow series intentionally treats incomplete days as hard boundaries, th
 collapse a requested 16-cutoff experiment to only a handful of scored windows.
 
 This wrapper first enumerates every cutoff that is genuinely scoreable (clean target
-history, complete target horizon, complete weather horizon), then draws a balanced mix
-of severe-weather and representative cutoffs from that eligible pool. It reuses the
-native Chronos-2 forecasting and feature logic unchanged.
+history, enough weather history to fit climatology, complete target horizon, complete
+weather horizon), then draws a balanced mix of severe-weather and representative cutoffs
+from that eligible pool. It reuses the native Chronos-2 forecasting and feature logic
+unchanged.
 """
 
 from __future__ import annotations
@@ -19,6 +20,8 @@ import pandas as pd
 
 import backtest_daily_weather_features as base
 from backtest_holiday_features import TARGET, contiguous_history
+
+MIN_CLIMATOLOGY_DAYS = 60
 
 
 def select_cutoffs(
@@ -32,7 +35,7 @@ def select_cutoffs(
 ) -> pd.DataFrame:
     common_start = max(
         daily["ds"].min() + pd.Timedelta(days=min_history_days),
-        daily_weather["ds"].min() + pd.Timedelta(days=min_history_days),
+        daily_weather["ds"].min() + pd.Timedelta(days=MIN_CLIMATOLOGY_DAYS),
     )
     common_end = min(
         daily["ds"].max() - pd.Timedelta(days=horizon_days),
@@ -56,6 +59,13 @@ def select_cutoffs(
 
         actual = daily.loc[daily["ds"].isin(future_dates), ["ds", TARGET]]
         if len(actual) != horizon_days or actual[TARGET].isna().any():
+            continue
+
+        # Target history and weather climatology have independent requirements.  In
+        # production a recent ED source gap may shorten target history while years of
+        # weather history remain available, so do not tie these two floors together.
+        weather_history_days = int((daily_weather["ds"] <= cutoff).sum())
+        if weather_history_days < MIN_CLIMATOLOGY_DAYS:
             continue
 
         try:
