@@ -31,10 +31,21 @@ class HolidayFeatureTests(unittest.TestCase):
                 )
             }
         )
-        featured = add_holiday_features(frame, feature_set="rich")
+        featured = add_holiday_features(frame, feature_set="closures")
         self.assertEqual(int(featured.loc[0, "is_friday_before_monday_holiday"]), 1)
         self.assertEqual(int(featured.loc[1, "is_ramq_holiday"]), 1)
         self.assertEqual(int(featured.loc[2, "is_tuesday_after_monday_holiday"]), 1)
+        self.assertEqual(int(featured.loc[0, "closed_days_immediately_ahead"]), 3)
+        self.assertEqual(int(featured.loc[0, "is_pre_long_closure"]), 1)
+        self.assertEqual(int(featured.loc[2, "closed_days_immediately_before"]), 3)
+        self.assertEqual(int(featured.loc[2, "is_rebound_after_long_closure"]), 1)
+
+    def test_regular_monday_is_not_long_closure_rebound(self):
+        frame = pd.DataFrame({"ds": pd.to_datetime(["2026-05-11 12:00"])})
+        featured = add_holiday_features(frame, feature_set="closures")
+        self.assertEqual(int(featured.loc[0, "closed_days_immediately_before"]), 2)
+        self.assertEqual(int(featured.loc[0, "is_first_business_day_after_closure"]), 1)
+        self.assertEqual(int(featured.loc[0, "is_rebound_after_long_closure"]), 0)
 
     def test_christmas_new_year_cluster(self):
         frame = pd.DataFrame(
