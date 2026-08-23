@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/autogluon-smoke.yml'
       - 'scripts/autogluon_backtest.py'
+      - 'scripts/autogluon_backtest_safe.py'
       - 'scripts/chronos_forecast_autogluon.py'
       - 'requirements-autogluon.txt'
   pull_request:
@@ -13,6 +14,7 @@ on:
     paths:
       - '.github/workflows/autogluon-smoke.yml'
       - 'scripts/autogluon_backtest.py'
+      - 'scripts/autogluon_backtest_safe.py'
       - 'scripts/chronos_forecast_autogluon.py'
       - 'requirements-autogluon.txt'
   workflow_dispatch:
@@ -20,7 +22,7 @@ on:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,22 +42,31 @@ jobs:
       - name: Compile scripts
         run: python -m compileall -q scripts
 
-      - name: Run reduced AutoGluon backtest
+      - name: Run full leakage-safe AutoGluon backtest
         env:
-          AUTOGLUON_VALIDATION_WINDOWS: '1'
-          AUTOGLUON_HOLDOUT_WINDOWS: '1'
+          AUTOGLUON_VALIDATION_WINDOWS: '3'
+          AUTOGLUON_HOLDOUT_WINDOWS: '4'
           AUTOGLUON_VAL_STEP_SIZE: '24'
-          AUTOGLUON_TIME_LIMIT: '900'
+          AUTOGLUON_TIME_LIMIT: '1800'
           AUTOGLUON_BATCH_SIZE: '8'
-        run: python scripts/autogluon_backtest.py
+          AUTOGLUON_INCLUDE_WEATHER: '0'
+        run: python scripts/autogluon_backtest_safe.py
 
       - name: Show outputs
         if: always()
         run: |
           ls -lh autogluon_*.csv 2>/dev/null || true
-          for f in autogluon_leaderboard.csv autogluon_backtest_summary.csv autogluon_backtest_horizons.csv; do
+          for f in autogluon_leaderboard.csv autogluon_backtest_overview.csv autogluon_backtest_summary.csv autogluon_backtest_horizons.csv; do
             if [ -f "$f" ]; then
               echo "===== $f ====="
-              head -n 40 "$f"
+              head -n 80 "$f"
             fi
           done
+
+      - name: Upload benchmark outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autogluon-full-backtest-no-weather
+          path: autogluon_*.csv
+          if-no-files-found: warn
