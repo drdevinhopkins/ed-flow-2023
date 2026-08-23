@@ -1,0 +1,75 @@
+name: Chronos wrapper vs native staffing smoke
+
+on:
+  push:
+    branches: ["autogluon-staffing-benchmark"]
+  pull_request:
+    branches: ["autogluon"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-autogluon.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-chronos-wrapper-staffing-smoke-${{ runner.os }}-${{ hashFiles('requirements-autogluon.txt', 'scripts/chronos_wrapper_vs_native_staffing.py', 'scripts/chronos_autogluon_staffing_comparison.py') }}
+          restore-keys: |
+            huggingface-chronos-wrapper-staffing-${{ runner.os }}-
+            huggingface-autogluon-staffing-${{ runner.os }}-
+            huggingface-forecast-validation-${{ runner.os }}-
+
+      - name: Install CPU PyTorch
+        run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install benchmark dependencies
+        run: python -m pip install -r requirements-autogluon.txt
+
+      - name: Compile benchmark
+        run: |
+          python -m py_compile scripts/chronos_autogluon_staffing_comparison.py
+          python -m py_compile scripts/chronos_wrapper_vs_native_staffing.py
+
+      - name: Run four-day physician-aware comparison
+        env:
+          AUTOGLUON_VALIDATION_WINDOWS: '1'
+          AUTOGLUON_HOLDOUT_WINDOWS: '4'
+          AUTOGLUON_VAL_STEP_SIZE: '24'
+          AUTOGLUON_TIME_LIMIT: '300'
+          AUTOGLUON_BATCH_SIZE: '8'
+          NATIVE_CHRONOS_BATCH_SIZE: '32'
+          NATIVE_CHRONOS_CROSS_LEARNING: '0'
+        run: python scripts/chronos_wrapper_vs_native_staffing.py
+
+      - name: Show headline outputs
+        if: always()
+        run: |
+          for f in staffing_chronos_autogluon_target_comparison.csv staffing_chronos_autogluon_model_summary.csv staffing_chronos_autogluon_runtime.csv; do
+            if [ -f "$f" ]; then
+              echo "===== $f ====="
+              cat "$f"
+            fi
+          done
+
+      - name: Upload benchmark outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos-wrapper-vs-native-staffing-smoke
+          path: staffing_*.csv
+          if-no-files-found: warn
