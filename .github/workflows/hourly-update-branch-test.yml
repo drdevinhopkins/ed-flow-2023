@@ -1,0 +1,89 @@
+name: Hourly update branch test
+
+on:
+  push:
+    branches: ["github-actions"]
+    paths:
+      - ".github/workflows/hourly-update-branch-test.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - name: Publish run ID
+      run: |
+        printf 'run_id=%s\nrun_number=%s\nsha=%s\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_NUMBER" "$GITHUB_SHA" > branch-test-run-id.txt
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add branch-test-run-id.txt
+        git commit -m "test: publish hourly branch run id [skip ci]"
+        git push
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+        cache-dependency-path: |
+          requirements.txt
+          chronos-requirements.txt
+    - name: Cache HuggingFace models
+      uses: actions/cache@v5
+      with:
+        path: ~/.cache/huggingface
+        key: huggingface-chronos2-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt', 'scripts/chronos_forecast.py') }}
+        restore-keys: |
+          huggingface-chronos2-${{ runner.os }}-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install torch --index-url https://download.pytorch.org/whl/cpu
+        pip install -r chronos-requirements.txt
+        pip install -r requirements.txt
+    - name: Get current data
+      run: python scripts/get_current.py
+      continue-on-error: true
+      env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+    - name: Update METAR data
+      run: python scripts/update_metar.py
+      continue-on-error: true
+      env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+    - name: Update ShiftAdmin data
+      run: python scripts/shiftadmin.py
+      continue-on-error: true
+      env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+          SHIFTADMIN_USER: ${{ secrets.SHIFTADMIN_USER }}
+          SHIFTADMIN_PASS: ${{ secrets.SHIFTADMIN_PASS }}
+    - name: Run Chronos Forecast Scripts
+      run: python scripts/chronos_forecast.py
+      env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    - name: Calculated KPIs
+      run: python scripts/calculated_kpis.py
+      continue-on-error: true
+      env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+    - name: Alerts
+      run: python scripts/alerts.py
+      continue-on-error: true
+      env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
