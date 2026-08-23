@@ -1,0 +1,141 @@
+name: Chronos-2 hourly weather feature backtest
+
+on:
+  push:
+    branches:
+      - chronos2-hourly-weather-features
+    paths:
+      - 'scripts/hourly_weather_features.py'
+      - 'scripts/backtest_hourly_weather_features.py'
+      - 'scripts/backtest_covariate_ablation.py'
+      - 'scripts/build_weather_history.py'
+      - 'tests/test_hourly_weather_features.py'
+      - '.github/workflows/hourly-weather-feature-backtest.yml'
+      - 'chronos-requirements.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chronos2-hourly-weather-feature-backtest
+  cancel-in-progress: true
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Publish run id
+        shell: bash
+        run: |
+          mkdir -p validation/hourly-weather-backtest
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/hourly-weather-backtest/run-id.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/hourly-weather-backtest/run-id.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Record hourly weather backtest run id [skip ci]"
+            git push
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-hourly-weather-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-daily-weather-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+
+      - name: Compile and test feature engineering
+        run: |
+          python -m py_compile scripts/hourly_weather_features.py
+          python -m py_compile scripts/backtest_hourly_weather_features.py
+          python tests/test_hourly_weather_features.py
+
+      - name: Build continuous historical forecast weather
+        shell: bash
+        run: |
+          WEATHER_BACKFILL="$RUNNER_TEMP/weather_backfilled.csv"
+          python scripts/build_weather_history.py \
+            --start-date 2021-01-01 \
+            --output "$WEATHER_BACKFILL"
+          echo "WEATHER_BACKFILL=$WEATHER_BACKFILL" >> "$GITHUB_ENV"
+
+      - name: Run hourly weather ablation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        shell: bash
+        run: |
+          mkdir -p validation-output-hourly-weather
+          set +e
+          python scripts/backtest_hourly_weather_features.py \
+            --weather-url "$WEATHER_BACKFILL" \
+            --horizon 24 \
+            --num-cutoffs 12 \
+            --spacing-hours 168 \
+            --max-history-days 180 \
+            --min-history-hours 672 \
+            --output-dir validation-output-hourly-weather \
+            2>&1 | tee validation-output-hourly-weather/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output-hourly-weather/exit_code.txt
+          exit 0
+
+      - name: Upload hourly weather results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos2-hourly-weather-backtest
+          path: validation-output-hourly-weather/*
+
+      - name: Record latest hourly weather results
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p validation/hourly-weather-backtest
+          for file in \
+            hourly_weather_cutoffs.csv \
+            hourly_weather_summary.csv \
+            hourly_weather_by_horizon.csv \
+            hourly_weather_by_event.csv \
+            hourly_weather_winners.csv \
+            exit_code.txt; do
+            if [ -f "validation-output-hourly-weather/$file" ]; then
+              cp "validation-output-hourly-weather/$file" "validation/hourly-weather-backtest/$file"
+            fi
+          done
+          if [ -f validation-output-hourly-weather/run.log ]; then
+            tail -n 1500 validation-output-hourly-weather/run.log > validation/hourly-weather-backtest/latest.log
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/hourly-weather-backtest
+          if ! git diff --cached --quiet; then
+            git commit -m "Record hourly weather backtest results [skip ci]"
+            git push
+          fi
+
+      - name: Fail if backtest failed
+        if: always()
+        run: |
+          test -f validation-output-hourly-weather/exit_code.txt
+          test "$(cat validation-output-hourly-weather/exit_code.txt)" = "0"
