@@ -1,0 +1,66 @@
+name: Fetch JGH RAMQ holiday calendar
+
+on:
+  push:
+    branches:
+      - chronos2-holiday-features
+    paths:
+      - 'scripts/fetch_jgh_ramq_calendar.py'
+      - '.github/workflows/jgh-ramq-calendar.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jgh-ramq-calendar
+  cancel-in-progress: true
+
+jobs:
+  fetch-calendar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install Playwright
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Fetch official JGH RAMQ calendar
+        run: |
+          mkdir -p validation-output-ramq
+          python scripts/fetch_jgh_ramq_calendar.py --output-dir validation-output-ramq
+
+      - name: Upload RAMQ diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jgh-ramq-calendar
+          path: validation-output-ramq/*
+
+      - name: Record RAMQ diagnostics on branch
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p validation/jgh-ramq-calendar
+          for file in ramq-jgh-diagnostic.json ramq-jgh-page.txt; do
+            if [ -f "validation-output-ramq/$file" ]; then
+              cp "validation-output-ramq/$file" "validation/jgh-ramq-calendar/$file"
+            fi
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/jgh-ramq-calendar
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record official JGH RAMQ calendar diagnostics [skip ci]"
+          git push
