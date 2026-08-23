@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Compare nominal RAMQ dates with JGH establishment 0011X dates for daily visits.
 
-This is an apples-to-apples native Chronos-2 ablation.  Both forecast scenarios use the
-same ``calendar_closure`` covariates, cutoffs, target, context and model.  The only change
+This is an apples-to-apples native Chronos-2 ablation. Both forecast scenarios use the
+same ``calendar_closure`` covariates, cutoffs, target, context and model. The only change
 is the RAMQ calendar used to build ``is_ramq_holiday`` and closure/rebound structure:
 
 * ``calendar_closure_nominal_ramq``: generic 13-date RAMQ approximation.
 * ``calendar_closure_jgh_ramq``: JGH / 0011X institution-specific dates.
 
-The baseline is retained to make the magnitude interpretable.  AutoGluon is not used.
+The baseline is retained to make the magnitude interpretable. AutoGluon is not used.
 """
 
 from __future__ import annotations
@@ -109,9 +109,11 @@ def actuals_with_labels(
         raise ValueError(f"Incomplete actual horizon after cutoff {cutoff.date()}")
 
     labels = add_holiday_features(actual[["ds"]], feature_set="closures", ramq_calendar="jgh")
+    # Two EVENT_COLUMNS (first/last day of a long closure) are targeted-script derived
+    # features rather than base holiday_features outputs. They are irrelevant to this
+    # RAMQ-only comparison, so initialize any unavailable event labels to zero.
     for column in EVENT_COLUMNS:
-        if column in labels.columns:
-            actual[column] = labels[column].to_numpy()
+        actual[column] = labels[column].to_numpy() if column in labels.columns else 0
     actual["is_event_day"] = actual[EVENT_COLUMNS].max(axis=1).astype(np.int8)
     actual = actual.rename(columns={TARGET: "actual"})
     actual["target_name"] = TARGET
@@ -230,6 +232,10 @@ def main() -> None:
                 context_days=min(args.context_days, MAX_CONTEXT_DAYS),
             )
             joined = forecast.merge(actual, on=["ds", "target_name"], how="inner")
+            if len(joined) != args.horizon_days:
+                raise ValueError(
+                    f"Expected {args.horizon_days} scored rows at {cutoff.date()}, got {len(joined)}"
+                )
             joined["cutoff"] = cutoff
             joined["scenario"] = scenario
             joined["error"] = joined["prediction"] - joined["actual"]
