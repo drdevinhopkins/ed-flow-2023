@@ -3,6 +3,8 @@ name: AutoGluon staffing benchmark test
 on:
   push:
     branches: ["autogluon-staffing-benchmark"]
+  pull_request:
+    branches: ["autogluon"]
   workflow_dispatch:
 
 permissions:
