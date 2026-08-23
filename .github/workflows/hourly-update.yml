@@ -64,6 +64,8 @@ jobs:
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
           SHIFTADMIN_USER: ${{ secrets.SHIFTADMIN_USER }}
           SHIFTADMIN_PASS: ${{ secrets.SHIFTADMIN_PASS }}
+    - name: Validate forecast inputs
+      run: python scripts/validate_forecast_inputs.py
     - name: Run Chronos Forecast Scripts
       run: python scripts/chronos_forecast.py
       env:
