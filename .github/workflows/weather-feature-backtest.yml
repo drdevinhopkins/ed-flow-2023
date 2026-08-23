@@ -1,0 +1,151 @@
+name: Chronos-2 daily weather feature backtest
+
+on:
+  push:
+    branches:
+      - chronos2-weather-features
+    paths:
+      - 'scripts/weather_features.py'
+      - 'scripts/backtest_daily_weather_features.py'
+      - 'tests/test_weather_features.py'
+      - '.github/workflows/weather-feature-backtest.yml'
+      - 'scripts/holiday_features.py'
+      - 'scripts/backtest_holiday_features.py'
+      - 'scripts/backtest_daily_holiday_targeted.py'
+      - 'data/jgh_ramq_holidays.csv'
+      - 'chronos-requirements.txt'
+  workflow_dispatch:
+    inputs:
+      num_cutoffs:
+        description: Number of mixed regular/event cutoffs
+        required: false
+        default: '16'
+      horizon_days:
+        description: Forecast horizon in days
+        required: false
+        default: '7'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chronos2-daily-weather-feature-backtest
+  cancel-in-progress: true
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Publish run id
+        shell: bash
+        run: |
+          mkdir -p validation/weather-feature-backtest
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/weather-feature-backtest/run-id.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/weather-feature-backtest/run-id.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Record weather feature backtest run id [skip ci]"
+            git push
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-daily-weather-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-daily-weather-${{ runner.os }}-
+            huggingface-daily-calendar-context-${{ runner.os }}-
+            huggingface-daily-holiday-backtest-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+
+      - name: Compile feature and backtest code
+        run: |
+          python -m py_compile scripts/weather_features.py
+          python -m py_compile scripts/backtest_daily_weather_features.py
+          python -m py_compile tests/test_weather_features.py
+
+      - name: Test weather feature logic
+        run: python tests/test_weather_features.py
+
+      - name: Run daily weather feature ablation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          NUM_CUTOFFS: ${{ inputs.num_cutoffs || '16' }}
+          HORIZON_DAYS: ${{ inputs.horizon_days || '7' }}
+        shell: bash
+        run: |
+          mkdir -p validation-output-weather
+          cp validation/weather-feature-backtest/run-id.txt validation-output-weather/run-id.txt
+          set +e
+          python scripts/backtest_daily_weather_features.py \
+            --horizon-days "$HORIZON_DAYS" \
+            --num-cutoffs "$NUM_CUTOFFS" \
+            --context-days 1095 \
+            --min-history-days 120 \
+            --output-dir validation-output-weather \
+            2>&1 | tee validation-output-weather/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output-weather/exit_code.txt
+          exit 0
+
+      - name: Upload weather feature results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos2-daily-weather-features
+          path: validation-output-weather/*
+
+      - name: Record latest branch results
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p validation/weather-feature-backtest
+          for file in \
+            run-id.txt \
+            daily_visit_weather_cutoffs.csv \
+            daily_visit_weather_summary.csv \
+            daily_visit_weather_by_event.csv \
+            daily_visit_weather_by_horizon.csv \
+            daily_visit_weather_winners.csv \
+            exit_code.txt; do
+            if [ -f "validation-output-weather/$file" ]; then
+              cp "validation-output-weather/$file" "validation/weather-feature-backtest/$file"
+            fi
+          done
+          if [ -f validation-output-weather/run.log ]; then
+            tail -n 1200 validation-output-weather/run.log > validation/weather-feature-backtest/latest.log
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/weather-feature-backtest
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record daily weather feature backtest results [skip ci]"
+          git push
+
+      - name: Fail if backtest failed
+        if: always()
+        run: |
+          test -f validation-output-weather/exit_code.txt
+          test "$(cat validation-output-weather/exit_code.txt)" = "0"
