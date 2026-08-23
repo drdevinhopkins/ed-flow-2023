@@ -5,11 +5,12 @@ and hospital operations differently:
 
 * Quebec statutory/public holidays.
 * Canada-wide federal holidays.
-* RAMQ medical-professional holiday families (13 annual holidays).  Establishments may
+* RAMQ medical-professional holiday families (13 annual holidays). Establishments may
   publish their own observed dates, so callers can optionally provide explicit overrides.
 * Jewish holidays, with an additional flag for major religious holidays and their eves.
+* Health-system access closure/rebound structure around weekends and non-Jewish holidays.
 
-All features are deterministic known-future covariates.  They are date based in the
+All features are deterministic known-future covariates. They are date based in the
 America/Montreal timezone and can therefore be safely built for both history and the
 forecast horizon.
 """
@@ -25,11 +26,13 @@ import pandas as pd
 
 DEFAULT_TZ = "America/Montreal"
 MAX_PROXIMITY_DAYS = 7
+MAX_CLOSURE_STREAK = 7
 
-# Israel public holidays also contain modern civic holidays.  These name fragments retain
+# Israel public holidays also contain modern civic holidays. These name fragments retain
 # the religious holidays most likely to affect the Montreal Jewish community.
 MAJOR_JEWISH_NAME_FRAGMENTS = (
     "Rosh Hashanah",
+    "Rosh Hashana",
     "Yom Kippur",
     "Sukkot",
     "Shemini Atzeret",
@@ -78,8 +81,9 @@ def _monday_before_may_25(year: int) -> date:
 def build_ramq_nominal_calendar(years: Iterable[int]) -> dict[date, str]:
     """Return the 13 RAMQ medical-professional holiday families on nominal dates.
 
-    Actual establishment calendars can shift fixed-date holidays.  Use ``ramq_overrides``
-    in :func:`add_holiday_features` when the JGH-specific dates are available.
+    RAMQ establishment calendars can move fixed-date holidays to specific weekdays.
+    Therefore these dates are deliberately called *nominal*. Use ``ramq_overrides`` in
+    :func:`add_holiday_features` when JGH-specific observed dates are available.
     """
     calendar: dict[date, str] = {}
     for year in sorted(set(int(y) for y in years)):
@@ -153,6 +157,57 @@ def _nearest_distances(
     return to_next, since_prev
 
 
+def _closure_features(
+    dates: list[date | None], system_holidays: set[date]
+) -> dict[str, np.ndarray]:
+    """Describe outpatient-access closure streaks surrounding each local calendar date.
+
+    This intentionally excludes Jewish religious holidays from the definition of a general
+    health-system closure. Their demand/staffing effects remain separate covariates.
+    """
+
+    def is_closed(day: date) -> bool:
+        return day.weekday() >= 5 or day in system_holidays
+
+    n = len(dates)
+    closed_today = np.zeros(n, dtype=np.int8)
+    before = np.zeros(n, dtype=np.int8)
+    ahead = np.zeros(n, dtype=np.int8)
+    prev_7d = np.zeros(n, dtype=np.int8)
+    next_7d = np.zeros(n, dtype=np.int8)
+
+    for idx, current in enumerate(dates):
+        if current is None:
+            continue
+        closed_today[idx] = int(is_closed(current))
+        prev_7d[idx] = sum(is_closed(current - timedelta(days=i)) for i in range(1, 8))
+        next_7d[idx] = sum(is_closed(current + timedelta(days=i)) for i in range(1, 8))
+
+        for distance in range(1, MAX_CLOSURE_STREAK + 1):
+            if is_closed(current - timedelta(days=distance)):
+                before[idx] += 1
+            else:
+                break
+        for distance in range(1, MAX_CLOSURE_STREAK + 1):
+            if is_closed(current + timedelta(days=distance)):
+                ahead[idx] += 1
+            else:
+                break
+
+    business_day = 1 - closed_today
+    return {
+        "is_system_closed_day": closed_today,
+        "closed_days_immediately_before": before,
+        "closed_days_immediately_ahead": ahead,
+        "closed_days_previous_7d": prev_7d,
+        "closed_days_next_7d": next_7d,
+        "is_first_business_day_after_closure": (business_day * (before >= 1)).astype(np.int8),
+        "is_rebound_after_long_closure": (business_day * (before >= 3)).astype(np.int8),
+        "is_last_business_day_before_closure": (business_day * (ahead >= 1)).astype(np.int8),
+        "is_pre_long_closure": (business_day * (ahead >= 3)).astype(np.int8),
+    }
+
+
 def add_holiday_features(
     df: pd.DataFrame,
     ts_col: str = "ds",
@@ -169,8 +224,9 @@ def add_holiday_features(
     * ``calendars``: separate Quebec, federal, RAMQ, Jewish, and major-Jewish flags.
     * ``shoulders``: calendars plus pre/post-holiday and long-weekend edge flags.
     * ``rich``: shoulders plus holiday proximity and seasonal holiday-cluster features.
+    * ``closures``: rich plus outpatient-access closure/rebound structure.
     """
-    allowed = {"legacy", "calendars", "shoulders", "rich"}
+    allowed = {"legacy", "calendars", "shoulders", "rich", "closures"}
     if feature_set not in allowed:
         raise ValueError(f"feature_set must be one of {sorted(allowed)}")
 
@@ -320,6 +376,15 @@ def add_holiday_features(
         ],
         dtype=np.int8,
     )
+
+    if feature_set == "rich":
+        return out
+
+    # General health-system closure logic excludes Jewish holidays because those may affect
+    # JGH demand/staffing without closing the broader Montreal outpatient system.
+    system_holidays = qc_dates | federal_dates | ramq_dates
+    for column, values in _closure_features(dates, system_holidays).items():
+        out[column] = values
     return out
 
 
