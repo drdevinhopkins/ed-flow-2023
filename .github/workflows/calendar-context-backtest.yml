@@ -29,6 +29,21 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Publish run id
+        shell: bash
+        run: |
+          mkdir -p validation/calendar-context-backtest
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/calendar-context-backtest/run-id.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/calendar-context-backtest/run-id.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Record calendar context backtest run id [skip ci]"
+            git push
+          fi
+
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
@@ -70,9 +85,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p validation-output-social
-          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
-            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
-            > validation-output-social/run-id.txt
+          cp validation/calendar-context-backtest/run-id.txt validation-output-social/run-id.txt
           set +e
           python scripts/backtest_daily_calendar_context.py \
             --horizon-days 7 \
