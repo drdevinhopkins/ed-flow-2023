@@ -5,10 +5,11 @@ and hospital operations differently:
 
 * Quebec statutory/public holidays.
 * Canada-wide federal holidays.
-* RAMQ medical-professional holiday families (13 annual holidays). Establishments may
-  publish their own observed dates, so callers can optionally provide explicit overrides.
+* RAMQ medical-professional holidays, using JGH establishment 0011X dates where the
+  repository has an institution-specific calendar and falling back to nominal RAMQ dates
+  outside that covered interval.
 * Jewish holidays, with an additional flag for major religious holidays and their eves.
-* Health-system access closure/rebound structure around weekends and non-Jewish holidays.
+* Health-system access closure/rebound structure around weekends and statutory holidays.
 
 All features are deterministic known-future covariates. They are date based in the
 America/Montreal timezone and can therefore be safely built for both history and the
@@ -18,6 +19,7 @@ forecast horizon.
 from __future__ import annotations
 
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Iterable, Mapping
 
 import holidays
@@ -27,6 +29,8 @@ import pandas as pd
 DEFAULT_TZ = "America/Montreal"
 MAX_PROXIMITY_DAYS = 7
 MAX_CLOSURE_STREAK = 7
+JGH_RAMQ_CALENDAR_PATH = Path(__file__).resolve().parents[1] / "data" / "jgh_ramq_holidays.csv"
+RAMQ_CALENDAR_MODES = {"jgh", "nominal"}
 
 # Israel public holidays also contain modern civic holidays. These name fragments retain
 # the religious holidays most likely to affect the Montreal Jewish community.
@@ -79,12 +83,7 @@ def _monday_before_may_25(year: int) -> date:
 
 
 def build_ramq_nominal_calendar(years: Iterable[int]) -> dict[date, str]:
-    """Return the 13 RAMQ medical-professional holiday families on nominal dates.
-
-    RAMQ establishment calendars can move fixed-date holidays to specific weekdays.
-    Therefore these dates are deliberately called *nominal*. Use ``ramq_overrides`` in
-    :func:`add_holiday_features` when JGH-specific observed dates are available.
-    """
+    """Return the 13 RAMQ medical-professional holiday families on nominal dates."""
     calendar: dict[date, str] = {}
     for year in sorted(set(int(y) for y in years)):
         easter = _easter_sunday(year)
@@ -104,6 +103,77 @@ def build_ramq_nominal_calendar(years: Iterable[int]) -> dict[date, str]:
             date(year, 12, 31): "New Year's Eve",
         }
         calendar.update(entries)
+    return calendar
+
+
+def load_jgh_ramq_calendar(
+    path: Path | str = JGH_RAMQ_CALENDAR_PATH,
+) -> tuple[dict[date, str], date, date]:
+    """Load the JGH (06 / 0011X) establishment-specific statutory calendar.
+
+    The checked-in table is intentionally explicit because RAMQ establishment calendars
+    can differ from the nominal 13 dates. Each reference year must contain 13 JGH dates.
+    The returned coverage interval is used to *replace*, not merge with, nominal RAMQ
+    dates inside the period for which exact JGH dates are available.
+    """
+    table = pd.read_csv(path, dtype={"region": str, "establishment_code": str})
+    required = {"reference_year", "date", "name", "region", "establishment_code"}
+    missing = required - set(table.columns)
+    if missing:
+        raise ValueError(f"JGH RAMQ calendar missing columns: {sorted(missing)}")
+
+    table["region"] = table["region"].astype(str).str.zfill(2)
+    table["establishment_code"] = table["establishment_code"].astype(str)
+    table = table.loc[
+        table["region"].eq("06") & table["establishment_code"].eq("0011X")
+    ].copy()
+    if table.empty:
+        raise ValueError("No Montréal (06) / JGH (0011X) RAMQ calendar rows found")
+
+    parsed = pd.to_datetime(table["date"], errors="raise")
+    table["parsed_date"] = parsed.dt.date
+    if table["parsed_date"].duplicated().any():
+        duplicates = table.loc[table["parsed_date"].duplicated(), "date"].tolist()
+        raise ValueError(f"Duplicate JGH RAMQ holiday dates: {duplicates}")
+
+    counts = table.groupby("reference_year").size()
+    invalid_counts = counts.loc[counts.ne(13)]
+    if not invalid_counts.empty:
+        raise ValueError(
+            "Each JGH RAMQ reference year must contain 13 dates; got "
+            + ", ".join(f"{year}={count}" for year, count in invalid_counts.items())
+        )
+
+    calendar = dict(zip(table["parsed_date"], table["name"].astype(str)))
+    coverage_start = min(calendar)
+    coverage_end = max(calendar)
+    return calendar, coverage_start, coverage_end
+
+
+def build_ramq_calendar(
+    years: Iterable[int], *, ramq_calendar: str = "jgh"
+) -> dict[date, str]:
+    """Build RAMQ dates using exact JGH dates when available.
+
+    ``jgh`` replaces nominal RAMQ dates throughout the checked-in JGH coverage interval;
+    it does not simply add JGH dates on top of nominal ones. ``nominal`` is retained for
+    ablation/backward comparison.
+    """
+    if ramq_calendar not in RAMQ_CALENDAR_MODES:
+        raise ValueError(f"ramq_calendar must be one of {sorted(RAMQ_CALENDAR_MODES)}")
+
+    years_set = set(int(year) for year in years)
+    nominal = build_ramq_nominal_calendar(years_set)
+    if ramq_calendar == "nominal":
+        return nominal
+
+    exact, coverage_start, coverage_end = load_jgh_ramq_calendar()
+    calendar = {
+        day: name
+        for day, name in nominal.items()
+        if not (coverage_start <= day <= coverage_end)
+    }
+    calendar.update({day: name for day, name in exact.items() if day.year in years_set})
     return calendar
 
 
@@ -160,11 +230,7 @@ def _nearest_distances(
 def _closure_features(
     dates: list[date | None], system_holidays: set[date]
 ) -> dict[str, np.ndarray]:
-    """Describe outpatient-access closure streaks surrounding each local calendar date.
-
-    This intentionally excludes Jewish religious holidays from the definition of a general
-    health-system closure. Their demand/staffing effects remain separate covariates.
-    """
+    """Describe outpatient-access closure streaks surrounding each local calendar date."""
 
     def is_closed(day: date) -> bool:
         return day.weekday() >= 5 or day in system_holidays
@@ -215,6 +281,7 @@ def add_holiday_features(
     observed: bool = True,
     feature_set: str = "rich",
     ramq_overrides: Mapping[date | str, str] | Iterable[date | str] | None = None,
+    ramq_calendar: str = "jgh",
 ) -> pd.DataFrame:
     """Add known-future holiday covariates for Montreal ED forecasting.
 
@@ -225,6 +292,10 @@ def add_holiday_features(
     * ``shoulders``: calendars plus pre/post-holiday and long-weekend edge flags.
     * ``rich``: shoulders plus holiday proximity and seasonal holiday-cluster features.
     * ``closures``: rich plus outpatient-access closure/rebound structure.
+
+    ``ramq_calendar='jgh'`` is the production/default representation. Within the exact
+    0011X coverage period it replaces the nominal RAMQ dates. ``'nominal'`` exists so
+    backtests can quantify the effect of institution-specific dates.
     """
     allowed = {"legacy", "calendars", "shoulders", "rich", "closures"}
     if feature_set not in allowed:
@@ -246,10 +317,8 @@ def add_holiday_features(
     qc = holidays.Canada(subdiv="QC", years=years, observed=observed)
     federal = holidays.Canada(years=years, observed=observed)
     jewish = holidays.Israel(years=years, observed=False, language="en_US")
-    ramq_nominal = build_ramq_nominal_calendar(years)
-    ramq_override_map = _normalize_ramq_overrides(ramq_overrides)
-    ramq = dict(ramq_nominal)
-    ramq.update(ramq_override_map)
+    ramq = build_ramq_calendar(years, ramq_calendar=ramq_calendar)
+    ramq.update(_normalize_ramq_overrides(ramq_overrides))
 
     qc_dates = set(qc.keys())
     federal_dates = set(federal.keys())
@@ -380,8 +449,9 @@ def add_holiday_features(
     if feature_set == "rich":
         return out
 
-    # General health-system closure logic excludes Jewish holidays because those may affect
-    # JGH demand/staffing without closing the broader Montreal outpatient system.
+    # Generic Jewish holidays do not automatically close the health system. However, a
+    # Jewish date explicitly designated in JGH's RAMQ calendar *is* part of the JGH
+    # professional/operational closure calendar and is therefore included here.
     system_holidays = qc_dates | federal_dates | ramq_dates
     for column, values in _closure_features(dates, system_holidays).items():
         out[column] = values
