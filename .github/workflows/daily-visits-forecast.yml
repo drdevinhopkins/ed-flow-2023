@@ -19,7 +19,7 @@ on:
       - 'chronos-requirements.txt'
   workflow_dispatch:
   # GitHub schedules run from the default branch only. Once merged, this becomes the
-  # operational daily forecast and uploads /daily_visits_forecast.csv to Dropbox.
+  # operational daily forecast and archives exact D+1..D+7 forecast-time covariates.
   schedule:
     - cron: '15 10 * * *'
 
@@ -103,6 +103,7 @@ jobs:
             --context-days 1095 \
             --min-history-days 28 \
             --output daily_visits_forecast.csv \
+            --weather-snapshot-output daily_visits_weather_snapshot.csv \
             "${extra_args[@]}" \
             2>&1 | tee daily_visits_forecast.log
 
@@ -110,16 +111,22 @@ jobs:
         run: |
           python - <<'PY'
           import pandas as pd
-          df = pd.read_csv('daily_visits_forecast.csv')
-          assert len(df) == 7, f'expected 7 forecast days, got {len(df)}'
-          assert df['ds'].nunique() == 7
-          assert df['daily_visits_prediction'].notna().all()
-          assert (df['weather_feature_set'] == 'raw_plus_snow').all()
-          assert df['horizon_day'].tolist() == list(range(1, 8))
-          assert df['history_days'].min() >= 28
-          assert df['snowfall_sum'].notna().all()
-          assert df['snow_depth_max'].notna().all()
-          print(df.to_string(index=False))
+          forecast = pd.read_csv('daily_visits_forecast.csv')
+          weather = pd.read_csv('daily_visits_weather_snapshot.csv')
+          assert len(forecast) == 7, f'expected 7 forecast days, got {len(forecast)}'
+          assert forecast['ds'].nunique() == 7
+          assert forecast['daily_visits_prediction'].notna().all()
+          assert (forecast['weather_feature_set'] == 'raw_plus_snow').all()
+          assert forecast['horizon_day'].tolist() == list(range(1, 8))
+          assert forecast['history_days'].min() >= 28
+          assert forecast['temp_mean'].notna().all()
+          assert forecast['wind_max'].notna().all()
+          assert forecast['snowfall_sum'].notna().all()
+          assert len(weather) == 7
+          assert weather['ds'].tolist() == forecast['ds'].tolist()
+          assert weather['horizon_day'].tolist() == list(range(1, 8))
+          assert weather.drop(columns=['forecast_generated_at_utc']).notna().all().all()
+          print(forecast.to_string(index=False))
           PY
 
       - name: Upload forecast artifact
@@ -128,6 +135,7 @@ jobs:
           name: chronos2-daily-visits-forecast
           path: |
             daily_visits_forecast.csv
+            daily_visits_weather_snapshot.csv
             daily_visits_forecast.log
 
       - name: Record latest branch forecast
@@ -136,6 +144,7 @@ jobs:
         run: |
           mkdir -p validation/daily-visits-forecast
           cp daily_visits_forecast.csv validation/daily-visits-forecast/latest.csv
+          cp daily_visits_weather_snapshot.csv validation/daily-visits-forecast/latest-weather.csv
           tail -n 500 daily_visits_forecast.log > validation/daily-visits-forecast/latest.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
