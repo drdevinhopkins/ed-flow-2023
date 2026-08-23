@@ -1,10 +1,6 @@
-name: Forecast validation branch test
+name: Covariate ablation backtest
 
 on:
-  push:
-    branches: ["forecast-validation"]
-  pull_request:
-    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -27,9 +23,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/huggingface
-          key: huggingface-forecast-validation-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt', 'scripts/backtest_covariate_ablation.py') }}
+          key: huggingface-covariate-ablation-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt', 'scripts/backtest_covariate_ablation.py') }}
           restore-keys: |
-            huggingface-forecast-validation-${{ runner.os }}-
+            huggingface-covariate-ablation-${{ runner.os }}-
             huggingface-chronos2-${{ runner.os }}-
 
       - name: Install dependencies
@@ -46,7 +42,9 @@ jobs:
       - name: Validate live forecast inputs
         run: python scripts/validate_forecast_inputs.py
 
-      - name: Full covariate ablation backtest
+      - name: Run covariate ablation backtest
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           mkdir -p validation-output
           python scripts/backtest_covariate_ablation.py \
