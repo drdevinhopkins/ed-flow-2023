@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   backtest:
@@ -56,17 +56,56 @@ jobs:
       - name: Run holiday-focused inflow ablation
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        shell: bash
         run: |
           mkdir -p validation-output
+          set +e
           python scripts/backtest_holiday_features.py \
             --targets Inflow_Total \
             --horizon 24 \
             --num-cutoffs 8 \
             --context-hours 8192 \
-            --output-dir validation-output
+            --output-dir validation-output \
+            2>&1 | tee validation-output/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output/exit_code.txt
+          exit 0
 
       - name: Upload holiday backtest results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: chronos2-holiday-feature-backtest
-          path: validation-output/*.csv
+          path: validation-output/*
+
+      - name: Record latest branch results
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p validation/holiday-feature-backtest
+          for file in \
+            holiday_feature_backtest_summary.csv \
+            holiday_feature_backtest_winners.csv \
+            holiday_feature_backtest_cutoffs.csv \
+            exit_code.txt; do
+            if [ -f "validation-output/$file" ]; then
+              cp "validation-output/$file" "validation/holiday-feature-backtest/$file"
+            fi
+          done
+          if [ -f validation-output/run.log ]; then
+            tail -n 500 validation-output/run.log > validation/holiday-feature-backtest/latest.log
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add validation/holiday-feature-backtest
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record holiday feature backtest results [skip ci]"
+          git push
+
+      - name: Fail if backtest failed
+        if: always()
+        run: |
+          test -f validation-output/exit_code.txt
+          test "$(cat validation-output/exit_code.txt)" = "0"
