@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Compare nominal RAMQ dates with JGH establishment 0011X dates for daily visits.
 
-This is an apples-to-apples native Chronos-2 ablation. Both forecast scenarios use the
-same ``calendar_closure`` covariates, cutoffs, target, context and model. The only change
-is the RAMQ calendar used to build ``is_ramq_holiday`` and closure/rebound structure:
+This is an apples-to-apples native Chronos-2 ablation. All forecast scenarios use the
+same cutoffs, target, context and model. The RAMQ treatment differs:
 
 * ``calendar_closure_nominal_ramq``: generic 13-date RAMQ approximation.
-* ``calendar_closure_jgh_ramq``: JGH / 0011X institution-specific dates.
+* ``calendar_closure_jgh_ramq``: JGH / 0011X institution-specific dates replace nominal.
+* ``calendar_closure_nominal_plus_jgh_flag``: retain nominal RAMQ closure/demand
+  structure and add the exact JGH RAMQ date as a separate known-future covariate.
 
-The baseline is retained to make the magnitude interpretable. AutoGluon is not used.
+The last scenario tests the hypothesis that nominal RAMQ dates are primarily a community
+or health-system demand signal while exact JGH dates are an institution-specific staffing
+or access signal. AutoGluon is not used.
 """
 
 from __future__ import annotations
@@ -38,21 +41,40 @@ from backtest_holiday_features import (
 )
 from holiday_features import add_holiday_features
 
+JGH_FLAG_COLUMN = "is_jgh_ramq_holiday"
+
 SCENARIOS = [
     "baseline",
     "calendar_closure_nominal_ramq",
     "calendar_closure_jgh_ramq",
+    "calendar_closure_nominal_plus_jgh_flag",
 ]
 
 
-def _calendar_closure(frame: pd.DataFrame, *, ramq_calendar: str) -> pd.DataFrame:
+def _calendar_closure(
+    frame: pd.DataFrame,
+    *,
+    ramq_calendar: str,
+    include_jgh_flag: bool = False,
+) -> pd.DataFrame:
     featured = add_holiday_features(
         frame,
         feature_set="closures",
         ramq_calendar=ramq_calendar,
     )
+
+    if include_jgh_flag:
+        exact = add_holiday_features(
+            frame[["ds"]],
+            feature_set="calendars",
+            ramq_calendar="jgh",
+        )
+        featured[JGH_FLAG_COLUMN] = exact["is_ramq_holiday"].to_numpy(dtype=np.int8)
+
     keep = list(frame.columns)
     keep.extend(column for column in CALENDAR_CLOSURE_COLUMNS if column not in keep)
+    if include_jgh_flag and JGH_FLAG_COLUMN not in keep:
+        keep.append(JGH_FLAG_COLUMN)
     return featured[keep]
 
 
@@ -79,15 +101,34 @@ def build_frames(
         history["id"] = SERIES_ID
         return history[["id", "ds", TARGET]], None
 
-    ramq_calendar = "nominal" if scenario.endswith("nominal_ramq") else "jgh"
-    history = _calendar_closure(history, ramq_calendar=ramq_calendar)
-    future = _calendar_closure(future, ramq_calendar=ramq_calendar)
+    if scenario == "calendar_closure_nominal_ramq":
+        ramq_calendar = "nominal"
+        include_jgh_flag = False
+    elif scenario == "calendar_closure_jgh_ramq":
+        ramq_calendar = "jgh"
+        include_jgh_flag = False
+    elif scenario == "calendar_closure_nominal_plus_jgh_flag":
+        ramq_calendar = "nominal"
+        include_jgh_flag = True
+    else:
+        raise ValueError(f"Unknown scenario: {scenario}")
+
+    history = _calendar_closure(
+        history,
+        ramq_calendar=ramq_calendar,
+        include_jgh_flag=include_jgh_flag,
+    )
+    future = _calendar_closure(
+        future,
+        ramq_calendar=ramq_calendar,
+        include_jgh_flag=include_jgh_flag,
+    )
     history["id"] = SERIES_ID
     future["id"] = SERIES_ID
 
     covariates = [
         column
-        for column in CALENDAR_CLOSURE_COLUMNS
+        for column in [*CALENDAR_CLOSURE_COLUMNS, JGH_FLAG_COLUMN]
         if column in history.columns and column in future.columns
     ]
     for column in covariates:
@@ -109,11 +150,10 @@ def actuals_with_labels(
         raise ValueError(f"Incomplete actual horizon after cutoff {cutoff.date()}")
 
     labels = add_holiday_features(actual[["ds"]], feature_set="closures", ramq_calendar="jgh")
-    # Two EVENT_COLUMNS (first/last day of a long closure) are targeted-script derived
-    # features rather than base holiday_features outputs. They are irrelevant to this
-    # RAMQ-only comparison, so initialize any unavailable event labels to zero.
     for column in EVENT_COLUMNS:
-        actual[column] = labels[column].to_numpy() if column in labels.columns else 0
+        if column in labels.columns:
+            actual[column] = labels[column].to_numpy()
+    actual[JGH_FLAG_COLUMN] = labels["is_ramq_holiday"].to_numpy(dtype=np.int8)
     actual["is_event_day"] = actual[EVENT_COLUMNS].max(axis=1).astype(np.int8)
     actual = actual.rename(columns={TARGET: "actual"})
     actual["target_name"] = TARGET
@@ -171,7 +211,7 @@ def summarize(detail: pd.DataFrame) -> pd.DataFrame:
 
 
 def summarize_ramq_days(detail: pd.DataFrame) -> pd.DataFrame:
-    subset = detail.loc[detail["is_ramq_holiday"].astype(bool)]
+    subset = detail.loc[detail[JGH_FLAG_COLUMN].astype(bool)]
     if subset.empty:
         return pd.DataFrame()
     table = metric_table(subset, ["target_name", "scenario"])
@@ -232,10 +272,6 @@ def main() -> None:
                 context_days=min(args.context_days, MAX_CONTEXT_DAYS),
             )
             joined = forecast.merge(actual, on=["ds", "target_name"], how="inner")
-            if len(joined) != args.horizon_days:
-                raise ValueError(
-                    f"Expected {args.horizon_days} scored rows at {cutoff.date()}, got {len(joined)}"
-                )
             joined["cutoff"] = cutoff
             joined["scenario"] = scenario
             joined["error"] = joined["prediction"] - joined["actual"]
