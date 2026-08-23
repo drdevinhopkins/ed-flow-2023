@@ -1,0 +1,95 @@
+Daily target range: 2021-01-01 to 2026-08-22
+Daily weather range: 2021-01-01 to 2026-08-30
+Scenarios: baseline, calendar_closure, raw_weather, anomalies, shocks, lagged, compound, all_weather
+WARNING: weather.csv is not archived forecast snapshots; weather results are signal-potential estimates.
+Cutoffs:
+    cutoff  history_days  event_score_next_day selection
+2021-05-01           121                   NaN   regular
+2022-04-18           139              7.710405     event
+2023-08-07           267              2.902309   regular
+2024-01-09           422              7.025631     event
+Loading amazon/chronos-2 on cpu
+Loading weights:   0%|          | 0/170 [00:00<?, ?it/s]Loading weights: 100%|██████████| 170/170 [00:00<00:00, 3559.00it/s]
+Forecasting cutoff=2021-05-01 scenario=baseline
+Forecasting cutoff=2021-05-01 scenario=calendar_closure
+Forecasting cutoff=2021-05-01 scenario=raw_weather
+Forecasting cutoff=2021-05-01 scenario=anomalies
+Forecasting cutoff=2021-05-01 scenario=shocks
+Forecasting cutoff=2021-05-01 scenario=lagged
+Forecasting cutoff=2021-05-01 scenario=compound
+Forecasting cutoff=2021-05-01 scenario=all_weather
+Forecasting cutoff=2022-04-18 scenario=baseline
+Forecasting cutoff=2022-04-18 scenario=calendar_closure
+Forecasting cutoff=2022-04-18 scenario=raw_weather
+Forecasting cutoff=2022-04-18 scenario=anomalies
+Forecasting cutoff=2022-04-18 scenario=shocks
+Forecasting cutoff=2022-04-18 scenario=lagged
+Forecasting cutoff=2022-04-18 scenario=compound
+Forecasting cutoff=2022-04-18 scenario=all_weather
+Forecasting cutoff=2023-08-07 scenario=baseline
+Forecasting cutoff=2023-08-07 scenario=calendar_closure
+Forecasting cutoff=2023-08-07 scenario=raw_weather
+Forecasting cutoff=2023-08-07 scenario=anomalies
+Forecasting cutoff=2023-08-07 scenario=shocks
+Forecasting cutoff=2023-08-07 scenario=lagged
+Forecasting cutoff=2023-08-07 scenario=compound
+Forecasting cutoff=2023-08-07 scenario=all_weather
+Forecasting cutoff=2024-01-09 scenario=baseline
+Forecasting cutoff=2024-01-09 scenario=calendar_closure
+Forecasting cutoff=2024-01-09 scenario=raw_weather
+Forecasting cutoff=2024-01-09 scenario=anomalies
+Forecasting cutoff=2024-01-09 scenario=shocks
+Forecasting cutoff=2024-01-09 scenario=lagged
+Forecasting cutoff=2024-01-09 scenario=compound
+Forecasting cutoff=2024-01-09 scenario=all_weather
+
+Summary:
+             segment  target_name         scenario  n       mae  mean_error      rmse     wape  baseline_mae  mae_improvement  mae_improvement_pct  calendar_closure_mae  mae_improvement_vs_calendar_closure  mae_improvement_vs_calendar_closure_pct                                   weather_validation_mode
+            all_days daily_visits      all_weather 28 18.412053  -11.727536 22.613004 0.074759     20.734475         2.322422            11.200776             21.640699                             3.228646                                14.919324 realized/revised weather; not archived forecast snapshots
+            all_days daily_visits      raw_weather 28 19.487621   -7.804132 23.134149 0.079126     20.734475         1.246853             6.013431             21.640699                             2.153077                                 9.949204 realized/revised weather; not archived forecast snapshots
+            all_days daily_visits         baseline 28 20.734475  -12.397756 24.812451 0.084189     20.734475         0.000000             0.000000             21.640699                             0.906224                                 4.187591 realized/revised weather; not archived forecast snapshots
+            all_days daily_visits           lagged 28 21.017258  -15.082705 25.581515 0.085337     20.734475        -0.282783            -1.363830             21.640699                             0.623441                                 2.880872 realized/revised weather; not archived forecast snapshots
+            all_days daily_visits         compound 28 21.145102  -11.642029 24.836575 0.085856     20.734475        -0.410627            -1.980408             21.640699                             0.495597                                 2.290114 realized/revised weather; not archived forecast snapshots
+            all_days daily_visits calendar_closure 28 21.640699  -10.382133 25.445536 0.087868     20.734475        -0.906224            -4.370614             21.640699                             0.000000                                 0.000000 realized/revised weather; not archived forecast snapshots
+            all_days daily_visits           shocks 28 22.326883  -12.546171 26.509418 0.090654     20.734475        -1.592408            -7.680003             21.640699                            -0.686184                                -3.170806 realized/revised weather; not archived forecast snapshots
+            all_days daily_visits        anomalies 28 22.591249  -11.917700 26.611863 0.091728     20.734475        -1.856774            -8.955011             21.640699                            -0.950551                                -4.392421 realized/revised weather; not archived forecast snapshots
+    freeze_thaw_days daily_visits      all_weather  7 20.903135   -1.295591 24.991074 0.090602     22.773196         1.870061             8.211674             24.054225                             3.151090                                13.099945 realized/revised weather; not archived forecast snapshots
+    freeze_thaw_days daily_visits         baseline  7 22.773196   -2.409775 27.798698 0.098707     22.773196         0.000000             0.000000             24.054225                             1.281030                                 5.325592 realized/revised weather; not archived forecast snapshots
+    freeze_thaw_days daily_visits      raw_weather  7 23.006206    6.179380 26.183254 0.099717     22.773196        -0.233010            -1.023178             24.054225                             1.048019                                 4.356904 realized/revised weather; not archived forecast snapshots
+    freeze_thaw_days daily_visits calendar_closure  7 24.054225    3.369764 28.830702 0.104260     22.773196        -1.281030            -5.625165             24.054225                             0.000000                                 0.000000 realized/revised weather; not archived forecast snapshots
+    freeze_thaw_days daily_visits           lagged  7 24.129963   -7.474986 28.272968 0.104588     22.773196        -1.356768            -5.957741             24.054225                            -0.075738                                -0.314864 realized/revised weather; not archived forecast snapshots
+    freeze_thaw_days daily_visits         compound  7 24.250521   -3.263112 28.309980 0.105111     22.773196        -1.477325            -6.487124             24.054225                            -0.196296                                -0.816055 realized/revised weather; not archived forecast snapshots
+    freeze_thaw_days daily_visits           shocks  7 25.367072   -2.802322 29.708295 0.109950     22.773196        -2.593876           -11.390042             24.054225                            -1.312847                                -5.457863 realized/revised weather; not archived forecast snapshots
+    freeze_thaw_days daily_visits        anomalies  7 26.031108   -1.979656 30.178079 0.112828     22.773196        -3.257913           -14.305910             24.054225                            -1.976883                                -8.218444 realized/revised weather; not archived forecast snapshots
+      non_event_days daily_visits      all_weather 12 18.990533  -16.064058 24.194688 0.075937     19.927331         0.936798             4.701072             21.939536                             2.949003                                13.441499 realized/revised weather; not archived forecast snapshots
+      non_event_days daily_visits      raw_weather 12 19.684944  -15.208458 24.484771 0.078714     19.927331         0.242387             1.216355             21.939536                             2.254592                                10.276387 realized/revised weather; not archived forecast snapshots
+      non_event_days daily_visits         baseline 12 19.927331  -15.538118 24.525348 0.079683     19.927331         0.000000             0.000000             21.939536                             2.012204                                 9.171591 realized/revised weather; not archived forecast snapshots
+      non_event_days daily_visits           lagged 12 20.514851  -17.866942 26.305946 0.082032     19.927331        -0.587519            -2.948309             21.939536                             1.424685                                 6.493689 realized/revised weather; not archived forecast snapshots
+      non_event_days daily_visits         compound 12 20.574366  -16.593948 25.488892 0.082270     19.927331        -0.647035            -3.246972             21.939536                             1.365170                                 6.222418 realized/revised weather; not archived forecast snapshots
+      non_event_days daily_visits        anomalies 12 20.846846  -16.401857 26.042338 0.083360     19.927331        -0.919515            -4.614341             21.939536                             1.092690                                 4.980459 realized/revised weather; not archived forecast snapshots
+      non_event_days daily_visits           shocks 12 21.402190  -17.182606 27.016376 0.085580     19.927331        -1.474859            -7.401185             21.939536                             0.537346                                 2.449213 realized/revised weather; not archived forecast snapshots
+      non_event_days daily_visits calendar_closure 12 21.939536  -16.925101 26.314921 0.087729     19.927331        -2.012204           -10.097712             21.939536                             0.000000                                 0.000000 realized/revised weather; not archived forecast snapshots
+post_major_snow_1_3d daily_visits      raw_weather  7 20.364689    5.340916 24.839079 0.085005     22.965038         2.600348            11.323075             21.648169                             1.283480                                 5.928815 realized/revised weather; not archived forecast snapshots
+post_major_snow_1_3d daily_visits      all_weather  7 20.762085   -2.430468 24.213106 0.086663     22.965038         2.202953             9.592637             21.648169                             0.886084                                 4.093115 realized/revised weather; not archived forecast snapshots
+post_major_snow_1_3d daily_visits calendar_closure  7 21.648169    4.097192 26.313738 0.090362     22.965038         1.316868             5.734231             21.648169                             0.000000                                 0.000000 realized/revised weather; not archived forecast snapshots
+post_major_snow_1_3d daily_visits         compound  7 21.658694   -0.671284 25.027249 0.090406     22.965038         1.306344             5.688404             21.648169                            -0.010524                                -0.048615 realized/revised weather; not archived forecast snapshots
+post_major_snow_1_3d daily_visits         baseline  7 22.965038   -2.601617 25.880717 0.095859     22.965038         0.000000             0.000000             21.648169                            -1.316868                                -6.083047 realized/revised weather; not archived forecast snapshots
+post_major_snow_1_3d daily_visits           lagged  7 23.467492   -6.812515 26.146863 0.097956     22.965038        -0.502454            -2.187911             21.648169                            -1.819323                                -8.404049 realized/revised weather; not archived forecast snapshots
+post_major_snow_1_3d daily_visits           shocks  7 23.727807   -1.163058 27.048348 0.099043     22.965038        -0.762769            -3.321438             21.648169                            -2.079638                                -9.606530 realized/revised weather; not archived forecast snapshots
+post_major_snow_1_3d daily_visits        anomalies  7 24.282998   -0.231546 28.095869 0.101360     22.965038        -1.317960            -5.738987             21.648169                            -2.634829                               -12.171139 realized/revised weather; not archived forecast snapshots
+  weather_event_days daily_visits      all_weather 16 17.978192   -8.475144 21.349982 0.073851     21.339832         3.361640            15.752888             21.416571                             3.438378                                16.054757 realized/revised weather; not archived forecast snapshots
+  weather_event_days daily_visits      raw_weather 16 19.339629   -2.250888 22.066999 0.079444     21.339832         2.000203             9.373097             21.416571                             2.076941                                 9.697825 realized/revised weather; not archived forecast snapshots
+  weather_event_days daily_visits         baseline 16 21.339832  -10.042484 25.025617 0.087660     21.339832         0.000000             0.000000             21.416571                             0.076738                                 0.358313 realized/revised weather; not archived forecast snapshots
+  weather_event_days daily_visits           lagged 16 21.394063  -12.994527 25.024434 0.087883     21.339832        -0.054231            -0.254129             21.416571                             0.022508                                 0.105095 realized/revised weather; not archived forecast snapshots
+  weather_event_days daily_visits calendar_closure 16 21.416571   -5.474907 24.773484 0.087976     21.339832        -0.076738            -0.359602             21.416571                             0.000000                                 0.000000 realized/revised weather; not archived forecast snapshots
+  weather_event_days daily_visits         compound 16 21.573153   -7.928090 24.335866 0.088619     21.339832        -0.233321            -1.093360             21.416571                            -0.156583                                -0.731129 realized/revised weather; not archived forecast snapshots
+  weather_event_days daily_visits           shocks 16 23.020403   -9.068846 26.122744 0.094564     21.339832        -1.680571            -7.875276             21.416571                            -1.603832                                -7.488744 realized/revised weather; not archived forecast snapshots
+  weather_event_days daily_visits        anomalies 16 23.899551   -8.554583 27.031134 0.098175     21.339832        -2.559719           -11.995029             21.416571                            -2.482981                               -11.593736 realized/revised weather; not archived forecast snapshots
+
+Winners:
+             segment    scenario       mae  baseline_mae  calendar_closure_mae  mae_improvement_vs_calendar_closure_pct
+            all_days all_weather 18.412053     20.734475             21.640699                                14.919324
+    freeze_thaw_days all_weather 20.903135     22.773196             24.054225                                13.099945
+      non_event_days all_weather 18.990533     19.927331             21.939536                                13.441499
+post_major_snow_1_3d raw_weather 20.364689     22.965038             21.648169                                 5.928815
+  weather_event_days all_weather 17.978192     21.339832             21.416571                                16.054757
