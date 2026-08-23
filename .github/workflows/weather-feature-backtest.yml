@@ -6,6 +6,7 @@ on:
       - chronos2-weather-features
     paths:
       - 'scripts/weather_features.py'
+      - 'scripts/build_weather_history.py'
       - 'scripts/backtest_daily_weather_features.py'
       - 'tests/test_weather_features.py'
       - '.github/workflows/weather-feature-backtest.yml'
@@ -81,11 +82,21 @@ jobs:
       - name: Compile feature and backtest code
         run: |
           python -m py_compile scripts/weather_features.py
+          python -m py_compile scripts/build_weather_history.py
           python -m py_compile scripts/backtest_daily_weather_features.py
           python -m py_compile tests/test_weather_features.py
 
       - name: Test weather feature logic
         run: python tests/test_weather_features.py
+
+      - name: Build continuous historical forecast weather
+        shell: bash
+        run: |
+          WEATHER_BACKFILL="$RUNNER_TEMP/weather_backfilled.csv"
+          python scripts/build_weather_history.py \
+            --start-date 2021-01-01 \
+            --output "$WEATHER_BACKFILL"
+          echo "WEATHER_BACKFILL=$WEATHER_BACKFILL" >> "$GITHUB_ENV"
 
       - name: Run daily weather feature ablation
         env:
@@ -102,6 +113,7 @@ jobs:
             --num-cutoffs "$NUM_CUTOFFS" \
             --context-days 1095 \
             --min-history-days 120 \
+            --weather-url "$WEATHER_BACKFILL" \
             --output-dir validation-output-weather \
             2>&1 | tee validation-output-weather/run.log
           status=${PIPESTATUS[0]}
