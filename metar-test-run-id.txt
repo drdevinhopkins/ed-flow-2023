@@ -1,3 +1,0 @@
-run_id=32651991529
-run_number=2
-sha=c6eca361cb3de19fefb23e5e473687c3ed66beb0
