@@ -1,10 +1,6 @@
-name: AutoGluon staffing benchmark test
+name: AutoGluon staffing benchmark full test
 
 on:
-  push:
-    branches: ["autogluon-staffing-benchmark"]
-  pull_request:
-    branches: ["autogluon"]
   workflow_dispatch:
 
 permissions:
