@@ -5,3 +5,4 @@ dropbox
 python-dotenv
 requests
 holidays
+PyPDF2<3.0
