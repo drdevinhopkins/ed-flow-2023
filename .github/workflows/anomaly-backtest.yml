@@ -22,6 +22,13 @@ on:
       - '.github/workflows/anomaly-backtest.yml'
       - 'scripts/backtest_anomaly_detection.py'
       - 'tests/test_anomaly_backtest.py'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/anomaly-backtest.yml'
+      - 'scripts/backtest_anomaly_detection.py'
+      - 'tests/test_anomaly_backtest.py'
 
 permissions:
   contents: read
