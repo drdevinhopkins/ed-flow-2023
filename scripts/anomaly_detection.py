@@ -34,7 +34,10 @@ for column in tqdm(df.columns.to_list()):
 
         m = Prophet(interval_width=0.95)
         m.fit(df[['ds', column]].rename(columns={column: 'y'}))
-        future = m.make_future_dataframe(periods=24*2, freq='h')
+        # Keep a full extra day of headroom beyond the 24h forecast horizon.
+        # The anomaly ranges refresh daily, so 48h could become one hour short
+        # around the refresh boundary before the new file finished publishing.
+        future = m.make_future_dataframe(periods=24*3, freq='h')
         forecast = m.predict(future.tail(24*14))
         if FIRST_RUN:
             output['ds'] = forecast['ds']
