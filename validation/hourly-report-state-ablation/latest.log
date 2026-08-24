@@ -1,0 +1,514 @@
+Targets: Total_TBS, POD_TBS, Vertical_TBS, TTStr, Overflow, WAITINGADM
+Eligible Hourly Report features (43): CUM_ADMREQ, CUM_BA1, FLS, PSYCH_WAITINGADM, INFLOW_AMBULANCES, INFLOW_AMBULATORY, INFLOW_STRETCHER, Infl_Ambulances_cum, Infl_Ambulatory_cum, Infl_Stretcher_cum, Inflow_Cum_Total, Inflow_Total, reoriented_cum, reoriented_cum_MD, POST_POD1, TRG_HALLWAY1, TRG_HALLWAY_TBS, vert_tbs, POD_GREEN, POD_GREEN_TBS, POD_ORANGE, POD_ORANGE_TBS, POD_YELLOW, POD_YELLOW_TBS, Pod_T, QTRACK1, RESUS, POD_CONS_MORE2H, POD_CT_MORE2H, POD_IMCONS_MORE4H, POD_XRAY_MORE2H, RAZ_CONS_MORE2H, RAZ_CT_MORE2H1, RAZ_IMCONS_MORE4H, RAZ_XRAY_MORE2H, PSYCH1, AMBVERT1, AMBVERTTBS, QTrack_TBS, RAZ_LAZYBOY, RAZ_TBS, RAZ_WAITINGREZ, VERTSTRET
+Scenarios (53): baseline, feature__AMBVERT1, feature__AMBVERTTBS, feature__CUM_ADMREQ, feature__CUM_BA1, feature__FLS, feature__INFLOW_AMBULANCES, feature__INFLOW_AMBULATORY, feature__INFLOW_STRETCHER, feature__Infl_Ambulances_cum, feature__Infl_Ambulatory_cum, feature__Infl_Stretcher_cum, feature__Inflow_Cum_Total, feature__Inflow_Total, feature__POD_CONS_MORE2H, feature__POD_CT_MORE2H, feature__POD_GREEN, feature__POD_GREEN_TBS, feature__POD_IMCONS_MORE4H, feature__POD_ORANGE, feature__POD_ORANGE_TBS, feature__POD_XRAY_MORE2H, feature__POD_YELLOW, feature__POD_YELLOW_TBS, feature__POST_POD1, feature__PSYCH1, feature__PSYCH_WAITINGADM, feature__Pod_T, feature__QTRACK1, feature__QTrack_TBS, feature__RAZ_CONS_MORE2H, feature__RAZ_CT_MORE2H1, feature__RAZ_IMCONS_MORE4H, feature__RAZ_LAZYBOY, feature__RAZ_TBS, feature__RAZ_WAITINGREZ, feature__RAZ_XRAY_MORE2H, feature__RESUS, feature__TRG_HALLWAY1, feature__TRG_HALLWAY_TBS, feature__VERTSTRET, feature__reoriented_cum, feature__reoriented_cum_MD, feature__vert_tbs, family__admission_pressure, family__arrivals_inflow, family__hallway_overflow_state, family__other_state, family__pod_resus_qtrack_state, family__process_backlog, family__psych_state, family__vertical_raz_state, all_state
+Cutoffs (8): [Timestamp('2026-07-05 00:00:00'), Timestamp('2026-07-12 00:00:00'), Timestamp('2026-07-19 00:00:00'), Timestamp('2026-07-26 00:00:00'), Timestamp('2026-08-02 00:00:00'), Timestamp('2026-08-09 00:00:00'), Timestamp('2026-08-16 00:00:00'), Timestamp('2026-08-23 00:00:00')]
+Leakage guard: Hourly Report state is passed only as past-only covariates; future_df=None.
+Loading amazon/chronos-2 on cpu
+Loading weights:   0%|          | 0/170 [00:00<?, ?it/s]Loading weights: 100%|██████████| 170/170 [00:00<00:00, 5551.74it/s]
+Forecasting cutoff=2026-07-05 00:00:00 scenario=baseline feature_count=0
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__AMBVERT1 feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__AMBVERTTBS feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__CUM_ADMREQ feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__CUM_BA1 feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__FLS feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__INFLOW_AMBULANCES feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__INFLOW_AMBULATORY feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__INFLOW_STRETCHER feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__Infl_Ambulances_cum feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__Infl_Ambulatory_cum feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__Infl_Stretcher_cum feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__Inflow_Cum_Total feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__Inflow_Total feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__POD_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__POD_CT_MORE2H feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__POD_GREEN feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__POD_GREEN_TBS feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__POD_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__POD_ORANGE feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__POD_ORANGE_TBS feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__POD_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__POD_YELLOW feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__POD_YELLOW_TBS feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__POST_POD1 feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__PSYCH1 feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__PSYCH_WAITINGADM feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__Pod_T feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__QTRACK1 feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__QTrack_TBS feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__RAZ_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__RAZ_CT_MORE2H1 feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__RAZ_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__RAZ_LAZYBOY feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__RAZ_TBS feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__RAZ_WAITINGREZ feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__RAZ_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__RESUS feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__TRG_HALLWAY1 feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__TRG_HALLWAY_TBS feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__VERTSTRET feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__reoriented_cum feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__reoriented_cum_MD feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=feature__vert_tbs feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=family__admission_pressure feature_count=4
+Forecasting cutoff=2026-07-05 00:00:00 scenario=family__arrivals_inflow feature_count=10
+Forecasting cutoff=2026-07-05 00:00:00 scenario=family__hallway_overflow_state feature_count=3
+Forecasting cutoff=2026-07-05 00:00:00 scenario=family__other_state feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=family__pod_resus_qtrack_state feature_count=9
+Forecasting cutoff=2026-07-05 00:00:00 scenario=family__process_backlog feature_count=8
+Forecasting cutoff=2026-07-05 00:00:00 scenario=family__psych_state feature_count=1
+Forecasting cutoff=2026-07-05 00:00:00 scenario=family__vertical_raz_state feature_count=7
+Forecasting cutoff=2026-07-05 00:00:00 scenario=all_state feature_count=43
+Forecasting cutoff=2026-07-12 00:00:00 scenario=baseline feature_count=0
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__AMBVERT1 feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__AMBVERTTBS feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__CUM_ADMREQ feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__CUM_BA1 feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__FLS feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__INFLOW_AMBULANCES feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__INFLOW_AMBULATORY feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__INFLOW_STRETCHER feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__Infl_Ambulances_cum feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__Infl_Ambulatory_cum feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__Infl_Stretcher_cum feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__Inflow_Cum_Total feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__Inflow_Total feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__POD_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__POD_CT_MORE2H feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__POD_GREEN feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__POD_GREEN_TBS feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__POD_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__POD_ORANGE feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__POD_ORANGE_TBS feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__POD_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__POD_YELLOW feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__POD_YELLOW_TBS feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__POST_POD1 feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__PSYCH1 feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__PSYCH_WAITINGADM feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__Pod_T feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__QTRACK1 feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__QTrack_TBS feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__RAZ_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__RAZ_CT_MORE2H1 feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__RAZ_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__RAZ_LAZYBOY feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__RAZ_TBS feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__RAZ_WAITINGREZ feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__RAZ_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__RESUS feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__TRG_HALLWAY1 feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__TRG_HALLWAY_TBS feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__VERTSTRET feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__reoriented_cum feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__reoriented_cum_MD feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=feature__vert_tbs feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=family__admission_pressure feature_count=4
+Forecasting cutoff=2026-07-12 00:00:00 scenario=family__arrivals_inflow feature_count=10
+Forecasting cutoff=2026-07-12 00:00:00 scenario=family__hallway_overflow_state feature_count=3
+Forecasting cutoff=2026-07-12 00:00:00 scenario=family__other_state feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=family__pod_resus_qtrack_state feature_count=9
+Forecasting cutoff=2026-07-12 00:00:00 scenario=family__process_backlog feature_count=8
+Forecasting cutoff=2026-07-12 00:00:00 scenario=family__psych_state feature_count=1
+Forecasting cutoff=2026-07-12 00:00:00 scenario=family__vertical_raz_state feature_count=7
+Forecasting cutoff=2026-07-12 00:00:00 scenario=all_state feature_count=43
+Forecasting cutoff=2026-07-19 00:00:00 scenario=baseline feature_count=0
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__AMBVERT1 feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__AMBVERTTBS feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__CUM_ADMREQ feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__CUM_BA1 feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__FLS feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__INFLOW_AMBULANCES feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__INFLOW_AMBULATORY feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__INFLOW_STRETCHER feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__Infl_Ambulances_cum feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__Infl_Ambulatory_cum feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__Infl_Stretcher_cum feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__Inflow_Cum_Total feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__Inflow_Total feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__POD_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__POD_CT_MORE2H feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__POD_GREEN feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__POD_GREEN_TBS feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__POD_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__POD_ORANGE feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__POD_ORANGE_TBS feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__POD_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__POD_YELLOW feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__POD_YELLOW_TBS feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__POST_POD1 feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__PSYCH1 feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__PSYCH_WAITINGADM feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__Pod_T feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__QTRACK1 feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__QTrack_TBS feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__RAZ_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__RAZ_CT_MORE2H1 feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__RAZ_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__RAZ_LAZYBOY feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__RAZ_TBS feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__RAZ_WAITINGREZ feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__RAZ_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__RESUS feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__TRG_HALLWAY1 feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__TRG_HALLWAY_TBS feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__VERTSTRET feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__reoriented_cum feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__reoriented_cum_MD feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=feature__vert_tbs feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=family__admission_pressure feature_count=4
+Forecasting cutoff=2026-07-19 00:00:00 scenario=family__arrivals_inflow feature_count=10
+Forecasting cutoff=2026-07-19 00:00:00 scenario=family__hallway_overflow_state feature_count=3
+Forecasting cutoff=2026-07-19 00:00:00 scenario=family__other_state feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=family__pod_resus_qtrack_state feature_count=9
+Forecasting cutoff=2026-07-19 00:00:00 scenario=family__process_backlog feature_count=8
+Forecasting cutoff=2026-07-19 00:00:00 scenario=family__psych_state feature_count=1
+Forecasting cutoff=2026-07-19 00:00:00 scenario=family__vertical_raz_state feature_count=7
+Forecasting cutoff=2026-07-19 00:00:00 scenario=all_state feature_count=43
+Forecasting cutoff=2026-07-26 00:00:00 scenario=baseline feature_count=0
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__AMBVERT1 feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__AMBVERTTBS feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__CUM_ADMREQ feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__CUM_BA1 feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__FLS feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__INFLOW_AMBULANCES feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__INFLOW_AMBULATORY feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__INFLOW_STRETCHER feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__Infl_Ambulances_cum feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__Infl_Ambulatory_cum feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__Infl_Stretcher_cum feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__Inflow_Cum_Total feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__Inflow_Total feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__POD_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__POD_CT_MORE2H feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__POD_GREEN feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__POD_GREEN_TBS feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__POD_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__POD_ORANGE feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__POD_ORANGE_TBS feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__POD_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__POD_YELLOW feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__POD_YELLOW_TBS feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__POST_POD1 feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__PSYCH1 feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__PSYCH_WAITINGADM feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__Pod_T feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__QTRACK1 feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__QTrack_TBS feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__RAZ_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__RAZ_CT_MORE2H1 feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__RAZ_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__RAZ_LAZYBOY feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__RAZ_TBS feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__RAZ_WAITINGREZ feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__RAZ_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__RESUS feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__TRG_HALLWAY1 feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__TRG_HALLWAY_TBS feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__VERTSTRET feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__reoriented_cum feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__reoriented_cum_MD feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=feature__vert_tbs feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=family__admission_pressure feature_count=4
+Forecasting cutoff=2026-07-26 00:00:00 scenario=family__arrivals_inflow feature_count=10
+Forecasting cutoff=2026-07-26 00:00:00 scenario=family__hallway_overflow_state feature_count=3
+Forecasting cutoff=2026-07-26 00:00:00 scenario=family__other_state feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=family__pod_resus_qtrack_state feature_count=9
+Forecasting cutoff=2026-07-26 00:00:00 scenario=family__process_backlog feature_count=8
+Forecasting cutoff=2026-07-26 00:00:00 scenario=family__psych_state feature_count=1
+Forecasting cutoff=2026-07-26 00:00:00 scenario=family__vertical_raz_state feature_count=7
+Forecasting cutoff=2026-07-26 00:00:00 scenario=all_state feature_count=43
+Forecasting cutoff=2026-08-02 00:00:00 scenario=baseline feature_count=0
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__AMBVERT1 feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__AMBVERTTBS feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__CUM_ADMREQ feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__CUM_BA1 feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__FLS feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__INFLOW_AMBULANCES feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__INFLOW_AMBULATORY feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__INFLOW_STRETCHER feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__Infl_Ambulances_cum feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__Infl_Ambulatory_cum feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__Infl_Stretcher_cum feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__Inflow_Cum_Total feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__Inflow_Total feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__POD_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__POD_CT_MORE2H feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__POD_GREEN feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__POD_GREEN_TBS feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__POD_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__POD_ORANGE feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__POD_ORANGE_TBS feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__POD_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__POD_YELLOW feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__POD_YELLOW_TBS feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__POST_POD1 feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__PSYCH1 feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__PSYCH_WAITINGADM feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__Pod_T feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__QTRACK1 feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__QTrack_TBS feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__RAZ_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__RAZ_CT_MORE2H1 feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__RAZ_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__RAZ_LAZYBOY feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__RAZ_TBS feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__RAZ_WAITINGREZ feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__RAZ_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__RESUS feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__TRG_HALLWAY1 feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__TRG_HALLWAY_TBS feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__VERTSTRET feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__reoriented_cum feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__reoriented_cum_MD feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=feature__vert_tbs feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=family__admission_pressure feature_count=4
+Forecasting cutoff=2026-08-02 00:00:00 scenario=family__arrivals_inflow feature_count=10
+Forecasting cutoff=2026-08-02 00:00:00 scenario=family__hallway_overflow_state feature_count=3
+Forecasting cutoff=2026-08-02 00:00:00 scenario=family__other_state feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=family__pod_resus_qtrack_state feature_count=9
+Forecasting cutoff=2026-08-02 00:00:00 scenario=family__process_backlog feature_count=8
+Forecasting cutoff=2026-08-02 00:00:00 scenario=family__psych_state feature_count=1
+Forecasting cutoff=2026-08-02 00:00:00 scenario=family__vertical_raz_state feature_count=7
+Forecasting cutoff=2026-08-02 00:00:00 scenario=all_state feature_count=43
+Forecasting cutoff=2026-08-09 00:00:00 scenario=baseline feature_count=0
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__AMBVERT1 feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__AMBVERTTBS feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__CUM_ADMREQ feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__CUM_BA1 feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__FLS feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__INFLOW_AMBULANCES feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__INFLOW_AMBULATORY feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__INFLOW_STRETCHER feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__Infl_Ambulances_cum feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__Infl_Ambulatory_cum feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__Infl_Stretcher_cum feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__Inflow_Cum_Total feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__Inflow_Total feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__POD_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__POD_CT_MORE2H feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__POD_GREEN feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__POD_GREEN_TBS feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__POD_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__POD_ORANGE feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__POD_ORANGE_TBS feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__POD_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__POD_YELLOW feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__POD_YELLOW_TBS feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__POST_POD1 feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__PSYCH1 feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__PSYCH_WAITINGADM feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__Pod_T feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__QTRACK1 feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__QTrack_TBS feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__RAZ_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__RAZ_CT_MORE2H1 feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__RAZ_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__RAZ_LAZYBOY feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__RAZ_TBS feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__RAZ_WAITINGREZ feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__RAZ_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__RESUS feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__TRG_HALLWAY1 feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__TRG_HALLWAY_TBS feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__VERTSTRET feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__reoriented_cum feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__reoriented_cum_MD feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=feature__vert_tbs feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=family__admission_pressure feature_count=4
+Forecasting cutoff=2026-08-09 00:00:00 scenario=family__arrivals_inflow feature_count=10
+Forecasting cutoff=2026-08-09 00:00:00 scenario=family__hallway_overflow_state feature_count=3
+Forecasting cutoff=2026-08-09 00:00:00 scenario=family__other_state feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=family__pod_resus_qtrack_state feature_count=9
+Forecasting cutoff=2026-08-09 00:00:00 scenario=family__process_backlog feature_count=8
+Forecasting cutoff=2026-08-09 00:00:00 scenario=family__psych_state feature_count=1
+Forecasting cutoff=2026-08-09 00:00:00 scenario=family__vertical_raz_state feature_count=7
+Forecasting cutoff=2026-08-09 00:00:00 scenario=all_state feature_count=43
+Forecasting cutoff=2026-08-16 00:00:00 scenario=baseline feature_count=0
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__AMBVERT1 feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__AMBVERTTBS feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__CUM_ADMREQ feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__CUM_BA1 feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__FLS feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__INFLOW_AMBULANCES feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__INFLOW_AMBULATORY feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__INFLOW_STRETCHER feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__Infl_Ambulances_cum feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__Infl_Ambulatory_cum feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__Infl_Stretcher_cum feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__Inflow_Cum_Total feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__Inflow_Total feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__POD_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__POD_CT_MORE2H feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__POD_GREEN feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__POD_GREEN_TBS feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__POD_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__POD_ORANGE feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__POD_ORANGE_TBS feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__POD_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__POD_YELLOW feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__POD_YELLOW_TBS feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__POST_POD1 feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__PSYCH1 feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__PSYCH_WAITINGADM feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__Pod_T feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__QTRACK1 feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__QTrack_TBS feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__RAZ_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__RAZ_CT_MORE2H1 feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__RAZ_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__RAZ_LAZYBOY feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__RAZ_TBS feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__RAZ_WAITINGREZ feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__RAZ_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__RESUS feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__TRG_HALLWAY1 feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__TRG_HALLWAY_TBS feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__VERTSTRET feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__reoriented_cum feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__reoriented_cum_MD feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=feature__vert_tbs feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=family__admission_pressure feature_count=4
+Forecasting cutoff=2026-08-16 00:00:00 scenario=family__arrivals_inflow feature_count=10
+Forecasting cutoff=2026-08-16 00:00:00 scenario=family__hallway_overflow_state feature_count=3
+Forecasting cutoff=2026-08-16 00:00:00 scenario=family__other_state feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=family__pod_resus_qtrack_state feature_count=9
+Forecasting cutoff=2026-08-16 00:00:00 scenario=family__process_backlog feature_count=8
+Forecasting cutoff=2026-08-16 00:00:00 scenario=family__psych_state feature_count=1
+Forecasting cutoff=2026-08-16 00:00:00 scenario=family__vertical_raz_state feature_count=7
+Forecasting cutoff=2026-08-16 00:00:00 scenario=all_state feature_count=43
+Forecasting cutoff=2026-08-23 00:00:00 scenario=baseline feature_count=0
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__AMBVERT1 feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__AMBVERTTBS feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__CUM_ADMREQ feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__CUM_BA1 feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__FLS feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__INFLOW_AMBULANCES feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__INFLOW_AMBULATORY feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__INFLOW_STRETCHER feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__Infl_Ambulances_cum feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__Infl_Ambulatory_cum feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__Infl_Stretcher_cum feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__Inflow_Cum_Total feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__Inflow_Total feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__POD_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__POD_CT_MORE2H feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__POD_GREEN feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__POD_GREEN_TBS feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__POD_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__POD_ORANGE feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__POD_ORANGE_TBS feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__POD_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__POD_YELLOW feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__POD_YELLOW_TBS feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__POST_POD1 feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__PSYCH1 feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__PSYCH_WAITINGADM feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__Pod_T feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__QTRACK1 feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__QTrack_TBS feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__RAZ_CONS_MORE2H feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__RAZ_CT_MORE2H1 feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__RAZ_IMCONS_MORE4H feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__RAZ_LAZYBOY feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__RAZ_TBS feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__RAZ_WAITINGREZ feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__RAZ_XRAY_MORE2H feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__RESUS feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__TRG_HALLWAY1 feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__TRG_HALLWAY_TBS feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__VERTSTRET feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__reoriented_cum feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__reoriented_cum_MD feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=feature__vert_tbs feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=family__admission_pressure feature_count=4
+Forecasting cutoff=2026-08-23 00:00:00 scenario=family__arrivals_inflow feature_count=10
+Forecasting cutoff=2026-08-23 00:00:00 scenario=family__hallway_overflow_state feature_count=3
+Forecasting cutoff=2026-08-23 00:00:00 scenario=family__other_state feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=family__pod_resus_qtrack_state feature_count=9
+Forecasting cutoff=2026-08-23 00:00:00 scenario=family__process_backlog feature_count=8
+Forecasting cutoff=2026-08-23 00:00:00 scenario=family__psych_state feature_count=1
+Forecasting cutoff=2026-08-23 00:00:00 scenario=family__vertical_raz_state feature_count=7
+Forecasting cutoff=2026-08-23 00:00:00 scenario=all_state feature_count=43
+
+=== Top individual Hourly Report state features by target/horizon ===
+target_name horizon_band            features  mae_improvement_pct  beats_baseline  rank
+   Overflow       h01_04    PSYCH_WAITINGADM             2.100508            True     1
+   Overflow       h01_04               Pod_T             2.043991            True     2
+   Overflow       h01_04              PSYCH1             1.866265            True     3
+   Overflow       h01_04          POD_ORANGE             1.413904            True     4
+   Overflow       h01_04          QTrack_TBS             1.131173            True     5
+   Overflow       h01_04           POD_GREEN             0.989814            True     6
+   Overflow       h01_04      RAZ_WAITINGREZ             0.943743            True     7
+   Overflow       h01_04        TRG_HALLWAY1             0.594759            True     8
+   Overflow       h05_08          POD_YELLOW             2.091837            True     1
+   Overflow       h05_08               Pod_T             2.009366            True     2
+   Overflow       h05_08    PSYCH_WAITINGADM             2.001090            True     3
+   Overflow       h05_08              PSYCH1             1.484186            True     4
+   Overflow       h05_08          POD_ORANGE             1.404662            True     5
+   Overflow       h05_08          CUM_ADMREQ             1.357723            True     6
+   Overflow       h05_08     POD_CONS_MORE2H             1.346282            True     7
+   Overflow       h05_08   POD_IMCONS_MORE4H             1.229878            True     8
+   Overflow       h09_12               Pod_T             8.098871            True     1
+   Overflow       h09_12          POD_YELLOW             6.383629            True     2
+   Overflow       h09_12               RESUS             4.226899            True     3
+   Overflow       h09_12           POD_GREEN             3.328883            True     4
+   Overflow       h09_12     POD_CONS_MORE2H             2.921196            True     5
+   Overflow       h09_12         RAZ_LAZYBOY             2.768172            True     6
+   Overflow       h09_12           POST_POD1             2.429211            True     7
+   Overflow       h09_12   POD_IMCONS_MORE4H             2.013673            True     8
+   Overflow       h13_24               Pod_T             5.689505            True     1
+   Overflow       h13_24               RESUS             3.720159            True     2
+   Overflow       h13_24          POD_YELLOW             3.716445            True     3
+   Overflow       h13_24   POD_IMCONS_MORE4H             1.907478            True     4
+   Overflow       h13_24           POD_GREEN             1.688934            True     5
+   Overflow       h13_24         RAZ_LAZYBOY             1.644604            True     6
+   Overflow       h13_24          POD_ORANGE             1.223930            True     7
+   Overflow       h13_24   RAZ_IMCONS_MORE4H             1.205905            True     8
+    POD_TBS       h01_04 Infl_Ambulances_cum             1.961273            True     1
+    POD_TBS       h01_04          POD_YELLOW             1.762105            True     2
+    POD_TBS       h01_04  Infl_Stretcher_cum             1.598794            True     3
+    POD_TBS       h01_04      RAZ_WAITINGREZ             1.562657            True     4
+    POD_TBS       h01_04           POD_GREEN             1.530132            True     5
+    POD_TBS       h01_04               Pod_T             1.522082            True     6
+    POD_TBS       h01_04   POD_IMCONS_MORE4H             1.405145            True     7
+    POD_TBS       h01_04             RAZ_TBS             1.317313            True     8
+    POD_TBS       h05_08          POD_ORANGE             1.222348            True     1
+    POD_TBS       h05_08               Pod_T             1.153018            True     2
+    POD_TBS       h05_08      POD_ORANGE_TBS             1.028630            True     3
+    POD_TBS       h05_08             RAZ_TBS             0.861254            True     4
+    POD_TBS       h05_08   RAZ_IMCONS_MORE4H             0.679329            True     5
+    POD_TBS       h05_08     RAZ_XRAY_MORE2H             0.616360            True     6
+    POD_TBS       h05_08        Inflow_Total             0.535537            True     7
+    POD_TBS       h05_08   INFLOW_AMBULANCES             0.517174            True     8
+    POD_TBS       h09_12             RAZ_TBS             2.083599            True     1
+    POD_TBS       h09_12      reoriented_cum             1.738046            True     2
+    POD_TBS       h09_12      RAZ_CT_MORE2H1             1.419132            True     3
+    POD_TBS       h09_12     POD_CONS_MORE2H             1.359521            True     4
+    POD_TBS       h09_12             CUM_BA1             1.229434            True     5
+    POD_TBS       h09_12    PSYCH_WAITINGADM             1.103046            True     6
+    POD_TBS       h09_12     RAZ_XRAY_MORE2H             1.080819            True     7
+    POD_TBS       h09_12          POD_YELLOW             0.967158            True     8
+    POD_TBS       h13_24    Inflow_Cum_Total             1.069487            True     1
+    POD_TBS       h13_24  Infl_Stretcher_cum             0.868495            True     2
+    POD_TBS       h13_24             RAZ_TBS             0.857240            True     3
+    POD_TBS       h13_24       POD_CT_MORE2H             0.764516            True     4
+    POD_TBS       h13_24          POD_ORANGE             0.621880            True     5
+    POD_TBS       h13_24      POD_YELLOW_TBS             0.556059            True     6
+    POD_TBS       h13_24       POD_GREEN_TBS             0.473692            True     7
+    POD_TBS       h13_24      reoriented_cum             0.464940            True     8
+      TTStr       h01_04             QTRACK1             5.767119            True     1
+      TTStr       h01_04   POD_IMCONS_MORE4H             4.440503            True     2
+      TTStr       h01_04 Infl_Ambulances_cum             4.375789            True     3
+      TTStr       h01_04          QTrack_TBS             3.813770            True     4
+      TTStr       h01_04     POD_CONS_MORE2H             3.679063            True     5
+      TTStr       h01_04  Infl_Stretcher_cum             3.404895            True     6
+      TTStr       h01_04               RESUS             3.186512            True     7
+      TTStr       h01_04     POD_XRAY_MORE2H             2.507880            True     8
+      TTStr       h05_08   POD_IMCONS_MORE4H             4.756973            True     1
+      TTStr       h05_08         RAZ_LAZYBOY             4.166167            True     2
+      TTStr       h05_08               Pod_T             3.286572            True     3
+      TTStr       h05_08             RAZ_TBS             2.995521            True     4
+      TTStr       h05_08      RAZ_WAITINGREZ             2.865022            True     5
+      TTStr       h05_08          POD_YELLOW             2.393217            True     6
+      TTStr       h05_08               RESUS             2.172283            True     7
+      TTStr       h05_08           VERTSTRET             2.038773            True     8

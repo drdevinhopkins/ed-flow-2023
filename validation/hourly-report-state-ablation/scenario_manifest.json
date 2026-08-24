@@ -1,0 +1,236 @@
+{
+  "all_state": [
+    "AMBVERT1",
+    "AMBVERTTBS",
+    "CUM_ADMREQ",
+    "CUM_BA1",
+    "FLS",
+    "INFLOW_AMBULANCES",
+    "INFLOW_AMBULATORY",
+    "INFLOW_STRETCHER",
+    "Infl_Ambulances_cum",
+    "Infl_Ambulatory_cum",
+    "Infl_Stretcher_cum",
+    "Inflow_Cum_Total",
+    "Inflow_Total",
+    "POD_CONS_MORE2H",
+    "POD_CT_MORE2H",
+    "POD_GREEN",
+    "POD_GREEN_TBS",
+    "POD_IMCONS_MORE4H",
+    "POD_ORANGE",
+    "POD_ORANGE_TBS",
+    "POD_XRAY_MORE2H",
+    "POD_YELLOW",
+    "POD_YELLOW_TBS",
+    "POST_POD1",
+    "PSYCH1",
+    "PSYCH_WAITINGADM",
+    "Pod_T",
+    "QTRACK1",
+    "QTrack_TBS",
+    "RAZ_CONS_MORE2H",
+    "RAZ_CT_MORE2H1",
+    "RAZ_IMCONS_MORE4H",
+    "RAZ_LAZYBOY",
+    "RAZ_TBS",
+    "RAZ_WAITINGREZ",
+    "RAZ_XRAY_MORE2H",
+    "RESUS",
+    "TRG_HALLWAY1",
+    "TRG_HALLWAY_TBS",
+    "VERTSTRET",
+    "reoriented_cum",
+    "reoriented_cum_MD",
+    "vert_tbs"
+  ],
+  "baseline": [],
+  "family__admission_pressure": [
+    "CUM_ADMREQ",
+    "CUM_BA1",
+    "FLS",
+    "PSYCH_WAITINGADM"
+  ],
+  "family__arrivals_inflow": [
+    "INFLOW_AMBULANCES",
+    "INFLOW_AMBULATORY",
+    "INFLOW_STRETCHER",
+    "Infl_Ambulances_cum",
+    "Infl_Ambulatory_cum",
+    "Infl_Stretcher_cum",
+    "Inflow_Cum_Total",
+    "Inflow_Total",
+    "reoriented_cum",
+    "reoriented_cum_MD"
+  ],
+  "family__hallway_overflow_state": [
+    "POST_POD1",
+    "TRG_HALLWAY1",
+    "TRG_HALLWAY_TBS"
+  ],
+  "family__other_state": [
+    "vert_tbs"
+  ],
+  "family__pod_resus_qtrack_state": [
+    "POD_GREEN",
+    "POD_GREEN_TBS",
+    "POD_ORANGE",
+    "POD_ORANGE_TBS",
+    "POD_YELLOW",
+    "POD_YELLOW_TBS",
+    "Pod_T",
+    "QTRACK1",
+    "RESUS"
+  ],
+  "family__process_backlog": [
+    "POD_CONS_MORE2H",
+    "POD_CT_MORE2H",
+    "POD_IMCONS_MORE4H",
+    "POD_XRAY_MORE2H",
+    "RAZ_CONS_MORE2H",
+    "RAZ_CT_MORE2H1",
+    "RAZ_IMCONS_MORE4H",
+    "RAZ_XRAY_MORE2H"
+  ],
+  "family__psych_state": [
+    "PSYCH1"
+  ],
+  "family__vertical_raz_state": [
+    "AMBVERT1",
+    "AMBVERTTBS",
+    "QTrack_TBS",
+    "RAZ_LAZYBOY",
+    "RAZ_TBS",
+    "RAZ_WAITINGREZ",
+    "VERTSTRET"
+  ],
+  "feature__AMBVERT1": [
+    "AMBVERT1"
+  ],
+  "feature__AMBVERTTBS": [
+    "AMBVERTTBS"
+  ],
+  "feature__CUM_ADMREQ": [
+    "CUM_ADMREQ"
+  ],
+  "feature__CUM_BA1": [
+    "CUM_BA1"
+  ],
+  "feature__FLS": [
+    "FLS"
+  ],
+  "feature__INFLOW_AMBULANCES": [
+    "INFLOW_AMBULANCES"
+  ],
+  "feature__INFLOW_AMBULATORY": [
+    "INFLOW_AMBULATORY"
+  ],
+  "feature__INFLOW_STRETCHER": [
+    "INFLOW_STRETCHER"
+  ],
+  "feature__Infl_Ambulances_cum": [
+    "Infl_Ambulances_cum"
+  ],
+  "feature__Infl_Ambulatory_cum": [
+    "Infl_Ambulatory_cum"
+  ],
+  "feature__Infl_Stretcher_cum": [
+    "Infl_Stretcher_cum"
+  ],
+  "feature__Inflow_Cum_Total": [
+    "Inflow_Cum_Total"
+  ],
+  "feature__Inflow_Total": [
+    "Inflow_Total"
+  ],
+  "feature__POD_CONS_MORE2H": [
+    "POD_CONS_MORE2H"
+  ],
+  "feature__POD_CT_MORE2H": [
+    "POD_CT_MORE2H"
+  ],
+  "feature__POD_GREEN": [
+    "POD_GREEN"
+  ],
+  "feature__POD_GREEN_TBS": [
+    "POD_GREEN_TBS"
+  ],
+  "feature__POD_IMCONS_MORE4H": [
+    "POD_IMCONS_MORE4H"
+  ],
+  "feature__POD_ORANGE": [
+    "POD_ORANGE"
+  ],
+  "feature__POD_ORANGE_TBS": [
+    "POD_ORANGE_TBS"
+  ],
+  "feature__POD_XRAY_MORE2H": [
+    "POD_XRAY_MORE2H"
+  ],
+  "feature__POD_YELLOW": [
+    "POD_YELLOW"
+  ],
+  "feature__POD_YELLOW_TBS": [
+    "POD_YELLOW_TBS"
+  ],
+  "feature__POST_POD1": [
+    "POST_POD1"
+  ],
+  "feature__PSYCH1": [
+    "PSYCH1"
+  ],
+  "feature__PSYCH_WAITINGADM": [
+    "PSYCH_WAITINGADM"
+  ],
+  "feature__Pod_T": [
+    "Pod_T"
+  ],
+  "feature__QTRACK1": [
+    "QTRACK1"
+  ],
+  "feature__QTrack_TBS": [
+    "QTrack_TBS"
+  ],
+  "feature__RAZ_CONS_MORE2H": [
+    "RAZ_CONS_MORE2H"
+  ],
+  "feature__RAZ_CT_MORE2H1": [
+    "RAZ_CT_MORE2H1"
+  ],
+  "feature__RAZ_IMCONS_MORE4H": [
+    "RAZ_IMCONS_MORE4H"
+  ],
+  "feature__RAZ_LAZYBOY": [
+    "RAZ_LAZYBOY"
+  ],
+  "feature__RAZ_TBS": [
+    "RAZ_TBS"
+  ],
+  "feature__RAZ_WAITINGREZ": [
+    "RAZ_WAITINGREZ"
+  ],
+  "feature__RAZ_XRAY_MORE2H": [
+    "RAZ_XRAY_MORE2H"
+  ],
+  "feature__RESUS": [
+    "RESUS"
+  ],
+  "feature__TRG_HALLWAY1": [
+    "TRG_HALLWAY1"
+  ],
+  "feature__TRG_HALLWAY_TBS": [
+    "TRG_HALLWAY_TBS"
+  ],
+  "feature__VERTSTRET": [
+    "VERTSTRET"
+  ],
+  "feature__reoriented_cum": [
+    "reoriented_cum"
+  ],
+  "feature__reoriented_cum_MD": [
+    "reoriented_cum_MD"
+  ],
+  "feature__vert_tbs": [
+    "vert_tbs"
+  ]
+}
