@@ -1,34 +1,8 @@
 name: External ED forecasting signals
 
 on:
-  push:
-    branches:
-      - regional-pressure-respiratory
-    paths:
-      - 'scripts/regional_ed_pressure.py'
-      - 'scripts/update_regional_ed_pressure.py'
-      - 'scripts/backtest_regional_ed_pressure.py'
-      - 'scripts/respiratory_surveillance.py'
-      - 'scripts/update_respiratory_surveillance.py'
-      - 'scripts/backtest_daily_respiratory_features.py'
-      - 'tests/test_regional_ed_pressure.py'
-      - 'tests/test_respiratory_surveillance.py'
-      - 'chronos-requirements.txt'
-      - '.github/workflows/external-signal-features.yml'
   pull_request:
-    branches:
-      - main
-    paths:
-      - 'scripts/regional_ed_pressure.py'
-      - 'scripts/update_regional_ed_pressure.py'
-      - 'scripts/backtest_regional_ed_pressure.py'
-      - 'scripts/respiratory_surveillance.py'
-      - 'scripts/update_respiratory_surveillance.py'
-      - 'scripts/backtest_daily_respiratory_features.py'
-      - 'tests/test_regional_ed_pressure.py'
-      - 'tests/test_respiratory_surveillance.py'
-      - 'chronos-requirements.txt'
-      - '.github/workflows/external-signal-features.yml'
+    branches: [main]
   workflow_dispatch:
     inputs:
       run_respiratory_backtest:
@@ -41,22 +15,21 @@ on:
         required: false
         default: '16'
   schedule:
+    # MSSS/Quebec.ca is hourly; archive after the expected publication delay.
     - cron: '55 * * * *'
+    # INSPQ reports are weekly.
     - cron: '25 15 * * 1'
 
 permissions:
   contents: read
 
 concurrency:
-  group: external-ed-signals-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: false
+  group: external-ed-signals-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test-feature-code:
-    if: >-
-      github.event_name == 'push' ||
-      github.event_name == 'pull_request' ||
-      github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -89,14 +62,13 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'schedule' && github.event.schedule == '55 * * * *')
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - name: Install collector dependencies
-        run: pip install pandas numpy requests dropbox beautifulsoup4
+      - run: pip install pandas numpy requests dropbox beautifulsoup4
       - name: Update Montréal peer-ED pressure archive
         env:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
@@ -120,8 +92,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - name: Install collector dependencies
-        run: pip install pandas requests dropbox 'PyPDF2<3.0'
+      - run: pip install pandas requests dropbox 'PyPDF2<3.0'
       - name: Update Montréal respiratory-surveillance archive
         env:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
@@ -137,9 +108,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request' ||
       (github.event_name == 'workflow_dispatch' && inputs.run_respiratory_backtest)
-    needs:
-      - test-feature-code
-      - archive-respiratory
+    needs: [test-feature-code, archive-respiratory]
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -170,7 +139,6 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           NUM_CUTOFFS: ${{ inputs.respiratory_cutoffs || '16' }}
-        shell: bash
         run: |
           mkdir -p validation-output-respiratory
           python scripts/backtest_daily_respiratory_features.py \
