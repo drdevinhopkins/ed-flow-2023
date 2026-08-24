@@ -1,7 +1,16 @@
-name: Hourly routed history-window backtest (sequential/manual)
+name: Hourly routed history-window backtest (research)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - chronos2-history-window-backtest
+    paths:
+      - '.github/workflows/hourly-history-window-routed-backtest.yml'
+      - 'scripts/backtest_hourly_history_windows_routed.py'
+      - 'scripts/hourly_feature_routing.py'
+      - 'scripts/backtest_hourly_final_features.py'
+      - 'scripts/staffing_features.py'
 
 permissions:
   contents: read
