@@ -32,7 +32,7 @@ FIXED_CUTOFFS = pd.to_datetime(
 
 
 def fixed_cutoffs(flow, *, horizon, num_cutoffs, spacing_hours, max_history_hours):
-    """Return the immutable validation origins after basic availability checks."""
+    """Return the immutable validation origins after invariant/availability checks."""
     if num_cutoffs != len(FIXED_CUTOFFS):
         raise ValueError(
             f"Fixed validation requires num_cutoffs={len(FIXED_CUTOFFS)}, "
@@ -41,6 +41,16 @@ def fixed_cutoffs(flow, *, horizon, num_cutoffs, spacing_hours, max_history_hour
     if spacing_hours != 1008:
         raise ValueError(
             f"Fixed validation requires spacing_hours=1008, got {spacing_hours}"
+        )
+
+    cutoffs = pd.DatetimeIndex(FIXED_CUTOFFS)
+    if not cutoffs.is_monotonic_increasing or not cutoffs.is_unique:
+        raise ValueError("Fixed validation cutoffs must be unique and increasing")
+    observed_spacing = cutoffs.to_series().diff().dropna()
+    expected_spacing = pd.Timedelta(hours=spacing_hours)
+    if not observed_spacing.eq(expected_spacing).all():
+        raise ValueError(
+            "Fixed validation cutoffs no longer match the required 1,008-hour spacing"
         )
 
     ds = pd.to_datetime(flow["ds"])
