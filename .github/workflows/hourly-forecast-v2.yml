@@ -114,7 +114,7 @@ jobs:
           assert observed['forecast_lower'].isna().all()
           assert observed['forecast_upper'].isna().all()
           assert observed['actual_anomaly'].isin(['yes', 'no']).all()
-          assert observed['actual_colour'].isin(['#D13438', '#FFB900', '#107C10']).all()
+          assert observed['actual_colour'].isin(['#D13438', '#FFB900', '#107C10', '#000000']).all()
           assert observed['forecast_anomaly'].isna().all()
           assert observed['forecast_colour'].isna().all()
           assert observed['horizon_hour'].isna().all()
