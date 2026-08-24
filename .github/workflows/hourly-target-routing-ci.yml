@@ -1,0 +1,39 @@
+name: Hourly target routing CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - chronos2-hourly-target-routing
+    paths:
+      - '.github/workflows/hourly-target-routing-ci.yml'
+      - 'scripts/hourly_feature_routing.py'
+      - 'scripts/chronos_forecast_routed.py'
+      - 'scripts/run_ed_flow_update.sh'
+      - 'tests/test_hourly_feature_routing.py'
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Compile routing code
+        run: |
+          python -m py_compile scripts/hourly_feature_routing.py
+          python -m py_compile scripts/chronos_forecast_routed.py
+
+      - name: Test routing table
+        run: python tests/test_hourly_feature_routing.py
+
+      - name: Check shell syntax
+        run: bash -n scripts/run_ed_flow_update.sh
+
+      - name: Check whitespace
+        run: git diff --check HEAD^ HEAD
