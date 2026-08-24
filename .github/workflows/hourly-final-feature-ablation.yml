@@ -137,3 +137,5 @@ jobs:
         run: |
           test -f validation-output-hourly-final/exit_code.txt
           test "$(cat validation-output-hourly-final/exit_code.txt)" = "0"
+
+# Trigger final ablation run
