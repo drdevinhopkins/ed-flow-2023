@@ -61,7 +61,6 @@ run_optional_step() {
 # endpoint, and neither the legacy hourly forecast nor forecast v2 consumes the
 # METAR history directly. Weather covariates come from weather.csv instead.
 run_step python scripts/get_current.py
-run_step python scripts/shiftadmin.py
 
 # Hard gate: do not forecast from stale/incomplete ED, staffing, or weather data.
 run_step python scripts/validate_forecast_inputs.py
@@ -70,9 +69,11 @@ run_step python scripts/validate_forecast_inputs.py
 run_step python scripts/chronos_forecast.py
 run_step python scripts/forecast_oncall_impact.py
 run_step python scripts/forecast_oncall_probability.py
-run_step python scripts/calculated_kpis.py
-run_step python scripts/alerts.py
+# run_step python scripts/calculated_kpis.py
+# run_step python scripts/alerts.py
 
 # Independent additive v2 output for the new Power BI report. Run this last and
 # non-blocking so a v2 failure never prevents the established pipeline outputs.
-run_optional_step python scripts/hourly_forecast_v2.py
+run_step python scripts/hourly_forecast_v2.py
+
+run_step python scripts/shiftadmin.py
