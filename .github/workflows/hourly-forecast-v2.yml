@@ -86,22 +86,61 @@ jobs:
               'TTStr', 'Overflow', 'WAITINGADM'
           }
           required = {
-              'ds', 'target_name', 'forecast', 'forecast_lower', 'forecast_upper',
-              'horizon_hour', 'horizon_band', 'scenario', 'feature_family',
-              'forecast_origin', 'generated_at_utc', 'routing_version',
+              'ds', 'target_name', 'actual', 'forecast',
+              'forecast_lower', 'forecast_upper',
+              'anomaly_yhat', 'anomaly_yhat_lower', 'anomaly_yhat_upper',
+              'actual_anomaly', 'actual_colour',
+              'forecast_anomaly', 'forecast_colour',
+              'row_type', 'horizon_hour', 'horizon_band',
+              'scenario', 'feature_family', 'forecast_origin',
+              'generated_at_utc', 'routing_version',
               'weather_routing_enabled'
           }
           assert required.issubset(frame.columns), sorted(required - set(frame.columns))
-          assert len(frame) == 144, len(frame)
+          assert len(frame) == 288, len(frame)
           assert set(frame['target_name']) == expected_targets
-          assert not frame[['forecast', 'forecast_lower', 'forecast_upper']].isna().any().any()
-          assert frame['horizon_hour'].min() == 1
-          assert frame['horizon_hour'].max() == 24
-          assert not frame['weather_routing_enabled'].astype(bool).any()
-          assert not frame['scenario'].str.startswith('weather').any()
+          assert set(frame['row_type']) == {'observed', 'forecast'}
           assert not frame[['ds', 'target_name']].duplicated().any()
-          print(frame.groupby(['target_name', 'scenario']).size())
-          print('forecast-v2.csv validated; legacy forecast files were not created or modified.')
+
+          observed = frame[frame['row_type'].eq('observed')].copy()
+          future = frame[frame['row_type'].eq('forecast')].copy()
+          assert len(observed) == 144, len(observed)
+          assert len(future) == 144, len(future)
+          assert observed.groupby('target_name').size().eq(24).all()
+          assert future.groupby('target_name').size().eq(24).all()
+
+          assert observed['actual'].notna().all()
+          assert observed['forecast'].isna().all()
+          assert observed['forecast_lower'].isna().all()
+          assert observed['forecast_upper'].isna().all()
+          assert observed['actual_anomaly'].isin(['yes', 'no']).all()
+          assert observed['actual_colour'].isin(['#D13438', '#FFB900', '#107C10']).all()
+          assert observed['forecast_anomaly'].isna().all()
+          assert observed['forecast_colour'].isna().all()
+          assert observed['horizon_hour'].isna().all()
+
+          assert future['actual'].isna().all()
+          assert future[['forecast', 'forecast_lower', 'forecast_upper']].notna().all().all()
+          assert future['actual_anomaly'].isna().all()
+          assert future['actual_colour'].isna().all()
+          assert future['forecast_anomaly'].isin(['yes', 'no']).all()
+          assert future['forecast_colour'].isin(['#D13438', '#FFB900', '#107C10']).all()
+          assert future['horizon_hour'].min() == 1
+          assert future['horizon_hour'].max() == 24
+
+          assert frame[['anomaly_yhat', 'anomaly_yhat_lower', 'anomaly_yhat_upper']].notna().all().all()
+          assert not frame['weather_routing_enabled'].astype(bool).any()
+          assert not future['scenario'].str.startswith('weather').any()
+
+          observed_times = pd.to_datetime(observed['ds']).drop_duplicates().sort_values()
+          future_times = pd.to_datetime(future['ds']).drop_duplicates().sort_values()
+          assert len(observed_times) == 24
+          assert len(future_times) == 24
+          assert observed_times.max() < future_times.min()
+          assert future_times.min() - observed_times.max() == pd.Timedelta(hours=1)
+
+          print(frame.groupby(['row_type', 'target_name']).size())
+          print('forecast-v2.csv validated: separate observed/forecast columns, 24h history + 24h future, legacy files untouched.')
           PY
 
       - name: Upload v2 artifact
