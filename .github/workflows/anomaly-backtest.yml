@@ -1,0 +1,78 @@
+name: Anomaly detector backtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      evaluation_days:
+        description: Scored evaluation days
+        required: true
+        default: '180'
+      calibration_days:
+        description: Prior residual calibration days
+        required: true
+        default: '90'
+      training_days:
+        description: Comma-separated Prophet history windows (for example 180,365,730,all)
+        required: true
+        default: '365'
+  push:
+    branches:
+      - anomaly-backtest
+    paths:
+      - '.github/workflows/anomaly-backtest.yml'
+      - 'scripts/backtest_anomaly_detection.py'
+      - 'tests/test_anomaly_backtest.py'
+
+permissions:
+  contents: read
+
+jobs:
+  anomaly-backtest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install backtest dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas prophet
+
+      - name: Run leakage and persistence tests
+        run: python tests/test_anomaly_backtest.py
+
+      - name: Run retrospective anomaly benchmark
+        env:
+          EVALUATION_DAYS: ${{ github.event.inputs.evaluation_days || '21' }}
+          CALIBRATION_DAYS: ${{ github.event.inputs.calibration_days || '70' }}
+          TRAINING_DAYS: ${{ github.event.inputs.training_days || '365' }}
+        run: |
+          python scripts/backtest_anomaly_detection.py \
+            --evaluation-days "$EVALUATION_DAYS" \
+            --calibration-days "$CALIBRATION_DAYS" \
+            --training-days "$TRAINING_DAYS" \
+            --output-dir validation/anomaly-backtest
+
+      - name: Show comparison tables
+        if: always()
+        run: |
+          echo '=== Overall ==='
+          cat validation/anomaly-backtest/summary.csv 2>/dev/null || true
+          echo
+          echo '=== By target ==='
+          cat validation/anomaly-backtest/by_target.csv 2>/dev/null || true
+
+      - name: Upload anomaly backtest results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: anomaly-backtest-results
+          path: validation/anomaly-backtest/
+          if-no-files-found: warn
