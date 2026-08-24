@@ -1,6 +1,8 @@
 # On-Call Impact Analysis & Counterfactual Forecasting
 **Date:** 2026-05-10
 
+> Historical note: the prototype described below is archived at `scripts/legacy/chronos_forecast_v2.py`. It is not part of the current production hourly forecast or the current `forecast-v2.csv` pipeline.
+
 ## Overview
 This project integrates high-fidelity "Busy On-Call" labels into the ED flow forecasting pipeline to enable "What-If" analysis. The goal is to quantify the impact of calling in an on-call physician on the Total Bed-Stay (TBS) metrics in the Emergency Department.
 
@@ -13,7 +15,7 @@ The labels were derived from the `on-call-used-project` experiment, which identi
 
 The resulting dataset provides a binary label: `oncall_busy` (1 if the physician was called in for volume, 0 otherwise).
 
-## 2. Forecasting Implementation (`chronos_forecast_v2.py`)
+## 2. Forecasting Implementation (`scripts/legacy/chronos_forecast_v2.py`)
 We transitioned from a purely descriptive flow forecast to a counterfactual model using the **Chronos-2** pipeline.
 
 ### Key Technical Changes:
