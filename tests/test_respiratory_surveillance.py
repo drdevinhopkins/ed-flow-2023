@@ -34,22 +34,25 @@ def test_report_link_discovery_preserves_publication_date() -> None:
     assert report.url.startswith("https://www.inspq.qc.ca/sites/")
 
 
-def test_montreal_pdf_text_parser() -> None:
+def test_montreal_pdf_text_parser_prefers_residence_table() -> None:
+    # Mirrors the current INSPQ PDF structure: one regional table by laboratory and a
+    # later table by region of residence.  Population-demand features must use residence.
     text = """
-    RSS Montréal (06)
-    Influenza A 2 / 905 (0,22 %)
-    Influenza B 15 / 905 (1,66 %)
-    VRS 2 / 778 (0,26 %)
-    SARS-CoV-2 8 / 987 (0,81 %)
-    RSS Outaouais (07) 1 / 100 (1,00 %)
+    Nombre et pourcentage de tests positifs selon la région des laboratoires
+    Montréal (06) 6 / 1016 (0,59 %) 2 / 1016 (0,20 %) 1 / 907 (0,11 %) 13 / 963 (1,35 %)
+    Outaouais (07) 1 / 100 (1,00 %) 0 / 100 (0,00 %) 0 / 100 (0,00 %) 1 / 100 (1,00 %)
+
+    Nombre et pourcentage de tests positifs selon la région de résidence
+    Montréal (06) 4 / 713 (0,56 %) 2 / 713 (0,28 %) 1 / 624 (0,16 %) 6 / 728 (0,82 %)
+    Outaouais (07) 1 / 100 (1,00 %) 0 / 100 (0,00 %) 0 / 100 (0,00 %) 1 / 100 (1,00 %)
     """
     row = parse_montreal_report_text(text)
-    assert row["flu_a_positive"] == 2
-    assert row["flu_a_tested"] == 905
-    assert np.isclose(row["flu_a_pct"], 0.22)
-    assert np.isclose(row["flu_b_pct"], 1.66)
-    assert np.isclose(row["rsv_pct"], 0.26)
-    assert np.isclose(row["covid_pct"], 0.81)
+    assert row["flu_a_positive"] == 4
+    assert row["flu_a_tested"] == 713
+    assert np.isclose(row["flu_a_pct"], 0.56)
+    assert np.isclose(row["flu_b_pct"], 0.28)
+    assert np.isclose(row["rsv_pct"], 0.16)
+    assert np.isclose(row["covid_pct"], 0.82)
 
 
 def weekly_frame() -> pd.DataFrame:
@@ -83,7 +86,6 @@ def test_weekly_trends_only_use_current_and_prior_reports() -> None:
     assert np.isclose(featured.iloc[3]["resp_flu_a_pct_ma3"], np.mean([1.2, 1.4, 1.6]))
     assert featured.iloc[3]["respiratory_rising_viruses"] == 3
 
-    # Appending a future report must not alter already-computed historical features.
     original = featured.loc[featured["available_date"].eq(pd.Timestamp("2026-06-22"))].iloc[0]
     extended = pd.concat(
         [
@@ -142,7 +144,7 @@ def test_daily_expansion_is_publication_aware() -> None:
 
 def main() -> None:
     test_report_link_discovery_preserves_publication_date()
-    test_montreal_pdf_text_parser()
+    test_montreal_pdf_text_parser_prefers_residence_table()
     test_weekly_trends_only_use_current_and_prior_reports()
     test_daily_expansion_is_publication_aware()
     print("respiratory surveillance tests passed")
