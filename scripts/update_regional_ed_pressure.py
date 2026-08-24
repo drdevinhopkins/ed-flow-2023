@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Archive leakage-safe Montréal peer-ED pressure features to Dropbox.
 
-The preferred MSSS source is a rolling seven-day file; the official Quebec.ca fallback is
-only a current snapshot.  Each run appends/revises overlapping hours in the canonical
-Dropbox history and then recomputes backward-looking trend columns over the full archive.
+The preferred MSSS source is a rolling seven-day file. If that legacy endpoint rejects
+the runner, official Données Québec / Quebec.ca fallbacks are used. Each run appends or
+revises overlapping hours in the canonical Dropbox history and recomputes backward-looking
+trend columns over the full archive.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import dropbox
 import pandas as pd
 import requests
 
+from quebec_ed_status import load_official_fallback
 from regional_ed_pressure import (
     DEFAULT_JGH_PATTERNS,
     DEFAULT_REGION_CODE,
@@ -100,10 +102,24 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _load_source(source: str) -> pd.DataFrame:
+    try:
+        return load_public_feed(source)
+    except Exception as exc:
+        if source != DEFAULT_SOURCE_URL:
+            raise
+        print(
+            f"Primary MSSS regional source unavailable ({type(exc).__name__}: {exc}); "
+            "trying official fallbacks",
+            flush=True,
+        )
+        return load_official_fallback()
+
+
 def main() -> None:
     args = parse_args()
     patterns = tuple(args.jgh_pattern) if args.jgh_pattern else DEFAULT_JGH_PATTERNS
-    raw = load_public_feed(args.source)
+    raw = _load_source(args.source)
     recent = build_regional_peer_pressure(raw, region_code=args.region_code, jgh_patterns=patterns)
     if recent.empty:
         raise ValueError("Regional pressure collector produced no rows")
