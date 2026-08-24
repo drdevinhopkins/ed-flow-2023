@@ -10,10 +10,10 @@ hourly values ending at the forecast origin plus the next 24 routed Chronos-2 fo
 Observed values and forecasts live in separate ``actual`` and ``forecast`` columns so
 Power BI can plot the two series independently without reshaping the file.
 
-Observed and forecast rows both carry the same anomaly reference intervals and colour
-logic used by ``ED_Hourly_Forecasts_Anomalies_v1.0.csv``. Historical rows preserve the
-legacy exact-equality fallback to black; forecast rows preserve the legacy equality-to-
-green behavior.
+Observed and forecast rows both carry the same anomaly reference intervals used by
+``ED_Hourly_Forecasts_Anomalies_v1.0.csv``. Observed colours are directional for ED flow:
+anomalously low actuals remain green, while only actuals above the upper anomaly bound
+are red. Forecast colours retain the existing two-sided anomaly convention.
 
 Weather-winning routes remain disabled by default because the retrospective hourly
 weather validation used revised/realized weather rather than archived forecast-time
@@ -68,7 +68,6 @@ ANOMALY_TARGET_ALIASES = {
 RED = "#D13438"
 AMBER = "#FFB900"
 GREEN = "#107C10"
-BLACK = "#000000"
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -161,14 +160,21 @@ def _anomaly_values(
     lower = float(lower)
     upper = float(upper)
     is_anomaly = value < lower or value > upper
-    if is_anomaly:
+
+    if historical:
+        # Directional operational colour: unusually low congestion is favorable.
+        if value > upper:
+            colour = RED
+        elif value > yhat:
+            colour = AMBER
+        else:
+            colour = GREEN
+    elif is_anomaly:
         colour = RED
     elif value > yhat:
         colour = AMBER
-    elif value < yhat:
-        colour = GREEN
     else:
-        colour = BLACK if historical else GREEN
+        colour = GREEN
 
     return {
         "anomaly_yhat": yhat,
