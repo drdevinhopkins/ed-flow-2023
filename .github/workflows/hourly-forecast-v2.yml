@@ -10,7 +10,7 @@ on:
       - main
     paths:
       - '.github/workflows/hourly-forecast-v2.yml'
-      - 'scripts/chronos_forecast_v2.py'
+      - 'scripts/hourly_forecast_v2.py'
       - 'scripts/hourly_feature_routing.py'
       - 'scripts/backtest_hourly_final_features.py'
       - 'scripts/backtest_staffing_features.py'
@@ -45,7 +45,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/huggingface
-          key: huggingface-hourly-v2-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt', 'scripts/chronos_forecast_v2.py', 'scripts/hourly_feature_routing.py') }}
+          key: huggingface-hourly-v2-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt', 'scripts/hourly_forecast_v2.py', 'scripts/hourly_feature_routing.py') }}
           restore-keys: |
             huggingface-chronos2-${{ runner.os }}-
             huggingface-hourly-final-${{ runner.os }}-
@@ -68,7 +68,7 @@ jobs:
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           CHRONOS_HOURLY_ENABLE_WEATHER_ROUTING: '0'
-        run: python scripts/chronos_forecast_v2.py
+        run: python scripts/hourly_forecast_v2.py
 
       - name: Verify additive-only v2 output
         run: |
