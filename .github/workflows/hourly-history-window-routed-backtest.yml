@@ -12,6 +12,7 @@ on:
       - 'scripts/backtest_hourly_final_features.py'
       - 'scripts/staffing_features.py'
 
+# Research-only validation workflow. It writes artifacts only and does not publish forecasts.
 permissions:
   contents: read
 
