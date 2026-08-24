@@ -1,0 +1,171 @@
+name: External ED forecasting signals
+
+on:
+  push:
+    branches:
+      - regional-pressure-respiratory
+    paths:
+      - 'scripts/regional_ed_pressure.py'
+      - 'scripts/update_regional_ed_pressure.py'
+      - 'scripts/backtest_regional_ed_pressure.py'
+      - 'scripts/respiratory_surveillance.py'
+      - 'scripts/update_respiratory_surveillance.py'
+      - 'scripts/backtest_daily_respiratory_features.py'
+      - 'tests/test_regional_ed_pressure.py'
+      - 'tests/test_respiratory_surveillance.py'
+      - 'chronos-requirements.txt'
+      - '.github/workflows/external-signal-features.yml'
+  workflow_dispatch:
+    inputs:
+      run_respiratory_backtest:
+        description: Backfill INSPQ history and run daily Chronos-2 ablation
+        required: false
+        type: boolean
+        default: true
+      respiratory_cutoffs:
+        description: Number of daily respiratory backtest cutoffs
+        required: false
+        default: '16'
+  schedule:
+    # MSSS feed is hourly and rolling; archive it every hour after the expected publish delay.
+    - cron: '55 * * * *'
+    # INSPQ respiratory reports are weekly; Monday afternoon UTC catches new publications.
+    - cron: '25 15 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: external-ed-signals-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test-feature-code:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: chronos-requirements.txt
+      - name: Install feature-test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy requests dropbox 'PyPDF2<3.0'
+      - name: Compile external-signal code
+        run: |
+          python -m py_compile scripts/regional_ed_pressure.py
+          python -m py_compile scripts/update_regional_ed_pressure.py
+          python -m py_compile scripts/backtest_regional_ed_pressure.py
+          python -m py_compile scripts/respiratory_surveillance.py
+          python -m py_compile scripts/update_respiratory_surveillance.py
+          python -m py_compile scripts/backtest_daily_respiratory_features.py
+      - name: Run feature tests
+        run: |
+          python tests/test_regional_ed_pressure.py
+          python tests/test_respiratory_surveillance.py
+
+  archive-regional-pressure:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.event.schedule == '55 * * * *')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install collector dependencies
+        run: pip install pandas numpy requests dropbox
+      - name: Update Montréal peer-ED pressure archive
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        run: python scripts/update_regional_ed_pressure.py --output regional_ed_pressure_history.csv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: regional-ed-pressure-history
+          path: regional_ed_pressure_history.csv
+
+  archive-respiratory:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.event.schedule == '25 15 * * 1')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install collector dependencies
+        run: pip install pandas requests dropbox 'PyPDF2<3.0'
+      - name: Update Montréal respiratory-surveillance archive
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        run: python scripts/update_respiratory_surveillance.py --output inspq_montreal_weekly.csv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inspq-montreal-respiratory-history
+          path: inspq_montreal_weekly.csv
+
+  respiratory-ablation:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.run_respiratory_backtest
+    needs:
+      - test-feature-code
+      - archive-respiratory
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: chronos-requirements.txt
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-respiratory-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-daily-weather-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+      - name: Install Chronos dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: inspq-montreal-respiratory-history
+          path: external-inputs
+      - name: Run respiratory feature ablation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          NUM_CUTOFFS: ${{ inputs.respiratory_cutoffs || '16' }}
+        shell: bash
+        run: |
+          mkdir -p validation-output-respiratory
+          python scripts/backtest_daily_respiratory_features.py \
+            --respiratory-csv external-inputs/inspq_montreal_weekly.csv \
+            --num-cutoffs "$NUM_CUTOFFS" \
+            --horizon-days 7 \
+            --context-days 1095 \
+            --min-history-days 120 \
+            --output-dir validation-output-respiratory \
+            2>&1 | tee validation-output-respiratory/run.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chronos2-daily-respiratory-ablation
+          path: validation-output-respiratory/*
