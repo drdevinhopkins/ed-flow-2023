@@ -1,72 +1,72 @@
 Targets: Total_TBS, POD_TBS, Vertical_TBS, TTStr, Overflow, WAITINGADM
 Scenarios: baseline, calendar_demand, weather_raw, weather_raw_plus_snow, staffing_current, staffing_structure_effects
-Common cutoffs (8): [Timestamp('2026-07-04 19:00:00'), Timestamp('2026-07-11 19:00:00'), Timestamp('2026-07-18 19:00:00'), Timestamp('2026-07-25 19:00:00'), Timestamp('2026-08-01 19:00:00'), Timestamp('2026-08-08 19:00:00'), Timestamp('2026-08-15 19:00:00'), Timestamp('2026-08-22 19:00:00')]
+Common cutoffs (8): [Timestamp('2026-07-04 20:00:00'), Timestamp('2026-07-11 20:00:00'), Timestamp('2026-07-18 20:00:00'), Timestamp('2026-07-25 20:00:00'), Timestamp('2026-08-01 20:00:00'), Timestamp('2026-08-08 20:00:00'), Timestamp('2026-08-15 20:00:00'), Timestamp('2026-08-22 20:00:00')]
 Weather caveat: realized/revised weather, not archived forecast-snapshot replay.
 Loading amazon/chronos-2 on cpu
-Loading weights:   0%|          | 0/170 [00:00<?, ?it/s]Loading weights: 100%|██████████| 170/170 [00:00<00:00, 8219.48it/s]
-Forecasting cutoff=2026-07-04 19:00:00 scenario=baseline
-Forecasting cutoff=2026-07-04 19:00:00 scenario=calendar_demand
-Forecasting cutoff=2026-07-04 19:00:00 scenario=weather_raw
-Forecasting cutoff=2026-07-04 19:00:00 scenario=weather_raw_plus_snow
-Forecasting cutoff=2026-07-04 19:00:00 scenario=staffing_current
-Forecasting cutoff=2026-07-04 19:00:00 scenario=staffing_structure_effects
-Forecasting cutoff=2026-07-11 19:00:00 scenario=baseline
-Forecasting cutoff=2026-07-11 19:00:00 scenario=calendar_demand
-Forecasting cutoff=2026-07-11 19:00:00 scenario=weather_raw
-Forecasting cutoff=2026-07-11 19:00:00 scenario=weather_raw_plus_snow
-Forecasting cutoff=2026-07-11 19:00:00 scenario=staffing_current
-Forecasting cutoff=2026-07-11 19:00:00 scenario=staffing_structure_effects
-Forecasting cutoff=2026-07-18 19:00:00 scenario=baseline
-Forecasting cutoff=2026-07-18 19:00:00 scenario=calendar_demand
-Forecasting cutoff=2026-07-18 19:00:00 scenario=weather_raw
-Forecasting cutoff=2026-07-18 19:00:00 scenario=weather_raw_plus_snow
-Forecasting cutoff=2026-07-18 19:00:00 scenario=staffing_current
-Forecasting cutoff=2026-07-18 19:00:00 scenario=staffing_structure_effects
-Forecasting cutoff=2026-07-25 19:00:00 scenario=baseline
-Forecasting cutoff=2026-07-25 19:00:00 scenario=calendar_demand
-Forecasting cutoff=2026-07-25 19:00:00 scenario=weather_raw
-Forecasting cutoff=2026-07-25 19:00:00 scenario=weather_raw_plus_snow
-Forecasting cutoff=2026-07-25 19:00:00 scenario=staffing_current
-Forecasting cutoff=2026-07-25 19:00:00 scenario=staffing_structure_effects
-Forecasting cutoff=2026-08-01 19:00:00 scenario=baseline
-Forecasting cutoff=2026-08-01 19:00:00 scenario=calendar_demand
-Forecasting cutoff=2026-08-01 19:00:00 scenario=weather_raw
-Forecasting cutoff=2026-08-01 19:00:00 scenario=weather_raw_plus_snow
-Forecasting cutoff=2026-08-01 19:00:00 scenario=staffing_current
-Forecasting cutoff=2026-08-01 19:00:00 scenario=staffing_structure_effects
-Forecasting cutoff=2026-08-08 19:00:00 scenario=baseline
-Forecasting cutoff=2026-08-08 19:00:00 scenario=calendar_demand
-Forecasting cutoff=2026-08-08 19:00:00 scenario=weather_raw
-Forecasting cutoff=2026-08-08 19:00:00 scenario=weather_raw_plus_snow
-Forecasting cutoff=2026-08-08 19:00:00 scenario=staffing_current
-Forecasting cutoff=2026-08-08 19:00:00 scenario=staffing_structure_effects
-Forecasting cutoff=2026-08-15 19:00:00 scenario=baseline
-Forecasting cutoff=2026-08-15 19:00:00 scenario=calendar_demand
-Forecasting cutoff=2026-08-15 19:00:00 scenario=weather_raw
-Forecasting cutoff=2026-08-15 19:00:00 scenario=weather_raw_plus_snow
-Forecasting cutoff=2026-08-15 19:00:00 scenario=staffing_current
-Forecasting cutoff=2026-08-15 19:00:00 scenario=staffing_structure_effects
-Forecasting cutoff=2026-08-22 19:00:00 scenario=baseline
-Forecasting cutoff=2026-08-22 19:00:00 scenario=calendar_demand
-Forecasting cutoff=2026-08-22 19:00:00 scenario=weather_raw
-Forecasting cutoff=2026-08-22 19:00:00 scenario=weather_raw_plus_snow
-Forecasting cutoff=2026-08-22 19:00:00 scenario=staffing_current
-Forecasting cutoff=2026-08-22 19:00:00 scenario=staffing_structure_effects
+Loading weights:   0%|          | 0/170 [00:00<?, ?it/s]Loading weights: 100%|██████████| 170/170 [00:00<00:00, 4229.91it/s]
+Forecasting cutoff=2026-07-04 20:00:00 scenario=baseline
+Forecasting cutoff=2026-07-04 20:00:00 scenario=calendar_demand
+Forecasting cutoff=2026-07-04 20:00:00 scenario=weather_raw
+Forecasting cutoff=2026-07-04 20:00:00 scenario=weather_raw_plus_snow
+Forecasting cutoff=2026-07-04 20:00:00 scenario=staffing_current
+Forecasting cutoff=2026-07-04 20:00:00 scenario=staffing_structure_effects
+Forecasting cutoff=2026-07-11 20:00:00 scenario=baseline
+Forecasting cutoff=2026-07-11 20:00:00 scenario=calendar_demand
+Forecasting cutoff=2026-07-11 20:00:00 scenario=weather_raw
+Forecasting cutoff=2026-07-11 20:00:00 scenario=weather_raw_plus_snow
+Forecasting cutoff=2026-07-11 20:00:00 scenario=staffing_current
+Forecasting cutoff=2026-07-11 20:00:00 scenario=staffing_structure_effects
+Forecasting cutoff=2026-07-18 20:00:00 scenario=baseline
+Forecasting cutoff=2026-07-18 20:00:00 scenario=calendar_demand
+Forecasting cutoff=2026-07-18 20:00:00 scenario=weather_raw
+Forecasting cutoff=2026-07-18 20:00:00 scenario=weather_raw_plus_snow
+Forecasting cutoff=2026-07-18 20:00:00 scenario=staffing_current
+Forecasting cutoff=2026-07-18 20:00:00 scenario=staffing_structure_effects
+Forecasting cutoff=2026-07-25 20:00:00 scenario=baseline
+Forecasting cutoff=2026-07-25 20:00:00 scenario=calendar_demand
+Forecasting cutoff=2026-07-25 20:00:00 scenario=weather_raw
+Forecasting cutoff=2026-07-25 20:00:00 scenario=weather_raw_plus_snow
+Forecasting cutoff=2026-07-25 20:00:00 scenario=staffing_current
+Forecasting cutoff=2026-07-25 20:00:00 scenario=staffing_structure_effects
+Forecasting cutoff=2026-08-01 20:00:00 scenario=baseline
+Forecasting cutoff=2026-08-01 20:00:00 scenario=calendar_demand
+Forecasting cutoff=2026-08-01 20:00:00 scenario=weather_raw
+Forecasting cutoff=2026-08-01 20:00:00 scenario=weather_raw_plus_snow
+Forecasting cutoff=2026-08-01 20:00:00 scenario=staffing_current
+Forecasting cutoff=2026-08-01 20:00:00 scenario=staffing_structure_effects
+Forecasting cutoff=2026-08-08 20:00:00 scenario=baseline
+Forecasting cutoff=2026-08-08 20:00:00 scenario=calendar_demand
+Forecasting cutoff=2026-08-08 20:00:00 scenario=weather_raw
+Forecasting cutoff=2026-08-08 20:00:00 scenario=weather_raw_plus_snow
+Forecasting cutoff=2026-08-08 20:00:00 scenario=staffing_current
+Forecasting cutoff=2026-08-08 20:00:00 scenario=staffing_structure_effects
+Forecasting cutoff=2026-08-15 20:00:00 scenario=baseline
+Forecasting cutoff=2026-08-15 20:00:00 scenario=calendar_demand
+Forecasting cutoff=2026-08-15 20:00:00 scenario=weather_raw
+Forecasting cutoff=2026-08-15 20:00:00 scenario=weather_raw_plus_snow
+Forecasting cutoff=2026-08-15 20:00:00 scenario=staffing_current
+Forecasting cutoff=2026-08-15 20:00:00 scenario=staffing_structure_effects
+Forecasting cutoff=2026-08-22 20:00:00 scenario=baseline
+Forecasting cutoff=2026-08-22 20:00:00 scenario=calendar_demand
+Forecasting cutoff=2026-08-22 20:00:00 scenario=weather_raw
+Forecasting cutoff=2026-08-22 20:00:00 scenario=weather_raw_plus_snow
+Forecasting cutoff=2026-08-22 20:00:00 scenario=staffing_current
+Forecasting cutoff=2026-08-22 20:00:00 scenario=staffing_structure_effects
 
 === Overall winners (baseline allowed) ===
  target_name   family         scenario      mae  mae_improvement_pct  beats_baseline
-    Overflow  weather      weather_raw 3.145073             3.448715            True
-     POD_TBS staffing staffing_current 2.114140             3.010746            True
-       TTStr staffing staffing_current 8.145515             0.444618            True
-   Total_TBS staffing staffing_current 6.471320             8.011995            True
-Vertical_TBS staffing staffing_current 5.932825             6.327423            True
-  WAITINGADM baseline         baseline 3.483820             0.000000           False
+    Overflow  weather      weather_raw 3.624891             4.672369            True
+     POD_TBS staffing staffing_current 2.125978             2.864782            True
+       TTStr staffing staffing_current 8.667131             1.967886            True
+   Total_TBS staffing staffing_current 6.560920             7.030686            True
+Vertical_TBS staffing staffing_current 5.956365             5.989446            True
+  WAITINGADM baseline         baseline 3.548779             0.000000           False
 
 === Best feature-family candidate per target ===
  target_name   family                   scenario      mae  mae_improvement_pct  beats_baseline
-    Overflow  weather                weather_raw 3.145073             3.448715            True
-     POD_TBS staffing           staffing_current 2.114140             3.010746            True
-       TTStr staffing           staffing_current 8.145515             0.444618            True
-   Total_TBS staffing           staffing_current 6.471320             8.011995            True
-Vertical_TBS staffing           staffing_current 5.932825             6.327423            True
-  WAITINGADM staffing staffing_structure_effects 3.608692            -3.584327           False
+    Overflow  weather                weather_raw 3.624891             4.672369            True
+     POD_TBS staffing           staffing_current 2.125978             2.864782            True
+       TTStr staffing           staffing_current 8.667131             1.967886            True
+   Total_TBS staffing           staffing_current 6.560920             7.030686            True
+Vertical_TBS staffing           staffing_current 5.956365             5.989446            True
+  WAITINGADM staffing staffing_structure_effects 3.583882            -0.989164           False
