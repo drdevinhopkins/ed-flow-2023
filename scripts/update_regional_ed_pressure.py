@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Archive leakage-safe Montréal peer-ED pressure features to Dropbox.
 
-The MSSS public source is a rolling seven-day file.  Each run re-downloads that window,
-rebuilds the peer-only features, appends/revises overlapping hours in the canonical
-Dropbox history, and overwrites the canonical CSV.  Frequent runs therefore tolerate
-missed jobs while preserving a growing historical series for future backtests.
+The preferred MSSS source is a rolling seven-day file; the official Quebec.ca fallback is
+only a current snapshot.  Each run appends/revises overlapping hours in the canonical
+Dropbox history and then recomputes backward-looking trend columns over the full archive.
 """
 
 from __future__ import annotations
@@ -22,6 +21,7 @@ from regional_ed_pressure import (
     DEFAULT_JGH_PATTERNS,
     DEFAULT_REGION_CODE,
     DEFAULT_SOURCE_URL,
+    add_regional_trends,
     build_regional_peer_pressure,
     load_public_feed,
 )
@@ -57,9 +57,7 @@ def download_existing(dbx: dropbox.Dropbox, path: str) -> pd.DataFrame | None:
     except dropbox.exceptions.ApiError as exc:
         error = exc.error
         is_missing = (
-            hasattr(error, "is_path")
-            and error.is_path()
-            and error.get_path().is_not_found()
+            hasattr(error, "is_path") and error.is_path() and error.get_path().is_not_found()
         )
         if is_missing:
             return None
@@ -72,14 +70,13 @@ def download_existing(dbx: dropbox.Dropbox, path: str) -> pd.DataFrame | None:
 
 
 def merge_history(existing: pd.DataFrame | None, recent: pd.DataFrame) -> pd.DataFrame:
-    if existing is None or existing.empty:
-        combined = recent.copy()
-    else:
-        combined = pd.concat([existing, recent], ignore_index=True, sort=False)
+    combined = recent.copy() if existing is None or existing.empty else pd.concat(
+        [existing, recent], ignore_index=True, sort=False
+    )
     combined["ds"] = pd.to_datetime(combined["ds"], errors="coerce")
-    combined = combined.dropna(subset=["ds"])
     return (
-        combined.sort_values("ds")
+        combined.dropna(subset=["ds"])
+        .sort_values("ds")
         .drop_duplicates(subset=["ds"], keep="last")
         .reset_index(drop=True)
     )
@@ -92,16 +89,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dropbox-path", default=DEFAULT_DROPBOX_PATH)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument(
-        "--jgh-pattern",
-        action="append",
-        default=None,
+        "--jgh-pattern", action="append", default=None,
         help="Installation-name substring identifying JGH; repeat to supply several.",
     )
     parser.add_argument(
-        "--max-source-age-hours",
-        type=float,
-        default=4.0,
-        help="Fail if the newest public-feed hour is older than this threshold.",
+        "--max-source-age-hours", type=float, default=4.0,
+        help="Fail if the newest public-source hour is older than this threshold.",
     )
     parser.add_argument("--no-dropbox", action="store_true")
     return parser.parse_args()
@@ -111,11 +104,7 @@ def main() -> None:
     args = parse_args()
     patterns = tuple(args.jgh_pattern) if args.jgh_pattern else DEFAULT_JGH_PATTERNS
     raw = load_public_feed(args.source)
-    recent = build_regional_peer_pressure(
-        raw,
-        region_code=args.region_code,
-        jgh_patterns=patterns,
-    )
+    recent = build_regional_peer_pressure(raw, region_code=args.region_code, jgh_patterns=patterns)
     if recent.empty:
         raise ValueError("Regional pressure collector produced no rows")
 
@@ -124,7 +113,7 @@ def main() -> None:
     source_age_hours = (now_local - newest).total_seconds() / 3600.0
     if source_age_hours > args.max_source_age_hours:
         raise ValueError(
-            f"MSSS regional ED source is stale: newest={newest}, age={source_age_hours:.1f}h"
+            f"Regional ED source is stale: newest={newest}, age={source_age_hours:.1f}h"
         )
 
     existing = None
@@ -133,7 +122,7 @@ def main() -> None:
         dbx = dropbox_client()
         existing = download_existing(dbx, args.dropbox_path)
 
-    combined = merge_history(existing, recent)
+    combined = add_regional_trends(merge_history(existing, recent))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     combined.to_csv(args.output, index=False)
     print(
