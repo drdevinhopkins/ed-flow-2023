@@ -7,6 +7,7 @@ on:
       - chronos2-hourly-target-routing
     paths:
       - '.github/workflows/hourly-target-routing-ci.yml'
+      - '.github/workflows/hourly-update.yml'
       - 'scripts/hourly_feature_routing.py'
       - 'scripts/chronos_forecast_routed.py'
       - 'scripts/run_ed_flow_update.sh'
@@ -16,6 +17,7 @@ on:
       - main
     paths:
       - '.github/workflows/hourly-target-routing-ci.yml'
+      - '.github/workflows/hourly-update.yml'
       - 'scripts/hourly_feature_routing.py'
       - 'scripts/chronos_forecast_routed.py'
       - 'scripts/run_ed_flow_update.sh'
