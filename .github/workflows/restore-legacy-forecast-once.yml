@@ -8,7 +8,7 @@ on:
       - '.github/workflows/restore-legacy-forecast-once.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   restore:
@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Check out branch
         uses: actions/checkout@v7
+        with:
+          ref: chronos2-hourly-target-routing
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -53,3 +55,13 @@ jobs:
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: python scripts/chronos_forecast.py
+
+      - name: Record successful restore
+        run: |
+          mkdir -p validation/legacy-restore
+          printf 'run_id=%s\nsha=%s\nstatus=success\n' "$GITHUB_RUN_ID" "$GITHUB_SHA" > validation/legacy-restore/status.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add validation/legacy-restore/status.txt
+          git commit -m 'Record legacy forecast restore [skip ci]' || exit 0
+          git push origin HEAD:chronos2-hourly-target-routing
