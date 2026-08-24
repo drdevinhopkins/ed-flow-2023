@@ -1,8 +1,10 @@
 name: External ED forecasting signals
 
 on:
-  pull_request:
-    branches: [main]
+  # The workflow is new in this PR, so branch pushes are the reliable pre-merge
+  # validation trigger. After merge, only manual/scheduled collection remains.
+  push:
+    branches: [regional-pressure-respiratory]
   workflow_dispatch:
     inputs:
       run_respiratory_backtest:
@@ -15,21 +17,19 @@ on:
         required: false
         default: '16'
   schedule:
-    # MSSS/Quebec.ca is hourly; archive after the expected publication delay.
     - cron: '55 * * * *'
-    # INSPQ reports are weekly.
     - cron: '25 15 * * 1'
 
 permissions:
   contents: read
 
 concurrency:
-  group: external-ed-signals-${{ github.event.pull_request.number || github.ref }}
+  group: external-ed-signals-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   test-feature-code:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -58,7 +58,7 @@ jobs:
 
   archive-regional-pressure:
     if: >-
-      github.event_name == 'pull_request' ||
+      github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'schedule' && github.event.schedule == '55 * * * *')
     runs-on: ubuntu-latest
@@ -82,7 +82,7 @@ jobs:
 
   archive-respiratory:
     if: >-
-      github.event_name == 'pull_request' ||
+      github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'schedule' && github.event.schedule == '25 15 * * 1')
     runs-on: ubuntu-latest
@@ -106,7 +106,7 @@ jobs:
 
   respiratory-ablation:
     if: >-
-      github.event_name == 'pull_request' ||
+      github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && inputs.run_respiratory_backtest)
     needs: [test-feature-code, archive-respiratory]
     runs-on: ubuntu-latest
