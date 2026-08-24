@@ -57,7 +57,7 @@ Scheduled physician staffing is intentionally excluded from the default daily-ar
 │   ├── anomaly_detection.py    Anomaly-range generation
 │   ├── update_weather.py       Weather update pipeline
 │   ├── alerts.py               Build and upload alert outputs
-│   └── run_ed_flow_update.sh   Existing local end-to-end update sequence
+│   └── run_ed_flow_update.sh   JGH local hourly wrapper (legacy + additive v2)
 ├── tests/                      Feature/routing regression tests
 ├── main.py                     Minimal project scaffold entry point
 ├── pyproject.toml              uv/project dependency definition
@@ -66,23 +66,26 @@ Scheduled physician staffing is intentionally excluded from the default daily-ar
 
 > **Naming note:** `scripts/hourly_forecast_v2.py` is the current independent hourly v2 producer. The older on-call counterfactual prototype is archived at `scripts/legacy/chronos_forecast_v2.py` and is not a production entry point.
 
-## Existing hourly pipeline
+## Local JGH hourly pipeline
 
-The existing hourly pipeline remains intentionally unchanged by the v2 work.
-
-The local wrapper runs the core sequence:
+On `jgh000533svaps`, the Dropbox watcher triggers `scripts/run_ed_flow_update.sh` whenever `/hourlyreport.pdf` changes. The wrapper is the canonical local hourly sequence:
 
 ```text
 get_current.py
+  → update_metar.py
   → shiftadmin.py
+  → validate_forecast_inputs.py
   → chronos_forecast.py
   → forecast_oncall_impact.py
   → forecast_oncall_probability.py
   → calculated_kpis.py
   → alerts.py
+  → hourly_forecast_v2.py  (additive/non-blocking)
 ```
 
-The Dropbox watcher in `scripts/watch_dropbox_pdf.py` can trigger the wrapper when `/hourlyreport.pdf` changes.
+The validation gate prevents stale or incomplete ED, staffing, or weather inputs from silently generating a forecast. The established legacy/on-call/KPI/alert outputs remain the blocking production path. `hourly_forecast_v2.py` runs last and non-blocking so a v2 failure cannot prevent those established outputs from updating.
+
+The wrapper loads `.env` for direct/manual invocation and explicitly keeps `CHRONOS_HOURLY_ENABLE_WEATHER_ROUTING=0` until prospective hourly weather validation is sufficient. `weather.csv` continues to be refreshed by the separate 4-hour weather timer; the wrapper refreshes METAR on each hourly-report update.
 
 Representative existing forecast products include:
 
@@ -91,7 +94,7 @@ Representative existing forecast products include:
 - `forecast_variable_effects.csv`
 - `forecast_variable_effects_hourly.csv`
 
-The additive v2 workflow does **not** replace, patch, or overwrite these files.
+The additive v2 step does **not** replace, patch, or overwrite these files.
 
 ## Independent hourly forecast v2
 
@@ -299,6 +302,14 @@ CHRONOS_HOURLY_ENABLE_WEATHER_ROUTING=0 python scripts/hourly_forecast_v2.py
 
 The v2 script requires Dropbox credentials because its successful production path uploads `forecast-v2.csv`.
 
+On `jgh000533svaps`, the preferred manual end-to-end invocation is simply:
+
+```bash
+scripts/run_ed_flow_update.sh
+```
+
+The wrapper activates the project venv, loads `.env`, refreshes inputs, enforces the input gate, runs the established outputs, and then attempts v2 last.
+
 ## Generated outputs
 
 Representative outputs include:
@@ -347,6 +358,7 @@ Useful checks include:
 ```bash
 python -m compileall -q main.py scripts
 pytest -q tests
+bash -n scripts/run_ed_flow_update.sh
 ```
 
 The v2 GitHub Actions path also performs runtime/data-contract validation, including:
