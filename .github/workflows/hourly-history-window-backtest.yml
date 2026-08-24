@@ -11,6 +11,15 @@ on:
       - 'scripts/backtest_hourly_history_windows.py'
       - 'scripts/backtest_covariate_ablation.py'
       - 'scripts/forecast_oncall_impact.py'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/hourly-history-window-backtest.yml'
+      - 'chronos-requirements.txt'
+      - 'scripts/backtest_hourly_history_windows.py'
+      - 'scripts/backtest_covariate_ablation.py'
+      - 'scripts/forecast_oncall_impact.py'
 
 permissions:
   contents: write
