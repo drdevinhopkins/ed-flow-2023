@@ -1,0 +1,220 @@
+name: Hourly forecast v2.1
+
+on:
+  workflow_run:
+    workflows: ["Hourly update"]
+    types: [completed]
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/hourly-forecast-v2-1.yml'
+      - 'scripts/hourly_forecast_v2_1.py'
+      - 'scripts/hourly_forecast_v2.py'
+      - 'scripts/hourly_feature_routing.py'
+      - 'scripts/backtest_hourly_final_features.py'
+      - 'scripts/backtest_staffing_features.py'
+      - 'scripts/backtest_hourly_calendar_features.py'
+      - 'scripts/backtest_hourly_weather_features.py'
+      - 'scripts/staffing_features.py'
+      - 'scripts/hourly_calendar_features.py'
+      - 'scripts/hourly_weather_features.py'
+
+permissions:
+  contents: read
+
+jobs:
+  forecast-v2-1:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-hourly-v2-1-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt', 'scripts/hourly_forecast_v2_1.py', 'scripts/hourly_forecast_v2.py', 'scripts/hourly_feature_routing.py') }}
+          restore-keys: |
+            huggingface-hourly-v2-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+            huggingface-hourly-final-${{ runner.os }}-
+            huggingface-hourly-v2-1-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+          pip install -r requirements.txt
+
+      - name: Compile v2.1 script
+        run: python -m py_compile scripts/hourly_forecast_v2_1.py
+
+      - name: Validate current forecast inputs
+        run: python scripts/validate_forecast_inputs.py
+
+      - name: Generate forecast v2.1 only
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          CHRONOS_HOURLY_ENABLE_WEATHER_ROUTING: '0'
+        run: python scripts/hourly_forecast_v2_1.py
+
+      - name: Verify additive-only v2.1 explainability output
+        run: |
+          test -s forecast-v2.1.csv
+          test ! -e forecast-v2.csv
+          test ! -e chronos_forecast.csv
+          test ! -e ED_Hourly_Forecasts_Anomalies_v1.0.csv
+          test ! -e forecast_variable_effects.csv
+          test ! -e forecast_variable_effects_hourly.csv
+          python - <<'PY'
+          import sys
+          import pandas as pd
+
+          sys.path.insert(0, 'scripts')
+          from hourly_forecast_v2_1 import (
+              EXPLANATION_CAVEAT,
+              EXPLANATION_METHOD,
+              EXPLANATION_VERSION,
+              _explain_effect,
+          )
+
+          frame = pd.read_csv('forecast-v2.1.csv')
+          expected_targets = {
+              'Total_TBS', 'POD_TBS', 'Vertical_TBS',
+              'TTStr', 'Overflow', 'WAITINGADM'
+          }
+          required = {
+              'ds', 'target_name', 'actual', 'forecast',
+              'forecast_lower', 'forecast_upper',
+              'baseline_forecast', 'feature_effect', 'feature_effect_pct',
+              'explanation_family', 'explanation_direction',
+              'explanation_method', 'explanation_caveat',
+              'explanation_text', 'explanation_version',
+              'anomaly_yhat', 'anomaly_yhat_lower', 'anomaly_yhat_upper',
+              'actual_anomaly', 'actual_colour',
+              'forecast_anomaly', 'forecast_colour',
+              'row_type', 'horizon_hour', 'horizon_band',
+              'scenario', 'feature_family', 'forecast_origin',
+              'generated_at_utc', 'routing_version',
+              'weather_routing_enabled'
+          }
+          assert required.issubset(frame.columns), sorted(required - set(frame.columns))
+          assert len(frame) == 288, len(frame)
+          assert set(frame['target_name']) == expected_targets
+          assert set(frame['row_type']) == {'observed', 'forecast'}
+          assert not frame[['ds', 'target_name']].duplicated().any()
+
+          observed = frame[frame['row_type'].eq('observed')].copy()
+          future = frame[frame['row_type'].eq('forecast')].copy()
+          assert len(observed) == 144, len(observed)
+          assert len(future) == 144, len(future)
+          assert observed.groupby('target_name').size().eq(24).all()
+          assert future.groupby('target_name').size().eq(24).all()
+
+          # v2.1 preserves the v2 observed/forecast split.
+          assert observed['actual'].notna().all()
+          assert observed['forecast'].isna().all()
+          assert observed['baseline_forecast'].isna().all()
+          assert observed['feature_effect'].isna().all()
+          assert observed['explanation_method'].isna().all()
+          assert observed['explanation_text'].isna().all()
+          assert observed['explanation_version'].eq(EXPLANATION_VERSION).all()
+
+          assert future['actual'].isna().all()
+          assert future[['forecast', 'forecast_lower', 'forecast_upper']].notna().all().all()
+          assert future[['baseline_forecast', 'feature_effect']].notna().all().all()
+          assert future['explanation_family'].eq(future['feature_family']).all()
+          assert future['explanation_method'].eq(EXPLANATION_METHOD).all()
+          assert future['explanation_caveat'].eq(EXPLANATION_CAVEAT).all()
+          assert future['explanation_version'].eq(EXPLANATION_VERSION).all()
+          assert future['explanation_text'].str.len().gt(20).all()
+
+          # Core attribution identity: routed minus history-only baseline.
+          expected_effect = future['forecast'] - future['baseline_forecast']
+          assert (expected_effect - future['feature_effect']).abs().lt(1e-8).all()
+
+          baseline_selected = future['scenario'].eq('baseline')
+          assert future.loc[baseline_selected, 'feature_effect'].abs().lt(1e-8).all()
+          assert future.loc[baseline_selected, 'explanation_direction'].eq('unchanged').all()
+
+          positive = future['feature_effect'].gt(1e-8)
+          negative = future['feature_effect'].lt(-1e-8)
+          neutral = ~(positive | negative)
+          assert future.loc[positive, 'explanation_direction'].eq('higher').all()
+          assert future.loc[negative, 'explanation_direction'].eq('lower').all()
+          assert future.loc[neutral, 'explanation_direction'].eq('unchanged').all()
+
+          nonzero_baseline = future['baseline_forecast'].abs().gt(1e-9)
+          expected_pct = (
+              future.loc[nonzero_baseline, 'feature_effect']
+              / future.loc[nonzero_baseline, 'baseline_forecast'].abs()
+              * 100.0
+          )
+          assert (
+              expected_pct - future.loc[nonzero_baseline, 'feature_effect_pct']
+          ).abs().lt(1e-8).all()
+
+          # Synthetic regression cases for explanation sign and percent semantics.
+          up = _explain_effect(
+              scenario='staffing_current',
+              baseline_forecast=20.0,
+              routed_forecast=25.0,
+          )
+          assert up['feature_effect'] == 5.0
+          assert up['feature_effect_pct'] == 25.0
+          assert up['explanation_direction'] == 'higher'
+
+          down = _explain_effect(
+              scenario='calendar_demand',
+              baseline_forecast=20.0,
+              routed_forecast=15.0,
+          )
+          assert down['feature_effect'] == -5.0
+          assert down['feature_effect_pct'] == -25.0
+          assert down['explanation_direction'] == 'lower'
+
+          same = _explain_effect(
+              scenario='baseline',
+              baseline_forecast=20.0,
+              routed_forecast=20.0,
+          )
+          assert same['feature_effect'] == 0.0
+          assert same['feature_effect_pct'] == 0.0
+          assert same['explanation_direction'] == 'unchanged'
+
+          # Weather routing remains prospectively guarded exactly as in v2.
+          assert not frame['weather_routing_enabled'].astype(bool).any()
+          assert not future['scenario'].str.startswith('weather').any()
+
+          print(
+              future.groupby(
+                  ['target_name', 'horizon_band', 'scenario', 'explanation_direction']
+              )['feature_effect'].mean()
+          )
+          print('forecast-v2.1.csv validated: additive baseline attribution; v2/legacy outputs untouched.')
+          PY
+
+      - name: Upload v2.1 artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forecast-v2.1
+          path: forecast-v2.1.csv
+          if-no-files-found: warn
