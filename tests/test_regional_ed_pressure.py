@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from regional_ed_pressure import (  # noqa: E402
     REGIONAL_FEATURE_COLUMNS,
     build_regional_peer_pressure,
+    parse_quebec_status_html,
     persistence_future,
 )
 
@@ -87,6 +88,39 @@ def test_peer_aggregation_excludes_jgh_and_other_regions() -> None:
     assert int(first["regional_ed_over_150pct"]) == 0
 
 
+def test_quebec_status_fallback_uses_schedule_link_card() -> None:
+    html = """
+    <html><body>
+      <p>Dernière mise à jour : dimanche 23 août à 23 h 00</p>
+      <ul>
+        <li class="result-card">
+          <strong>Centre hospitalier de l'Université de Montréal</strong>
+          <span>1000 rue Saint-Denis, Montréal, H2X 0A9</span><span>Montréal</span>
+          <a href="https://sante.gouv.qc.ca/foo">Consulter l’horaire de l’installation Centre hospitalier de l'Université de Montréal</a>
+          <div>Nombre de personnes qui attendent de voir un médecin à l’urgence : 35</div>
+          <div>Nombre total de personnes à l’urgence : 105</div>
+          <div>Taux d’occupation des civières : 122 %</div>
+        </li>
+        <li class="result-card">
+          <strong>Centre hospitalier de Laval</strong><span>Laval</span>
+          <a href="https://sante.gouv.qc.ca/bar">Consulter l’horaire de l’installation Centre hospitalier de Laval</a>
+          <div>Nombre de personnes qui attendent de voir un médecin à l’urgence : 99</div>
+          <div>Nombre total de personnes à l’urgence : 199</div>
+          <div>Taux d’occupation des civières : 150 %</div>
+        </li>
+      </ul>
+    </body></html>
+    """
+    parsed = parse_quebec_status_html(html)
+    assert len(parsed) == 1
+    row = parsed.iloc[0]
+    assert row["installation"] == "Centre hospitalier de l'Université de Montréal"
+    assert row["patients_present"] == 105
+    assert row["waiting_pec"] == 35
+    assert np.isclose(row["installation_occupancy"], 1.22)
+    assert row["extraction_time"] == pd.Timestamp("2026-08-23 23:00")
+
+
 def test_trends_are_backward_looking() -> None:
     pressure = build_regional_peer_pressure(source_frame())
     row = pressure.iloc[6]
@@ -113,6 +147,7 @@ def test_future_uses_only_cutoff_state() -> None:
 
 def main() -> None:
     test_peer_aggregation_excludes_jgh_and_other_regions()
+    test_quebec_status_fallback_uses_schedule_link_card()
     test_trends_are_backward_looking()
     test_future_uses_only_cutoff_state()
     print("regional ED pressure tests passed")
