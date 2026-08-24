@@ -40,16 +40,6 @@ run_step() {
     printf "=== DONE: %s ===\n" "$*"
 }
 
-run_best_effort_step() {
-    printf "\n=== START (best-effort): %s ===\n" "$*"
-    if "$@"; then
-        printf "=== DONE: %s ===\n" "$*"
-    else
-        rc=$?
-        printf "=== WARNING: best-effort step failed (%d): %s ===\n" "$rc" "$*" >&2
-    fi
-}
-
 run_optional_step() {
     printf "\n=== START (additive): %s ===\n" "$*"
     if "$@"; then
@@ -60,11 +50,11 @@ run_optional_step() {
     fi
 }
 
-# Refresh source data and known-future covariates.
+# Refresh source data and staffing. METAR refresh is intentionally not run on
+# jgh000533svaps: the hospital server cannot currently reach the IEM/Mesonet
+# endpoint, and neither the legacy hourly forecast nor forecast v2 consumes the
+# METAR history directly. Weather covariates come from weather.csv instead.
 run_step python scripts/get_current.py
-# Match the GitHub hourly workflow: refresh METAR when possible, but retain the
-# last good METAR history if the upstream service is temporarily unavailable.
-run_best_effort_step python scripts/update_metar.py
 run_step python scripts/shiftadmin.py
 
 # Hard gate: do not forecast from stale/incomplete ED, staffing, or weather data.
