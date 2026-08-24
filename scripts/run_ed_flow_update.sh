@@ -5,14 +5,29 @@ cd /home/dhopkins/apps/ed-flow-2023
 
 source .venv/bin/activate
 
-# Make direct/manual invocation behave like the Dropbox watcher by loading the
-# repository environment into the shell before running scripts that expect
-# credentials to already be exported.
+# Make direct/manual invocation behave like the Dropbox watcher. A dotenv file
+# is not necessarily valid Bash syntax (values may contain spaces, parentheses,
+# etc.), so parse it with python-dotenv and emit shell-quoted exports instead of
+# sourcing .env directly. Preserve variables already exported by systemd/the
+# Dropbox watcher.
 if [[ -f .env ]]; then
-    set -a
-    # shellcheck disable=SC1091
-    source .env
-    set +a
+    dotenv_exports="$(python - <<'PY'
+import os
+import re
+import shlex
+
+from dotenv import dotenv_values
+
+for key, value in dotenv_values('.env').items():
+    if value is None or key in os.environ:
+        continue
+    if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', key):
+        raise SystemExit(f'Invalid environment variable name in .env: {key!r}')
+    print(f'export {key}={shlex.quote(value)}')
+PY
+)"
+    eval "$dotenv_exports"
+    unset dotenv_exports
 fi
 
 # Hourly weather routes remain disabled in production until prospective
