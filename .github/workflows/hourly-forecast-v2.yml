@@ -78,7 +78,11 @@ jobs:
           test ! -e forecast_variable_effects.csv
           test ! -e forecast_variable_effects_hourly.csv
           python - <<'PY'
+          import sys
           import pandas as pd
+
+          sys.path.insert(0, 'scripts')
+          from hourly_forecast_v2 import AMBER, GREEN, RED, _anomaly_values
 
           frame = pd.read_csv('forecast-v2.csv')
           expected_targets = {
@@ -114,17 +118,48 @@ jobs:
           assert observed['forecast_lower'].isna().all()
           assert observed['forecast_upper'].isna().all()
           assert observed['actual_anomaly'].isin(['yes', 'no']).all()
-          assert observed['actual_colour'].isin(['#D13438', '#FFB900', '#107C10', '#000000']).all()
+          assert observed['actual_colour'].isin([RED, AMBER, GREEN]).all()
           assert observed['forecast_anomaly'].isna().all()
           assert observed['forecast_colour'].isna().all()
           assert observed['horizon_hour'].isna().all()
+
+          # Directional historical colouring: low congestion is favorable.
+          expected_actual_colour = pd.Series(GREEN, index=observed.index)
+          expected_actual_colour.loc[
+              observed['actual'] > observed['anomaly_yhat']
+          ] = AMBER
+          expected_actual_colour.loc[
+              observed['actual'] > observed['anomaly_yhat_upper']
+          ] = RED
+          assert observed['actual_colour'].eq(expected_actual_colour).all()
+
+          # Synthetic regression cases ensure both anomaly tails are exercised.
+          stamp = pd.Timestamp('2026-01-01 12:00:00')
+          ranges = pd.DataFrame({
+              'ds': [stamp],
+              'total_tbs_yhat': [10.0],
+              'total_tbs_yhat_lower': [5.0],
+              'total_tbs_yhat_upper': [20.0],
+          })
+          assert _anomaly_values(
+              ranges, target='Total_TBS', stamp=stamp, value=4.0, historical=True
+          )['colour'] == GREEN
+          assert _anomaly_values(
+              ranges, target='Total_TBS', stamp=stamp, value=15.0, historical=True
+          )['colour'] == AMBER
+          assert _anomaly_values(
+              ranges, target='Total_TBS', stamp=stamp, value=21.0, historical=True
+          )['colour'] == RED
+          assert _anomaly_values(
+              ranges, target='Total_TBS', stamp=stamp, value=4.0, historical=False
+          )['colour'] == RED
 
           assert future['actual'].isna().all()
           assert future[['forecast', 'forecast_lower', 'forecast_upper']].notna().all().all()
           assert future['actual_anomaly'].isna().all()
           assert future['actual_colour'].isna().all()
           assert future['forecast_anomaly'].isin(['yes', 'no']).all()
-          assert future['forecast_colour'].isin(['#D13438', '#FFB900', '#107C10']).all()
+          assert future['forecast_colour'].isin([RED, AMBER, GREEN]).all()
           assert future['horizon_hour'].min() == 1
           assert future['horizon_hour'].max() == 24
 
@@ -140,7 +175,7 @@ jobs:
           assert future_times.min() - observed_times.max() == pd.Timedelta(hours=1)
 
           print(frame.groupby(['row_type', 'target_name']).size())
-          print('forecast-v2.csv validated: separate observed/forecast columns, 24h history + 24h future, legacy files untouched.')
+          print('forecast-v2.csv validated: directional actual colours, separate observed/forecast columns, legacy files untouched.')
           PY
 
       - name: Upload v2 artifact
