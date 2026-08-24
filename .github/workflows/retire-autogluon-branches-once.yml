@@ -1,0 +1,34 @@
+name: Retire AutoGluon branches once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/retire-autogluon-branches-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Delete retired AutoGluon branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          for branch in autogluon-staffing-benchmark autogluon; do
+            if git ls-remote --exit-code --heads origin "refs/heads/${branch}" >/dev/null 2>&1; then
+              echo "Deleting ${branch}"
+              git push origin --delete "${branch}"
+            else
+              echo "Already absent: ${branch}"
+            fi
+          done
+          echo "AutoGluon branches retired; main is preserved."
