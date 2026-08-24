@@ -1,0 +1,38 @@
+name: Forecast input validation CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/forecast-input-validation-ci.yml'
+      - 'scripts/validate_forecast_inputs.py'
+      - 'scripts/anomaly_detection.py'
+      - 'tests/test_validate_forecast_inputs.py'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependency
+        run: python -m pip install pandas
+
+      - name: Compile validation code
+        run: |
+          python -m py_compile scripts/validate_forecast_inputs.py
+          python -m py_compile scripts/anomaly_detection.py
+
+      - name: Run anomaly-range regression tests
+        run: python tests/test_validate_forecast_inputs.py
+
+      - name: Check whitespace
+        run: git diff --check origin/${{ github.base_ref }}...HEAD
