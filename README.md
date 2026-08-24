@@ -48,7 +48,8 @@ Scheduled physician staffing is intentionally excluded from the default daily-ar
 │   ├── chronos_forecast.py     Existing hourly Chronos-2 production forecast
 │   ├── hourly_forecast_v2.py   Independent target/horizon-routed hourly v2 forecast
 │   ├── hourly_feature_routing.py  Validated target × horizon routing policy
-│   ├── chronos_forecast_v2.py  Historical on-call-aware Chronos experiment
+│   ├── legacy/
+│   │   └── chronos_forecast_v2.py  Historical on-call-aware Chronos prototype
 │   ├── forecast_oncall_probability.py  4h/6h/8h on-call activation probability
 │   ├── forecast_oncall_impact.py       Physician-aware on-call scenario forecasts
 │   ├── validate_forecast_inputs.py     Freshness/completeness gates
@@ -63,7 +64,7 @@ Scheduled physician staffing is intentionally excluded from the default daily-ar
 └── *requirements.txt           Workflow-specific dependency sets
 ```
 
-> **Naming note:** `scripts/hourly_forecast_v2.py` is the current independent hourly v2 producer. `scripts/chronos_forecast_v2.py` is an older on-call-related experiment retained for historical compatibility.
+> **Naming note:** `scripts/hourly_forecast_v2.py` is the current independent hourly v2 producer. The older on-call counterfactual prototype is archived at `scripts/legacy/chronos_forecast_v2.py` and is not a production entry point.
 
 ## Existing hourly pipeline
 
