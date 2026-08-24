@@ -11,6 +11,15 @@ on:
       - 'scripts/chronos_forecast_routed.py'
       - 'scripts/run_ed_flow_update.sh'
       - 'tests/test_hourly_feature_routing.py'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/hourly-target-routing-ci.yml'
+      - 'scripts/hourly_feature_routing.py'
+      - 'scripts/chronos_forecast_routed.py'
+      - 'scripts/run_ed_flow_update.sh'
+      - 'tests/test_hourly_feature_routing.py'
 
 jobs:
   test:
