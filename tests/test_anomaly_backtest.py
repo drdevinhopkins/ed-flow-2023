@@ -12,9 +12,11 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from backtest_anomaly_detection import (
+    BacktestConfig,
     add_empirical_thresholds,
     parse_training_windows,
     summarize_detectors,
+    summarize_origin_coverage,
 )
 
 
@@ -52,12 +54,36 @@ def test_empirical_threshold_does_not_use_current_residual() -> None:
     calibrated_shocked = add_empirical_thresholds(shocked, **kwargs)
 
     last = baseline.index[-1]
-    assert calibrated_baseline.loc[last, "residual_q95_global"] == calibrated_shocked.loc[
-        last, "residual_q95_global"
-    ]
-    assert calibrated_baseline.loc[last, "residual_q99_global"] == calibrated_shocked.loc[
-        last, "residual_q99_global"
-    ]
+    for column in [
+        "residual_q95_global",
+        "residual_q97_5_global",
+        "residual_q99_global",
+    ]:
+        assert calibrated_baseline.loc[last, column] == calibrated_shocked.loc[last, column]
+
+
+def test_empirical_global_thresholds_are_ordered() -> None:
+    calibrated = add_empirical_thresholds(
+        _prediction_frame(),
+        calibration_days=30,
+        min_global_samples=8,
+        min_context_samples=2,
+    ).dropna(
+        subset=[
+            "empirical_upper_global_95",
+            "empirical_upper_global_97_5",
+            "empirical_upper_global_99",
+        ]
+    )
+    assert not calibrated.empty
+    assert (
+        calibrated["empirical_upper_global_95"]
+        <= calibrated["empirical_upper_global_97_5"]
+    ).all()
+    assert (
+        calibrated["empirical_upper_global_97_5"]
+        <= calibrated["empirical_upper_global_99"]
+    ).all()
 
 
 def test_sparse_context_falls_back_to_global_threshold() -> None:
@@ -89,6 +115,7 @@ def test_summary_counts_persistent_alert_episodes() -> None:
             "yhat": 10.0,
             "yhat_upper": 11.0,
             "empirical_upper_global_95": 11.0,
+            "empirical_upper_global_97_5": 12.0,
             "empirical_upper_how_95": 11.0,
             "empirical_upper_global_99": 20.0,
         }
@@ -102,11 +129,45 @@ def test_summary_counts_persistent_alert_episodes() -> None:
     assert nominal["mean_episode_hours"] == 2.5
 
 
+def test_origin_coverage_reports_missing_exact_origin() -> None:
+    ds = pd.date_range("2026-01-01 00:00:00", "2026-02-05 06:00:00", freq="h")
+    frame = pd.DataFrame({"ds": ds})
+    for target in [
+        "Total_TBS",
+        "POD_TBS",
+        "Vertical_TBS",
+        "TTStr",
+        "Overflow",
+        "WAITINGADM",
+    ]:
+        frame[target] = 1.0
+
+    missing_origin = pd.Timestamp("2026-02-04 06:00:00")
+    frame = frame.loc[frame["ds"].ne(missing_origin)].copy()
+    config = BacktestConfig(
+        evaluation_days=1,
+        calibration_days=1,
+        training_windows=(30,),
+        origin_hour=6,
+        horizon=24,
+        min_global_samples=1,
+        min_context_samples=1,
+    )
+    coverage = summarize_origin_coverage(frame, config)
+    missing = coverage.loc[
+        coverage["origin"].eq(missing_origin) & coverage["target"].eq("Total_TBS")
+    ].iloc[0]
+    assert not missing["available_at_origin"]
+    assert missing["gap_hours"] == 1.0
+
+
 def main() -> None:
     test_training_window_parser_supports_full_history()
     test_empirical_threshold_does_not_use_current_residual()
+    test_empirical_global_thresholds_are_ordered()
     test_sparse_context_falls_back_to_global_threshold()
     test_summary_counts_persistent_alert_episodes()
+    test_origin_coverage_reports_missing_exact_origin()
     print("anomaly backtest tests passed")
 
 
