@@ -18,7 +18,6 @@ import os
 import runpy
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 import backtest_covariate_ablation as base
@@ -37,6 +36,18 @@ HORIZON = 24
 MAX_HISTORY_DAYS = 365
 EFFECT_MIN_HOURS = 24
 EFFECT_SHRINKAGE_HOURS = 72.0
+
+# The validated feature work uses canonical target names, while the legacy production
+# forecast script derives four of those targets under older lowercase aliases. Keep this
+# translation explicit so routed values land in both the long and wide production files.
+LEGACY_TARGET_ALIASES: dict[str, str] = {
+    "Total_TBS": "total_tbs",
+    "POD_TBS": "pod_tbs",
+    "Vertical_TBS": "vert_tbs",
+    "TTStr": "TTStr",
+    "Overflow": "overflow",
+    "WAITINGADM": "WAITINGADM",
+}
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -134,7 +145,13 @@ def _build_routed_forecast(pipeline, *, allow_weather: bool) -> pd.DataFrame:
 def _patch_chronos_long(path: Path, routed: pd.DataFrame) -> None:
     frame = pd.read_csv(path)
     frame["ds"] = pd.to_datetime(frame["ds"], format="mixed", errors="coerce")
-    route = routed.rename(
+
+    route = routed.copy()
+    route["routed_target_name"] = route["target_name"]
+    route["target_name"] = route["target_name"].map(LEGACY_TARGET_ALIASES)
+    if route["target_name"].isna().any():
+        raise ValueError("Missing legacy target alias while patching chronos_forecast.csv")
+    route = route.rename(
         columns={
             "predictions": "routed_forecast",
             "0.2": "routed_forecast_lower",
@@ -145,6 +162,7 @@ def _patch_chronos_long(path: Path, routed: pd.DataFrame) -> None:
         [
             "ds",
             "target_name",
+            "routed_target_name",
             "routed_forecast",
             "routed_forecast_lower",
             "routed_forecast_upper",
@@ -155,61 +173,84 @@ def _patch_chronos_long(path: Path, routed: pd.DataFrame) -> None:
     ]
     frame = frame.merge(route, on=["ds", "target_name"], how="left")
     mask = frame["routed_forecast"].notna()
-    if "forecast_all_vars_with_future" in frame.columns:
-        frame.loc[mask, "forecast_all_vars_with_future"] = frame.loc[mask, "routed_forecast"]
+    expected = len(FLOW_TARGETS) * HORIZON
+    if int(mask.sum()) != expected:
+        raise ValueError(
+            f"Expected to patch {expected} routed rows in {path}, patched {int(mask.sum())}"
+        )
+    if "forecast_all_vars_with_future" not in frame.columns:
+        raise ValueError("chronos_forecast.csv is missing forecast_all_vars_with_future")
+    frame.loc[mask, "forecast_all_vars_with_future"] = frame.loc[mask, "routed_forecast"]
     frame.to_csv(path, index=False)
 
 
 def _patch_wide_output(path: Path, routed: pd.DataFrame) -> None:
     frame = pd.read_csv(path)
     frame["ds"] = pd.to_datetime(frame["ds"], format="mixed", errors="coerce")
+    route_metadata: dict[str, pd.Series] = {}
 
     for target in FLOW_TARGETS:
+        legacy_target = LEGACY_TARGET_ALIASES[target]
         target_route = routed.loc[routed["target_name"].eq(target)].set_index("ds")
-        forecast_col = f"{target}_forecast"
-        lower_col = f"{target}_forecast_lower"
-        upper_col = f"{target}_forecast_upper"
-        route_col = f"{target}_forecast_route"
-        if forecast_col not in frame.columns:
-            print(f"WARNING: routed target column absent from wide output: {forecast_col}")
-            continue
+        forecast_col = f"{legacy_target}_forecast"
+        lower_col = f"{legacy_target}_forecast_lower"
+        upper_col = f"{legacy_target}_forecast_upper"
+        required = [forecast_col, lower_col, upper_col]
+        missing = [column for column in required if column not in frame.columns]
+        if missing:
+            raise ValueError(
+                f"Wide output is missing routed columns for {target}: {missing}"
+            )
 
-        for idx, stamp in frame["ds"].items():
-            if stamp not in target_route.index:
-                continue
-            selected = target_route.loc[stamp]
-            frame.at[idx, forecast_col] = selected["predictions"]
-            if lower_col in frame.columns:
-                frame.at[idx, lower_col] = selected["0.2"]
-            if upper_col in frame.columns:
-                frame.at[idx, upper_col] = selected["0.8"]
-            frame.at[idx, route_col] = selected["scenario"]
+        route_series = frame["ds"].map(target_route["scenario"])
+        prediction_series = frame["ds"].map(target_route["predictions"])
+        lower_series = frame["ds"].map(target_route["0.2"])
+        upper_series = frame["ds"].map(target_route["0.8"])
+        mask = prediction_series.notna()
+        if int(mask.sum()) != HORIZON:
+            raise ValueError(
+                f"Expected {HORIZON} future rows for {target} in wide output; "
+                f"found {int(mask.sum())}"
+            )
 
-            yhat = f"{target}_yhat"
-            yhat_lower = f"{target}_yhat_lower"
-            yhat_upper = f"{target}_yhat_upper"
-            anomaly_col = f"{target}_anomaly"
-            colour_col = f"{target}_colour"
-            if all(column in frame.columns for column in [yhat, yhat_lower, yhat_upper]):
-                prediction = float(selected["predictions"])
-                low = frame.at[idx, yhat_lower]
-                high = frame.at[idx, yhat_upper]
-                center = frame.at[idx, yhat]
-                if pd.notna(low) and pd.notna(high):
-                    is_anomaly = prediction < float(low) or prediction > float(high)
-                    if anomaly_col in frame.columns:
-                        frame.at[idx, anomaly_col] = "yes" if is_anomaly else "no"
-                    if colour_col in frame.columns and pd.notna(center):
-                        frame.at[idx, colour_col] = (
-                            "#D13438"
-                            if is_anomaly
-                            else ("#FFB900" if prediction > float(center) else "#107C10")
-                        )
+        frame.loc[mask, forecast_col] = prediction_series.loc[mask]
+        frame.loc[mask, lower_col] = lower_series.loc[mask]
+        frame.loc[mask, upper_col] = upper_series.loc[mask]
+        route_metadata[f"{target}_forecast_route"] = route_series
 
-    frame["hourly_routing_version"] = ROUTING_VERSION
-    frame["hourly_weather_routing_enabled"] = bool(
+        yhat = f"{legacy_target}_yhat"
+        yhat_lower = f"{legacy_target}_yhat_lower"
+        yhat_upper = f"{legacy_target}_yhat_upper"
+        anomaly_col = f"{legacy_target}_anomaly"
+        colour_col = f"{legacy_target}_colour"
+        anomaly_inputs = [yhat, yhat_lower, yhat_upper, anomaly_col, colour_col]
+        missing_anomaly = [column for column in anomaly_inputs if column not in frame.columns]
+        if missing_anomaly:
+            raise ValueError(
+                f"Wide output is missing anomaly columns for {target}: {missing_anomaly}"
+            )
+
+        valid = mask & frame[yhat_lower].notna() & frame[yhat_upper].notna()
+        is_anomaly = (
+            (prediction_series < pd.to_numeric(frame[yhat_lower], errors="coerce"))
+            | (prediction_series > pd.to_numeric(frame[yhat_upper], errors="coerce"))
+        )
+        frame.loc[valid, anomaly_col] = is_anomaly.loc[valid].map(
+            {True: "yes", False: "no"}
+        )
+        center = pd.to_numeric(frame[yhat], errors="coerce")
+        normal_high = valid & ~is_anomaly & prediction_series.gt(center)
+        normal_low = valid & ~is_anomaly & ~prediction_series.gt(center)
+        frame.loc[valid & is_anomaly, colour_col] = "#D13438"
+        frame.loc[normal_high, colour_col] = "#FFB900"
+        frame.loc[normal_low, colour_col] = "#107C10"
+
+    metadata = pd.DataFrame(route_metadata, index=frame.index)
+    metadata["hourly_routing_version"] = ROUTING_VERSION
+    metadata["hourly_weather_routing_enabled"] = bool(
         routed["weather_routing_enabled"].iloc[0]
     )
+    frame = pd.concat([frame, metadata], axis=1)
     frame.to_csv(path, index=False)
 
 
