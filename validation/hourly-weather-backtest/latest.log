@@ -1,0 +1,123 @@
+Targets: Total_TBS, POD_TBS, Vertical_TBS, TTStr, Overflow, WAITINGADM
+Cutoffs (12): [Timestamp('2026-06-06 17:00:00'), Timestamp('2026-06-13 17:00:00'), Timestamp('2026-06-20 17:00:00'), Timestamp('2026-06-27 17:00:00'), Timestamp('2026-07-04 17:00:00'), Timestamp('2026-07-11 17:00:00'), Timestamp('2026-07-18 17:00:00'), Timestamp('2026-07-25 17:00:00'), Timestamp('2026-08-01 17:00:00'), Timestamp('2026-08-08 17:00:00'), Timestamp('2026-08-15 17:00:00'), Timestamp('2026-08-22 17:00:00')]
+Scenarios: ['baseline', 'raw_weather', 'raw_plus_snow', 'raw_plus_thermal', 'raw_plus_storm', 'engineered_weather', 'all_raw', 'all_raw_plus_snow', 'all_engineered']
+WARNING: historical weather is signal-potential data, not forecast-snapshot replay.
+Loading amazon/chronos-2 on cpu
+Loading weights:   0%|          | 0/170 [00:00<?, ?it/s]Loading weights: 100%|██████████| 170/170 [00:00<00:00, 48634.59it/s]
+Forecasting cutoff=2026-06-06 17:00:00 scenario=baseline
+Forecasting cutoff=2026-06-06 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-06-06 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-06-06 17:00:00 scenario=raw_plus_thermal
+Forecasting cutoff=2026-06-06 17:00:00 scenario=raw_plus_storm
+Forecasting cutoff=2026-06-06 17:00:00 scenario=engineered_weather
+Forecasting cutoff=2026-06-06 17:00:00 scenario=all_raw
+Forecasting cutoff=2026-06-06 17:00:00 scenario=all_raw_plus_snow
+Forecasting cutoff=2026-06-06 17:00:00 scenario=all_engineered
+Forecasting cutoff=2026-06-13 17:00:00 scenario=baseline
+Forecasting cutoff=2026-06-13 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-06-13 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-06-13 17:00:00 scenario=raw_plus_thermal
+Forecasting cutoff=2026-06-13 17:00:00 scenario=raw_plus_storm
+Forecasting cutoff=2026-06-13 17:00:00 scenario=engineered_weather
+Forecasting cutoff=2026-06-13 17:00:00 scenario=all_raw
+Forecasting cutoff=2026-06-13 17:00:00 scenario=all_raw_plus_snow
+Forecasting cutoff=2026-06-13 17:00:00 scenario=all_engineered
+Forecasting cutoff=2026-06-20 17:00:00 scenario=baseline
+Forecasting cutoff=2026-06-20 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-06-20 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-06-20 17:00:00 scenario=raw_plus_thermal
+Forecasting cutoff=2026-06-20 17:00:00 scenario=raw_plus_storm
+Forecasting cutoff=2026-06-20 17:00:00 scenario=engineered_weather
+Forecasting cutoff=2026-06-20 17:00:00 scenario=all_raw
+Forecasting cutoff=2026-06-20 17:00:00 scenario=all_raw_plus_snow
+Forecasting cutoff=2026-06-20 17:00:00 scenario=all_engineered
+Forecasting cutoff=2026-06-27 17:00:00 scenario=baseline
+Forecasting cutoff=2026-06-27 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-06-27 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-06-27 17:00:00 scenario=raw_plus_thermal
+Forecasting cutoff=2026-06-27 17:00:00 scenario=raw_plus_storm
+Forecasting cutoff=2026-06-27 17:00:00 scenario=engineered_weather
+Forecasting cutoff=2026-06-27 17:00:00 scenario=all_raw
+Forecasting cutoff=2026-06-27 17:00:00 scenario=all_raw_plus_snow
+Forecasting cutoff=2026-06-27 17:00:00 scenario=all_engineered
+Forecasting cutoff=2026-07-04 17:00:00 scenario=baseline
+Forecasting cutoff=2026-07-04 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-07-04 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-07-04 17:00:00 scenario=raw_plus_thermal
+Forecasting cutoff=2026-07-04 17:00:00 scenario=raw_plus_storm
+Forecasting cutoff=2026-07-04 17:00:00 scenario=engineered_weather
+Forecasting cutoff=2026-07-04 17:00:00 scenario=all_raw
+Forecasting cutoff=2026-07-04 17:00:00 scenario=all_raw_plus_snow
+Forecasting cutoff=2026-07-04 17:00:00 scenario=all_engineered
+Forecasting cutoff=2026-07-11 17:00:00 scenario=baseline
+Forecasting cutoff=2026-07-11 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-07-11 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-07-11 17:00:00 scenario=raw_plus_thermal
+Forecasting cutoff=2026-07-11 17:00:00 scenario=raw_plus_storm
+Forecasting cutoff=2026-07-11 17:00:00 scenario=engineered_weather
+Forecasting cutoff=2026-07-11 17:00:00 scenario=all_raw
+Forecasting cutoff=2026-07-11 17:00:00 scenario=all_raw_plus_snow
+Forecasting cutoff=2026-07-11 17:00:00 scenario=all_engineered
+Forecasting cutoff=2026-07-18 17:00:00 scenario=baseline
+Forecasting cutoff=2026-07-18 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-07-18 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-07-18 17:00:00 scenario=raw_plus_thermal
+Forecasting cutoff=2026-07-18 17:00:00 scenario=raw_plus_storm
+Forecasting cutoff=2026-07-18 17:00:00 scenario=engineered_weather
+Forecasting cutoff=2026-07-18 17:00:00 scenario=all_raw
+Forecasting cutoff=2026-07-18 17:00:00 scenario=all_raw_plus_snow
+Forecasting cutoff=2026-07-18 17:00:00 scenario=all_engineered
+Forecasting cutoff=2026-07-25 17:00:00 scenario=baseline
+Forecasting cutoff=2026-07-25 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-07-25 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-07-25 17:00:00 scenario=raw_plus_thermal
+Forecasting cutoff=2026-07-25 17:00:00 scenario=raw_plus_storm
+Forecasting cutoff=2026-07-25 17:00:00 scenario=engineered_weather
+Forecasting cutoff=2026-07-25 17:00:00 scenario=all_raw
+Forecasting cutoff=2026-07-25 17:00:00 scenario=all_raw_plus_snow
+Forecasting cutoff=2026-07-25 17:00:00 scenario=all_engineered
+Forecasting cutoff=2026-08-01 17:00:00 scenario=baseline
+Forecasting cutoff=2026-08-01 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-08-01 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-08-01 17:00:00 scenario=raw_plus_thermal
+Forecasting cutoff=2026-08-01 17:00:00 scenario=raw_plus_storm
+Forecasting cutoff=2026-08-01 17:00:00 scenario=engineered_weather
+Forecasting cutoff=2026-08-01 17:00:00 scenario=all_raw
+Forecasting cutoff=2026-08-01 17:00:00 scenario=all_raw_plus_snow
+Forecasting cutoff=2026-08-01 17:00:00 scenario=all_engineered
+Forecasting cutoff=2026-08-08 17:00:00 scenario=baseline
+Forecasting cutoff=2026-08-08 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-08-08 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-08-08 17:00:00 scenario=raw_plus_thermal
+Forecasting cutoff=2026-08-08 17:00:00 scenario=raw_plus_storm
+Forecasting cutoff=2026-08-08 17:00:00 scenario=engineered_weather
+Forecasting cutoff=2026-08-08 17:00:00 scenario=all_raw
+Forecasting cutoff=2026-08-08 17:00:00 scenario=all_raw_plus_snow
+Forecasting cutoff=2026-08-08 17:00:00 scenario=all_engineered
+Forecasting cutoff=2026-08-15 17:00:00 scenario=baseline
+Forecasting cutoff=2026-08-15 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-08-15 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-08-15 17:00:00 scenario=raw_plus_thermal
+Forecasting cutoff=2026-08-15 17:00:00 scenario=raw_plus_storm
+Forecasting cutoff=2026-08-15 17:00:00 scenario=engineered_weather
+Forecasting cutoff=2026-08-15 17:00:00 scenario=all_raw
+Forecasting cutoff=2026-08-15 17:00:00 scenario=all_raw_plus_snow
+Forecasting cutoff=2026-08-15 17:00:00 scenario=all_engineered
+Forecasting cutoff=2026-08-22 17:00:00 scenario=baseline
+Forecasting cutoff=2026-08-22 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-08-22 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-08-22 17:00:00 scenario=raw_plus_thermal
+Forecasting cutoff=2026-08-22 17:00:00 scenario=raw_plus_storm
+Forecasting cutoff=2026-08-22 17:00:00 scenario=engineered_weather
+Forecasting cutoff=2026-08-22 17:00:00 scenario=all_raw
+Forecasting cutoff=2026-08-22 17:00:00 scenario=all_raw_plus_snow
+Forecasting cutoff=2026-08-22 17:00:00 scenario=all_engineered
+
+Overall winners:
+ target_name    scenario   n      mae  mae_improvement_vs_baseline_pct
+    Overflow raw_weather 288 3.355230                         5.459445
+     POD_TBS    baseline 288 2.197048                         0.000000
+       TTStr    baseline 288 8.931878                         0.000000
+   Total_TBS     all_raw 288 6.894861                         4.723116
+Vertical_TBS     all_raw 288 6.276691                         3.788568
+  WAITINGADM raw_weather 288 4.065875                         3.608528
