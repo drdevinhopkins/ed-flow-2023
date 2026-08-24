@@ -15,6 +15,20 @@ on:
       - 'tests/test_respiratory_surveillance.py'
       - 'chronos-requirements.txt'
       - '.github/workflows/external-signal-features.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'scripts/regional_ed_pressure.py'
+      - 'scripts/update_regional_ed_pressure.py'
+      - 'scripts/backtest_regional_ed_pressure.py'
+      - 'scripts/respiratory_surveillance.py'
+      - 'scripts/update_respiratory_surveillance.py'
+      - 'scripts/backtest_daily_respiratory_features.py'
+      - 'tests/test_regional_ed_pressure.py'
+      - 'tests/test_respiratory_surveillance.py'
+      - 'chronos-requirements.txt'
+      - '.github/workflows/external-signal-features.yml'
   workflow_dispatch:
     inputs:
       run_respiratory_backtest:
@@ -41,7 +55,10 @@ concurrency:
 
 jobs:
   test-feature-code:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -70,6 +87,7 @@ jobs:
 
   archive-regional-pressure:
     if: >-
+      github.event_name == 'pull_request' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'schedule' && github.event.schedule == '55 * * * *')
     runs-on: ubuntu-latest
@@ -94,6 +112,7 @@ jobs:
 
   archive-respiratory:
     if: >-
+      github.event_name == 'pull_request' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'schedule' && github.event.schedule == '25 15 * * 1')
     runs-on: ubuntu-latest
@@ -118,8 +137,8 @@ jobs:
 
   respiratory-ablation:
     if: >-
-      github.event_name == 'workflow_dispatch' &&
-      inputs.run_respiratory_backtest
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_respiratory_backtest)
     needs:
       - test-feature-code
       - archive-respiratory
