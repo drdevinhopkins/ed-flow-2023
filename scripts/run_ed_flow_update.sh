@@ -31,11 +31,10 @@ PY
 fi
 
 # Reserve physical GPU 0 for the ED flow pipeline. CUDA processes launched by
-# this wrapper can see only GPU 0, so Chronos/CatBoost cannot spill onto the
-# GPUs reserved for Scribbler.
+# this wrapper can see only GPU 0, so Chronos and CatBoost cannot spill onto the
+# GPUs reserved for Scribbler. Each model chooses GPU automatically when CUDA
+# is available and otherwise falls back to CPU.
 export CUDA_VISIBLE_DEVICES=0
-export ONCALL_CATBOOST_TASK_TYPE=GPU
-export ONCALL_CATBOOST_DEVICES=0
 
 # Hourly weather routes remain disabled in production until prospective
 # forecast-time weather validation is sufficient.
