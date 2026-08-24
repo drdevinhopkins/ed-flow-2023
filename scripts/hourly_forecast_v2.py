@@ -11,10 +11,9 @@ Observed values and forecasts live in separate ``actual`` and ``forecast`` colum
 Power BI can plot the two series independently without reshaping the file.
 
 Observed and forecast rows both carry the same anomaly reference intervals and colour
-logic used by ``ED_Hourly_Forecasts_Anomalies_v1.0.csv``:
-- outside anomaly interval -> red ``#D13438``
-- inside interval and above expected -> amber ``#FFB900``
-- inside interval and at/below expected -> green ``#107C10``
+logic used by ``ED_Hourly_Forecasts_Anomalies_v1.0.csv``. Historical rows preserve the
+legacy exact-equality fallback to black; forecast rows preserve the legacy equality-to-
+green behavior.
 
 Weather-winning routes remain disabled by default because the retrospective hourly
 weather validation used revised/realized weather rather than archived forecast-time
@@ -69,6 +68,7 @@ ANOMALY_TARGET_ALIASES = {
 RED = "#D13438"
 AMBER = "#FFB900"
 GREEN = "#107C10"
+BLACK = "#000000"
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -140,6 +140,7 @@ def _anomaly_values(
     target: str,
     stamp: pd.Timestamp,
     value: float,
+    historical: bool = False,
 ) -> dict[str, object]:
     yhat_col, lower_col, upper_col = _anomaly_columns(anomaly_ranges, target)
     match = anomaly_ranges.loc[
@@ -160,7 +161,15 @@ def _anomaly_values(
     lower = float(lower)
     upper = float(upper)
     is_anomaly = value < lower or value > upper
-    colour = RED if is_anomaly else (AMBER if value > yhat else GREEN)
+    if is_anomaly:
+        colour = RED
+    elif value > yhat:
+        colour = AMBER
+    elif value < yhat:
+        colour = GREEN
+    else:
+        colour = BLACK if historical else GREEN
+
     return {
         "anomaly_yhat": yhat,
         "anomaly_yhat_lower": lower,
@@ -178,7 +187,9 @@ def _observed_rows(
     generated_at_utc: str,
     allow_weather: bool,
 ) -> list[dict[str, object]]:
-    history = flow.loc[flow["ds"].le(cutoff), ["ds", *FLOW_TARGETS]].tail(HISTORY_HOURS)
+    history = flow.loc[
+        flow["ds"].le(cutoff), ["ds", *FLOW_TARGETS]
+    ].tail(HISTORY_HOURS)
     if len(history) != HISTORY_HOURS:
         raise ValueError(
             f"Expected {HISTORY_HOURS} recent observed hours; got {len(history)}"
@@ -193,7 +204,11 @@ def _observed_rows(
                 raise ValueError(f"Missing observed {target} at {stamp}")
             actual = float(actual)
             anomaly = _anomaly_values(
-                anomaly_ranges, target=target, stamp=stamp, value=actual
+                anomaly_ranges,
+                target=target,
+                stamp=stamp,
+                value=actual,
+                historical=True,
             )
             rows.append(
                 {
@@ -334,15 +349,27 @@ def build_forecast_v2(
 
     observed = result["row_type"].eq("observed")
     future = result["row_type"].eq("forecast")
-    if result.loc[observed, "actual"].isna().any() or result.loc[observed, "forecast"].notna().any():
+    if (
+        result.loc[observed, "actual"].isna().any()
+        or result.loc[observed, "forecast"].notna().any()
+    ):
         raise RuntimeError("Observed rows must populate actual only")
-    if result.loc[future, "forecast"].isna().any() or result.loc[future, "actual"].notna().any():
+    if (
+        result.loc[future, "forecast"].isna().any()
+        or result.loc[future, "actual"].notna().any()
+    ):
         raise RuntimeError("Forecast rows must populate forecast only")
-    if result[["anomaly_yhat", "anomaly_yhat_lower", "anomaly_yhat_upper"]].isna().any().any():
+    if result[
+        ["anomaly_yhat", "anomaly_yhat_lower", "anomaly_yhat_upper"]
+    ].isna().any().any():
         raise RuntimeError("Missing anomaly reference intervals in forecast-v2.csv")
-    if result.loc[observed, ["actual_anomaly", "actual_colour"]].isna().any().any():
+    if result.loc[
+        observed, ["actual_anomaly", "actual_colour"]
+    ].isna().any().any():
         raise RuntimeError("Missing observed anomaly annotations in forecast-v2.csv")
-    if result.loc[future, ["forecast_anomaly", "forecast_colour"]].isna().any().any():
+    if result.loc[
+        future, ["forecast_anomaly", "forecast_colour"]
+    ].isna().any().any():
         raise RuntimeError("Missing forecast anomaly annotations in forecast-v2.csv")
     return result
 
