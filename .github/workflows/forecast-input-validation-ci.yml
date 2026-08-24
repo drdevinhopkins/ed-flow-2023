@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -35,4 +37,4 @@ jobs:
         run: python tests/test_validate_forecast_inputs.py
 
       - name: Check whitespace
-        run: git diff --check origin/${{ github.base_ref }}...HEAD
+        run: git diff --check HEAD^ HEAD
