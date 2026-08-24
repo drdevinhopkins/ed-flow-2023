@@ -70,6 +70,55 @@ When that PDF changes, it runs:
 /home/dhopkins/apps/ed-flow-2023/scripts/run_ed_flow_update.sh
 ```
 
+The wrapper is the canonical local hourly pipeline on `jgh000533svaps`.
+
+Current sequence:
+
+```text
+get_current.py
+  → update_metar.py
+  → shiftadmin.py
+  → validate_forecast_inputs.py
+  → chronos_forecast.py
+  → forecast_oncall_impact.py
+  → forecast_oncall_probability.py
+  → calculated_kpis.py
+  → alerts.py
+  → hourly_forecast_v2.py  (additive/non-blocking)
+```
+
+Important behavior:
+
+- The wrapper loads `.env` so direct/manual invocation has the same credentials as the Dropbox watcher.
+- `CHRONOS_HOURLY_ENABLE_WEATHER_ROUTING=0` is exported explicitly. Hourly weather-winning v2 routes stay disabled until prospective forecast-time validation is sufficient.
+- `validate_forecast_inputs.py` is a hard gate. If ED, staffing, or weather inputs are stale/incomplete, the established forecast pipeline stops rather than producing a misleading forecast.
+- `hourly_forecast_v2.py` runs last as an additive step. If v2 fails, the established legacy forecast, on-call, KPI, and alert outputs have already completed and the wrapper records a warning rather than failing the whole workflow.
+- The separate `ed-flow-weather.timer` remains responsible for refreshing `weather.csv`; the hourly wrapper does not duplicate `update_weather.py`.
+- `update_metar.py` does run on every hourly PDF-triggered refresh so METAR history is kept current.
+
+### Expected outputs
+
+The established pipeline continues to publish its existing outputs, including:
+
+```text
+chronos_forecast.csv
+ED_Hourly_Forecasts_Anomalies_v1.0.csv
+forecast_variable_effects.csv
+forecast_variable_effects_hourly.csv
+oncall_impact_forecast.csv
+oncall_impact_summary.csv
+oncall_need_probability.csv
+oncall_need_probability_validation.csv
+alerts.csv
+alerts.xlsx
+```
+
+The additive v2 step publishes:
+
+```text
+forecast-v2.csv
+```
+
 ### Check service status
 
 ```bash
@@ -92,7 +141,7 @@ Filtered version:
 
 ```bash
 sudo journalctl -u ed-flow-dropbox-watcher.service --since "24 hours ago" --no-pager \
-  | grep -Ei 'started|running|dropbox|cursor|longpoll|change|changed|hourlyreport|pdf|workflow|success|completed|failed|traceback|error|exception'
+  | grep -Ei 'started|running|dropbox|cursor|longpoll|change|changed|hourlyreport|pdf|workflow|START:|DONE:|WARNING:|validation|METAR|forecast v2|forecast-v2|success|completed|failed|traceback|error|exception'
 ```
 
 ### Signs it is working
@@ -103,17 +152,30 @@ You should see messages like:
 Dropbox reported changes. Checking changed files.
 Detected updated target PDF: /hourlyreport.pdf
 Running workflow: /home/dhopkins/apps/ed-flow-2023/scripts/run_ed_flow_update.sh
+=== START: python scripts/get_current.py ===
+=== DONE: python scripts/get_current.py ===
+...
+=== START: python scripts/validate_forecast_inputs.py ===
+[PASS] ED freshness: ...
+[PASS] ED hourly continuity: ...
+[PASS] Staffing horizon coverage: ...
+[PASS] Weather horizon coverage: ...
+=== DONE: python scripts/validate_forecast_inputs.py ===
+...
+=== START (additive): python scripts/hourly_forecast_v2.py ===
+Wrote and uploaded forecast-v2.csv (288 rows)
+=== DONE: python scripts/hourly_forecast_v2.py ===
 Workflow completed successfully.
 ```
 
-The wrapper also runs the on-call impact and probability scripts after the main Chronos forecast. They upload:
+If only v2 fails, you may instead see:
 
 ```text
-oncall_impact_forecast.csv
-oncall_impact_summary.csv
-oncall_need_probability.csv
-oncall_need_probability_validation.csv
+=== WARNING: additive step failed (...): python scripts/hourly_forecast_v2.py ===
+Workflow completed successfully.
 ```
+
+That is intentional: v2 is currently isolated from the established production outputs.
 
 It is also normal to see:
 
@@ -160,6 +222,8 @@ every 4 hours and uploads:
 ```text
 weather.csv
 ```
+
+The hourly wrapper does not rerun this script. Instead, `validate_forecast_inputs.py` verifies that the existing `weather.csv` covers all 24 forecast hours before either production forecast is allowed to use it.
 
 ### Check timer schedule
 
@@ -344,7 +408,7 @@ for u in ed-flow-dropbox-watcher.service ed-flow-weather.service ed-flow-anomaly
   echo
   echo "===== $u ====="
   sudo journalctl -u "$u" --since "24 hours ago" --no-pager \
-    | grep -Ei 'uploaded|detected|workflow|completed|success|failed|traceback|error|exception|ModuleNotFoundError|No Dropbox changes|hourlyreport' \
+    | grep -Ei 'uploaded|detected|workflow|START:|DONE:|WARNING:|validation|forecast-v2|completed|success|failed|traceback|error|exception|ModuleNotFoundError|No Dropbox changes|hourlyreport' \
     || true
 done
 ```
@@ -356,7 +420,7 @@ for u in ed-flow-dropbox-watcher.service ed-flow-weather.service ed-flow-anomaly
   echo
   echo "===== $u ====="
   sudo journalctl -u "$u" --since "7 days ago" --no-pager \
-    | grep -Ei 'uploaded|detected|workflow|completed|success|failed|traceback|error|exception|ModuleNotFoundError|hourlyreport' \
+    | grep -Ei 'uploaded|detected|workflow|START:|DONE:|WARNING:|validation|forecast-v2|completed|success|failed|traceback|error|exception|ModuleNotFoundError|hourlyreport' \
     || true
 done
 ```
@@ -386,6 +450,20 @@ Normal. The watcher is alive and waiting.
 ### `Dropbox changed, but hourlyreport.pdf did not change`
 
 Normal. Dropbox had some activity, but not the target PDF.
+
+### `Forecast input validation failed`
+
+Do not bypass the gate just to obtain a forecast. Identify which input failed:
+
+- ED freshness / continuity → inspect `get_current.py` and the source PDF
+- staffing horizon coverage → inspect ShiftAdmin refresh/output
+- weather horizon coverage → inspect `ed-flow-weather.timer` and `weather.csv`
+
+The gate exists to prevent stale or incomplete inputs from silently generating an operational forecast.
+
+### `WARNING: additive step failed ... hourly_forecast_v2.py`
+
+The established production pipeline completed, but `forecast-v2.csv` was not refreshed. Check the preceding v2 traceback/error. The next successful wrapper run will retry v2 automatically.
 
 ### `ModuleNotFoundError`
 
@@ -453,10 +531,42 @@ Run from the project directory:
 cd /home/dhopkins/apps/ed-flow-2023
 ```
 
-### Dropbox-triggered workflow script
+### Full Dropbox-triggered workflow
 
 ```bash
 /home/dhopkins/apps/ed-flow-2023/scripts/run_ed_flow_update.sh
+```
+
+Because the wrapper loads `.env`, this is the preferred manual end-to-end test.
+
+### Input gate only
+
+```bash
+source .venv/bin/activate
+python scripts/validate_forecast_inputs.py
+```
+
+### Forecast v2 only
+
+```bash
+source .venv/bin/activate
+set -a
+source .env
+set +a
+CHRONOS_HOURLY_ENABLE_WEATHER_ROUTING=0 python scripts/hourly_forecast_v2.py
+```
+
+Expected successful final message:
+
+```text
+Wrote and uploaded forecast-v2.csv (288 rows)
+```
+
+### METAR refresh only
+
+```bash
+source .venv/bin/activate
+python scripts/update_metar.py
 ```
 
 ### Weather script
@@ -477,6 +587,6 @@ cd /home/dhopkins/apps/ed-flow-2023
 
 | Automation | Unit | Schedule/Trigger | Healthy state |
 |---|---|---|---|
-| Dropbox hourly report watcher | `ed-flow-dropbox-watcher.service` | Dropbox longpoll detects `/hourlyreport.pdf` changes | `active (running)` |
+| Dropbox hourly report watcher | `ed-flow-dropbox-watcher.service` | Dropbox longpoll detects `/hourlyreport.pdf` changes; runs legacy + on-call + additive v2 forecasts | `active (running)` |
 | Weather update | `ed-flow-weather.timer` → `ed-flow-weather.service` | Every 4 hours | Timer `active (waiting)`, service last run `0/SUCCESS` |
 | Anomaly detection | `ed-flow-anomaly.timer` → `ed-flow-anomaly.service` | Daily at 6:00 AM local Eastern time | Timer `active (waiting)`, service last run `0/SUCCESS` |
