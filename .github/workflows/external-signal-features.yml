@@ -146,13 +146,14 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           NUM_CUTOFFS: ${{ inputs.respiratory_cutoffs || '16' }}
         run: |
+          set -o pipefail
           mkdir -p validation-output-respiratory
           python scripts/backtest_daily_respiratory_features.py \
             --respiratory-csv external-inputs/inspq_montreal_weekly.csv \
             --num-cutoffs "$NUM_CUTOFFS" \
             --horizon-days 7 \
             --context-days 1095 \
-            --min-history-days 120 \
+            --min-history-days 28 \
             --output-dir validation-output-respiratory \
             2>&1 | tee validation-output-respiratory/run.log
       - uses: actions/upload-artifact@v4
