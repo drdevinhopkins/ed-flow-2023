@@ -7,6 +7,21 @@ on:
       - chronos2-hourly-target-routing
     paths:
       - '.github/workflows/hourly-target-routing-runtime.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/hourly-target-routing-runtime.yml'
+      - '.github/workflows/hourly-update.yml'
+      - 'scripts/chronos_forecast_routed.py'
+      - 'scripts/hourly_feature_routing.py'
+      - 'scripts/backtest_hourly_final_features.py'
+      - 'scripts/backtest_staffing_features.py'
+      - 'scripts/backtest_hourly_calendar_features.py'
+      - 'scripts/backtest_hourly_weather_features.py'
+      - 'scripts/staffing_features.py'
+      - 'scripts/hourly_calendar_features.py'
+      - 'scripts/hourly_weather_features.py'
 
 permissions:
   contents: read
