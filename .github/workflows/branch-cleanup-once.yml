@@ -1,0 +1,53 @@
+name: One-time stale branch cleanup
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/branch-cleanup-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Delete superseded remote branches
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          branches=(
+            agent
+            autogluon-test
+            chronos2-holiday-features
+            chronos2-hourly-calendar-features
+            chronos2-hourly-final-ablation
+            chronos2-hourly-target-routing
+            chronos2-hourly-weather-features
+            chronos2-staffing-features
+            chronos2-weather-features
+            codex
+            feb-11-fix
+            forecast-v2-directional-anomaly-colours
+            forecast-validation
+            github-actions
+          )
+
+          for branch in "${branches[@]}"; do
+            if git ls-remote --exit-code --heads origin "refs/heads/${branch}" >/dev/null 2>&1; then
+              echo "Deleting ${branch}"
+              git push origin --delete "${branch}"
+            else
+              echo "Already absent: ${branch}"
+            fi
+          done
+
+          echo "Preserved branches: main, autogluon, autogluon-staffing-benchmark"
