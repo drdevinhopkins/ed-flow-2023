@@ -1,0 +1,140 @@
+name: Hourly Report state-feature ablation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - chronos2-hourly-report-ablation
+    paths:
+      - '.github/workflows/hourly-report-state-ablation.yml'
+      - 'chronos-requirements.txt'
+      - 'scripts/backtest_hourly_report_features.py'
+      - 'scripts/forecast_oncall_impact.py'
+      - 'scripts/staffing_features.py'
+
+permissions:
+  contents: write
+
+jobs:
+  backtest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Check out ablation branch
+        uses: actions/checkout@v7
+
+      - name: Record run id
+        run: |
+          mkdir -p validation/hourly-report-state-ablation
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/hourly-report-state-ablation/run-id.txt
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-hourly-report-state-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-hourly-report-state-${{ runner.os }}-
+            huggingface-hourly-final-${{ runner.os }}-
+            huggingface-staffing-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+
+      - name: Compile ablation code
+        run: |
+          python -m py_compile scripts/backtest_hourly_report_features.py
+
+      - name: Inventory current Hourly Report columns
+        run: |
+          mkdir -p validation-output-hourly-report
+          python scripts/backtest_hourly_report_features.py \
+            --inventory-only \
+            --output-dir validation-output-hourly-report \
+            2>&1 | tee validation-output-hourly-report/inventory.log
+
+      - name: Run leakage-safe state-feature ablation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set +e
+          timeout 330m python scripts/backtest_hourly_report_features.py \
+            --horizon 24 \
+            --num-cutoffs 8 \
+            --spacing-hours 168 \
+            --max-history-days 365 \
+            --min-history-hours 672 \
+            --min-feature-observations 672 \
+            --top-k 8 \
+            --checkpoint-every 10 \
+            --output-dir validation-output-hourly-report \
+            2>&1 | tee validation-output-hourly-report/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output-hourly-report/exit_code.txt
+          exit 0
+
+      - name: Upload ablation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos2-hourly-report-state-ablation
+          path: validation-output-hourly-report/*
+          if-no-files-found: warn
+
+      - name: Record latest aggregate results on branch
+        if: always()
+        run: |
+          mkdir -p validation/hourly-report-state-ablation
+          for file in \
+            cutoffs.csv \
+            feature_inventory_raw.csv \
+            feature_inventory.csv \
+            scenario_manifest.csv \
+            scenario_manifest.json \
+            summary.csv \
+            by_horizon_band.csv \
+            by_horizon_hour.csv \
+            individual_features_by_horizon_band.csv \
+            top_individual_features_by_target_horizon_band.csv \
+            feature_families_by_horizon_band.csv \
+            all_state_by_horizon_band.csv \
+            detail.partial.csv \
+            exit_code.txt; do
+            if [ -f "validation-output-hourly-report/$file" ]; then
+              cp "validation-output-hourly-report/$file" "validation/hourly-report-state-ablation/$file"
+            fi
+          done
+          if [ -f validation-output-hourly-report/run.log ]; then
+            tail -n 2000 validation-output-hourly-report/run.log \
+              > validation/hourly-report-state-ablation/latest.log
+          fi
+          if [ -f validation-output-hourly-report/inventory.log ]; then
+            tail -n 1000 validation-output-hourly-report/inventory.log \
+              > validation/hourly-report-state-ablation/inventory.log
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/hourly-report-state-ablation
+          if ! git diff --cached --quiet; then
+            git commit -m "Record Hourly Report state ablation results [skip ci]"
+            git push
+          fi
+
+      - name: Fail if ablation failed
+        if: always()
+        run: |
+          test -f validation-output-hourly-report/exit_code.txt
+          test "$(cat validation-output-hourly-report/exit_code.txt)" = "0"
