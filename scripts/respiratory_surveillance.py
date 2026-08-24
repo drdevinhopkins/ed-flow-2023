@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Leakage-aware respiratory-virus surveillance features for daily ED forecasting.
+"""Publication-aware Montréal respiratory surveillance features for daily ED forecasts.
 
-INSPQ weekly reports contain Montréal (RSS 06) positivity for influenza A/B, RSV and
-SARS-CoV-2.  ``available_date`` is the information timestamp: a historical forecast may
-only use a report after it was published.  Daily covariates are therefore carried forward
-from the latest already-published report; future reports are never interpolated backward.
+INSPQ weekly reports contain regional influenza A/B, RSV and SARS-CoV-2 positivity.
+``available_date`` is the information timestamp: a historical forecast may only use a
+report after it was published. Daily covariates carry the latest already-published report
+forward; future reports are never interpolated backward.
+
+For Montréal we prefer the table *selon la région de résidence* because it represents the
+population whose demand may reach the ED. Older reports without that table fall back to
+the last Montréal (06) four-virus row found in the report.
 """
 
 from __future__ import annotations
@@ -145,27 +149,45 @@ def extract_pdf_text(content: bytes) -> str:
     return text
 
 
+_CELL = (
+    r"([0-9][0-9 ]*)\s*/\s*([0-9][0-9 ]*)"
+    r"(?:\s*\(([0-9]+(?:[,.][0-9]+)?)\s*%\))?"
+)
+_ROW = re.compile(
+    r"Montr(?:é|e)al\s*\(06\)\s*" + _CELL + r"\s*" + _CELL + r"\s*" + _CELL + r"\s*" + _CELL,
+    re.I,
+)
+
+
+def _cell_values(groups: tuple[str | None, str | None, str | None]) -> tuple[float, float, float]:
+    positive_text, tested_text, pct_text = groups
+    positive = float((positive_text or "0").replace(" ", ""))
+    tested = float((tested_text or "0").replace(" ", ""))
+    pct = float(pct_text.replace(",", ".")) if pct_text else (100.0 * positive / tested if tested else np.nan)
+    return positive, tested, pct
+
+
 def parse_montreal_report_text(text: str) -> dict[str, float]:
-    """Extract Montréal RSS 06 influenza A/B, RSV and SARS-CoV-2 table cells."""
+    """Extract the four-virus Montréal (06) row, preferring region of residence."""
     flattened = re.sub(r"\s+", " ", text.replace("\xa0", " "))
-    region = re.search(
-        r"RSS\s+Montr(?:é|e)al\s*\(06\)\s*(.*?)(?=RSS\s+[A-Za-zÀ-ÿ]|Nombre\s+et\s+pourcentage|$)",
-        flattened,
-        re.I,
-    )
-    if not region:
-        raise ValueError("Could not locate RSS Montréal (06) in INSPQ report")
-    cells = re.findall(
-        r"([0-9][0-9 ]*)\s*/\s*([0-9][0-9 ]*)\s*\(([0-9]+(?:[,.][0-9]+)?)\s*%\)",
-        region.group(1),
-    )
-    if len(cells) < 4:
-        raise ValueError(f"Expected four Montréal virus cells, found {len(cells)}")
+    residence_marker = re.search(r"selon\s+la\s+r(?:é|e)gion\s+de\s+r(?:é|e)sidence", flattened, re.I)
+    search_text = flattened[residence_marker.start():] if residence_marker else flattened
+    matches = list(_ROW.finditer(search_text))
+    if not matches and residence_marker:
+        matches = list(_ROW.finditer(flattened))
+    if not matches:
+        raise ValueError("Could not locate Montréal (06) four-virus row in INSPQ report")
+
+    # If several compatible tables remain, the later row is the most specific fallback.
+    groups = matches[-1].groups()
+    if len(groups) != 12:
+        raise ValueError(f"Unexpected Montréal row group count: {len(groups)}")
     result: dict[str, float] = {}
-    for virus, (positive, tested, pct) in zip(VIRUS_KEYS, cells[:4]):
-        result[f"{virus}_positive"] = float(positive.replace(" ", ""))
-        result[f"{virus}_tested"] = float(tested.replace(" ", ""))
-        result[f"{virus}_pct"] = float(pct.replace(",", "."))
+    for index, virus in enumerate(VIRUS_KEYS):
+        positive, tested, pct = _cell_values(groups[index * 3 : index * 3 + 3])
+        result[f"{virus}_positive"] = positive
+        result[f"{virus}_tested"] = tested
+        result[f"{virus}_pct"] = pct
     return result
 
 
@@ -217,8 +239,11 @@ def engineer_weekly_features(raw: pd.DataFrame) -> pd.DataFrame:
     out["resp_flu_b_pct"] = out["flu_b_pct"]
     if {"flu_a_positive", "flu_b_positive", "flu_a_tested", "flu_b_tested"}.issubset(out.columns):
         flu_tested = pd.concat(
-            [pd.to_numeric(out["flu_a_tested"], errors="coerce"),
-             pd.to_numeric(out["flu_b_tested"], errors="coerce")], axis=1
+            [
+                pd.to_numeric(out["flu_a_tested"], errors="coerce"),
+                pd.to_numeric(out["flu_b_tested"], errors="coerce"),
+            ],
+            axis=1,
         ).max(axis=1)
         flu_positive = (
             pd.to_numeric(out["flu_a_positive"], errors="coerce").fillna(0)
@@ -253,18 +278,16 @@ def engineer_weekly_features(raw: pd.DataFrame) -> pd.DataFrame:
     return out.drop(columns=z_columns)
 
 
-def expand_to_daily(
-    weekly: pd.DataFrame, *, start: pd.Timestamp, end: pd.Timestamp
-) -> pd.DataFrame:
+def expand_to_daily(weekly: pd.DataFrame, *, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
     if end < start:
         raise ValueError("end must be >= start")
     featured = engineer_weekly_features(weekly)
-    days = pd.DataFrame({
-        "ds": pd.date_range(pd.Timestamp(start).normalize(), pd.Timestamp(end).normalize(), freq="D")
-    })
+    days = pd.DataFrame(
+        {"ds": pd.date_range(pd.Timestamp(start).normalize(), pd.Timestamp(end).normalize(), freq="D")}
+    )
     source_columns = [
         "available_date",
-        *[c for c in RESPIRATORY_FEATURE_COLUMNS if c != "resp_surveillance_age_days"],
+        *[column for column in RESPIRATORY_FEATURE_COLUMNS if column != "resp_surveillance_age_days"],
     ]
     daily = pd.merge_asof(
         days.sort_values("ds"),
@@ -274,7 +297,9 @@ def expand_to_daily(
         direction="backward",
         allow_exact_matches=True,
     )
-    daily["resp_surveillance_age_days"] = (daily["ds"] - daily["available_date"]).dt.days.astype("float64")
+    daily["resp_surveillance_age_days"] = (
+        daily["ds"] - daily["available_date"]
+    ).dt.days.astype("float64")
     return daily[["ds", "available_date", *RESPIRATORY_FEATURE_COLUMNS]]
 
 
