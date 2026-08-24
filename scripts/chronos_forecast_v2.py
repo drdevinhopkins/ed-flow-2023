@@ -1,222 +1,186 @@
-#!/usr/bin/env python3
-"""Generate the additive target/horizon-routed hourly Chronos-2 forecast.
-
-This script is intentionally independent from ``chronos_forecast.py``. It does not read,
-modify, replace, or upload any existing production forecast CSV. Its only output is
-``forecast-v2.csv`` containing the six validated hourly flow targets for the next 24h.
-
-Weather-winning routes remain disabled by default because the retrospective hourly
-weather validation used revised/realized weather rather than archived forecast-time
-snapshots. Set ``CHRONOS_HOURLY_ENABLE_WEATHER_ROUTING=1`` to opt in later.
-"""
-
-from __future__ import annotations
-
-import os
-from pathlib import Path
-
-import dropbox
-import pandas as pd
-import requests
-import torch
 from chronos import BaseChronosPipeline, Chronos2Pipeline
-
-import backtest_covariate_ablation as base
-import backtest_hourly_final_features as final_bt
-import backtest_hourly_weather_features as weather_bt
-import backtest_staffing_features as staffing_bt
-from hourly_feature_routing import (
-    FLOW_TARGETS,
-    ROUTING_VERSION,
-    horizon_band,
-    scenario_for,
-    scenarios_needed,
-)
-from staffing_features import build_schedule_feature_frames
+import pandas as pd
+import os
+from dotenv import load_dotenv
+import requests
 from utils import upload
+import dropbox
+from pandas.tseries.frequencies import to_offset
+import holidays
 
-HORIZON = 24
-MAX_HISTORY_DAYS = 365
-EFFECT_MIN_HOURS = 24
-EFFECT_SHRINKAGE_HOURS = 72.0
-OUTPUT_PATH = Path("forecast-v2.csv")
+load_dotenv()
 
+# Load the Chronos-2 pipeline
+pipeline: Chronos2Pipeline = BaseChronosPipeline.from_pretrained(
+    "amazon/chronos-2",
+    device_map="cuda"
+)
 
-def _env_flag(name: str, default: bool = False) -> bool:
-    value = os.environ.get(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
+def regularize_hourly(g: pd.DataFrame) -> pd.DataFrame:
+    sid = g[ID_COL].iloc[0] if ID_COL in g.columns else g.name
+    g = g.sort_values(TS_COL)
+    full_idx = pd.date_range(g[TS_COL].min(), g[TS_COL].max(), freq="h")
+    g = g.set_index(TS_COL).reindex(full_idx)
+    g.index.name = TS_COL
+    g[ID_COL] = sid
+    for col in TARGETS:
+        if col in g.columns:
+            g[col] = pd.to_numeric(g[col], errors="coerce").ffill().bfill()
+    return g.reset_index()
 
-
-def _predict_scenario(
-    pipeline: Chronos2Pipeline,
-    history: pd.DataFrame,
-    future: pd.DataFrame | None,
+def add_holiday_flags(
+    df: pd.DataFrame,
+    ts_col: str = "ds",
+    local_tz: str = "America/Montreal",
+    observed: bool = True,
+    include_names: bool = False,
 ) -> pd.DataFrame:
-    kwargs: dict[str, object] = {
-        "prediction_length": HORIZON,
-        "id_column": "id",
-        "timestamp_column": "ds",
-        "target": list(FLOW_TARGETS),
-        "quantile_levels": [0.2, 0.5, 0.8],
-    }
-    if future is not None:
-        kwargs["future_df"] = future
+    out = df.copy()
+    out[ts_col] = pd.to_datetime(out[ts_col], errors="coerce")
+    if getattr(out[ts_col].dt, "tz", None) is not None:
+        dates_for_calendar = out[ts_col].dt.tz_convert(local_tz).dt.date
+    else:
+        dates_for_calendar = out[ts_col].dt.date
+    years_series = pd.Series(dates_for_calendar)
+    years_series = years_series.dropna().map(lambda d: int(pd.Timestamp(d).year))
+    if years_series.empty:
+        raise ValueError("No valid datetimes found to extract holiday years.")
+    years = list(range(int(years_series.min()), int(years_series.max()) + 1))
+    qc_holidays = holidays.Canada(subdiv="QC", years=years, observed=observed)
+    il_holidays = holidays.Israel(years=years, observed=observed)
+    out["is_qc_holiday"] = [ ("yes" if d in qc_holidays else "no") if pd.notna(pd.Timestamp(d)) else "no" for d in dates_for_calendar ]
+    out["is_jewish_holiday"] = [ ("yes" if d in il_holidays else "no") if pd.notna(pd.Timestamp(d)) else "no" for d in dates_for_calendar ]
+    if include_names:
+        out["qc_holiday_name"] = [ qc_holidays.get(d, "no") if pd.notna(pd.Timestamp(d)) else "no" for d in dates_for_calendar ]
+        out["jewish_holiday_name"] = [ il_holidays.get(d, "no") if pd.notna(pd.Timestamp(d)) else "no" for d in dates_for_calendar ]
+    return out
 
-    result = pipeline.predict_df(history, **kwargs).copy()
-    required = {"ds", "target_name", "predictions"}
-    missing = required - set(result.columns)
-    if missing:
-        raise ValueError(f"Unexpected Chronos output; missing {sorted(missing)}")
+shift_types_dict = {
+    'W1':'flow', 'X1':'pod', 'X3':'pod', 'X4':'vertical', 'X2':'vertical',
+    'WOC1':'oncall', 'WOC2':'oncall', 'WOC3':'oncall', 'X5':'pod', 'W3':'overlap',
+    'Y1':'pod', 'Y3':'pod', 'Y4':'vertical', 'Y2':'vertical', 'Y5':'pod',
+    'Z1':'night', 'Z2':'night', 'D1':'pod', 'R1':'pod', 'P1':'vertical',
+    'D2':'vertical', 'OC1':'oncall', 'OC2':'oncall', 'V1':'flow', 'A1':'pod',
+    'G1':'vertical', 'E1':'pod', 'R2':'pod', 'A2':'pod', 'P2':'vertical',
+    'E2':'vertical', 'N1':'night', 'N2':'night', 'L2':'overlap', 'L4':'overlap',
+    'H1':'teaching', 'B1':'vertical', 'L1':'overlap', 'W5':'overlap', 'L6':'overlap', 'B2':'vertical'
+}
 
-    for column in ["0.2", "0.8"]:
-        if column not in result.columns:
-            result[column] = result["predictions"]
+# Load hourly data
+df = pd.read_csv('https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/allDataWithCalculatedColumns.csv?rlkey=9mm4zwaugxyj2r4ooyd39y4nl&raw=1')
+df.ds = pd.to_datetime(df.ds, errors="coerce")
+df['id'] = 'jgh'
 
-    result["ds"] = pd.to_datetime(result["ds"], format="mixed", errors="coerce")
-    return result[["ds", "target_name", "predictions", "0.2", "0.8"]]
+# Load shift data
+all_shifts_df = pd.read_csv('https://www.dropbox.com/scl/fi/yeyr2a7pj6nry8i2q3m0c/all_shifts.csv?rlkey=q1su2h8fqxfnlu7t1l2qe1w0q&raw=1')
+all_shifts_df['shift_start'] = pd.to_datetime(all_shifts_df['shift_start']).dt.round('h')
+all_shifts_df['shift_end'] = pd.to_datetime(all_shifts_df['shift_end']).dt.round('h')
+all_shifts_df['shift_type'] = all_shifts_df['shift_short_name'].map(shift_types_dict)
 
+expanded_rows = []
+for _, row in all_shifts_df.iterrows():
+    hours = pd.date_range(row['shift_start'], row['shift_end'], freq='h', inclusive='left')
+    for h in hours:
+        expanded_rows.append({'ds': h, 'user': row['first_name']+row['last_name'], 'shift_type': row['shift_type'], 'shift_short_name': row['shift_short_name']})
 
-def build_forecast_v2(
-    pipeline: Chronos2Pipeline,
-    *,
-    allow_weather: bool,
-) -> pd.DataFrame:
-    flow = staffing_bt.load_flow()
-    shifts = staffing_bt.load_shifts()
-    schedule_frames = build_schedule_feature_frames(shifts)
-    staffing = base.load_staffing()
-    weather = weather_bt.load_weather(base.WEATHER_URL)
+expanded_df = pd.DataFrame(expanded_rows)
+hourly_shifts_by_user_df = expanded_df.pivot_table(index='ds', columns='user', values='shift_type', aggfunc='first').fillna('NotWorking')
 
-    cutoff = pd.Timestamp(flow["ds"].max()).floor("h")
-    calendar = final_bt.build_calendar_frame(flow, [cutoff], HORIZON)
+ID_COL = "id"
+TS_COL = "ds"
 
-    scenario_forecasts: dict[str, pd.DataFrame] = {}
-    for scenario in sorted(scenarios_needed(allow_weather=allow_weather)):
-        print(f"Forecast v2: scenario={scenario}")
-        history, future = final_bt.scenario_frames(
-            scenario,
-            flow=flow,
-            staffing=staffing,
-            weather=weather,
-            shifts=shifts,
-            schedule_frames=schedule_frames,
-            calendar=calendar,
-            cutoff=cutoff,
-            horizon=HORIZON,
-            max_history_days=MAX_HISTORY_DAYS,
-            effect_min_hours=EFFECT_MIN_HOURS,
-            effect_shrinkage_hours=EFFECT_SHRINKAGE_HOURS,
-        )
-        scenario_forecasts[scenario] = _predict_scenario(pipeline, history, future)
+# Load On-Call Busy Labels
+oncall_labels = pd.read_csv('../hourly_oncall_used_for_busy_since_2022.csv')
+oncall_labels['ds'] = pd.to_datetime(oncall_labels['ds'])
+oncall_labels = oncall_labels.rename(columns={'oncall-used-for-busy': 'oncall_busy'})
 
-    generated_at_utc = pd.Timestamp.now(tz="UTC").isoformat()
-    expected_hours = pd.date_range(
-        cutoff + pd.Timedelta(hours=1), periods=HORIZON, freq="h"
-    )
-    rows: list[dict[str, object]] = []
+# Merge on-call labels into main df
+df = df.merge(oncall_labels, on='ds', how='left').fillna({'oncall_busy': 0})
+df['oncall_busy'] = df['oncall_busy'].astype(float)
 
-    for target in FLOW_TARGETS:
-        for horizon_hour, stamp in enumerate(expected_hours, start=1):
-            scenario = scenario_for(
-                target, horizon_hour, allow_weather=allow_weather
-            )
-            scenario_frame = scenario_forecasts[scenario]
-            match = scenario_frame.loc[
-                scenario_frame["target_name"].eq(target)
-                & scenario_frame["ds"].eq(stamp)
-            ]
-            if len(match) != 1:
-                raise ValueError(
-                    f"Expected one v2 row for {target} h={horizon_hour} "
-                    f"scenario={scenario}; got {len(match)}"
-                )
+# Define TARGETS: exclude metadata and the new feature
+TARGETS = [col for col in df.columns.tolist() if col not in [TS_COL, ID_COL, 'oncall_busy']]
 
-            row = match.iloc[0]
-            rows.append(
-                {
-                    "ds": stamp,
-                    "target_name": target,
-                    "forecast": float(row["predictions"]),
-                    "forecast_lower": float(row["0.2"]),
-                    "forecast_upper": float(row["0.8"]),
-                    "horizon_hour": horizon_hour,
-                    "horizon_band": horizon_band(horizon_hour),
-                    "scenario": scenario,
-                    "feature_family": final_bt.FAMILY[scenario],
-                    "forecast_origin": cutoff,
-                    "generated_at_utc": generated_at_utc,
-                    "routing_version": ROUTING_VERSION,
-                    "weather_routing_enabled": allow_weather,
-                }
-            )
+df = df.copy()
+df[TS_COL] = pd.to_datetime(df[TS_COL], errors="coerce")
+df = df.dropna(subset=[TS_COL])
+df[TS_COL] = df[TS_COL].dt.floor("h")
+df = df.sort_values([ID_COL, TS_COL]).drop_duplicates([ID_COL, TS_COL], keep="last")
 
-    result = pd.DataFrame(rows).sort_values(
-        ["ds", "target_name"], ignore_index=True
-    )
-    expected_rows = len(FLOW_TARGETS) * HORIZON
-    if len(result) != expected_rows:
-        raise RuntimeError(
-            f"Incomplete forecast-v2.csv: expected {expected_rows} rows, got {len(result)}"
-        )
-    if result[["ds", "target_name"]].duplicated().any():
-        raise RuntimeError("Duplicate ds/target_name rows in forecast-v2.csv")
-    if result[["forecast", "forecast_lower", "forecast_upper"]].isna().any().any():
-        raise RuntimeError("Missing routed forecast values in forecast-v2.csv")
-    return result
+gb = df.groupby(ID_COL, group_keys=False)
+try:
+    df = gb.apply(regularize_hourly, include_groups=False)
+except TypeError:
+    df = gb.apply(regularize_hourly)
 
+# All variables setup
+df_with_staffing = df.merge(hourly_shifts_by_user_df, on='ds')
+weather_df = pd.read_csv('https://www.dropbox.com/scl/fi/gmhwwld9z9yychg4r0yuk/weather.csv?rlkey=66c78m90aviamr0x0uu72pfr8&raw=1')
+weather_df.ds = pd.to_datetime(weather_df.ds, errors="coerce")
 
-def _upload_to_dropbox(path: Path) -> None:
-    app_key = os.environ.get("DROPBOX_APP_KEY")
-    app_secret = os.environ.get("DROPBOX_APP_SECRET")
-    refresh_token = os.environ.get("DROPBOX_REFRESH_TOKEN")
-    if not all([app_key, app_secret, refresh_token]):
-        raise RuntimeError("Dropbox credentials are required to publish forecast-v2.csv")
+all_variable_df = add_holiday_flags(df_with_staffing, ts_col='ds', include_names=True).merge(weather_df, on='ds')
 
-    token_response = requests.post(
-        "https://api.dropboxapi.com/oauth2/token",
-        data={
-            "grant_type": "refresh_token",
-            "refresh_token": refresh_token,
-            "client_id": app_key,
-            "client_secret": app_secret,
-        },
-        timeout=30,
-    )
-    token_response.raise_for_status()
-    access_token = token_response.json()["access_token"]
-    dbx = dropbox.Dropbox(access_token)
-    upload(dbx, str(path), "", "", path.name, overwrite=True)
+# Future DF Preparation
+future_df_staffing = hourly_shifts_by_user_df.reset_index()[hourly_shifts_by_user_df.reset_index()['ds'] > df['ds'].max()].head(24)
+future_df_staffing['id'] = 'jgh'
+future_weather_df = weather_df[weather_df.ds > df.ds.max()].head(24)
+future_weather_df['id'] = 'jgh'
 
+# Merge future features
+future_df_base = future_df_staffing.merge(future_weather_df, on=['ds', 'id'])
+future_df_base = add_holiday_flags(future_df_base, ts_col='ds', include_names=True)
 
-def main() -> None:
-    allow_weather = _env_flag(
-        "CHRONOS_HOURLY_ENABLE_WEATHER_ROUTING", default=False
-    )
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Loading {base.MODEL_ID} on {device}")
-    print(
-        f"Routing version={ROUTING_VERSION}; "
-        f"weather={'enabled' if allow_weather else 'disabled'}"
-    )
+# Ensure common columns match for the pipeline
+common_columns = [col for col in future_df_base.columns if col in all_variable_df.columns]
+future_df_base = future_df_base[common_columns]
 
-    pipeline: Chronos2Pipeline = BaseChronosPipeline.from_pretrained(
-        base.MODEL_ID, device_map=device
-    )
-    forecast = build_forecast_v2(pipeline, allow_weather=allow_weather)
-    forecast.to_csv(OUTPUT_PATH, index=False)
-    _upload_to_dropbox(OUTPUT_PATH)
+# We need 'oncall_busy' in the future_df
+if 'oncall_busy' not in future_df_base.columns:
+    future_df_base['oncall_busy'] = 0.0
+future_df_base['oncall_busy'] = future_df_base['oncall_busy'].astype(float)
 
-    print(f"Wrote and uploaded {OUTPUT_PATH} ({len(forecast)} rows)")
-    print(
-        forecast.groupby(["target_name", "scenario"])
-        .size()
-        .rename("hours")
-        .reset_index()
-        .to_string(index=False)
-    )
+# --- SCENARIO 1: NO ON-CALL ---
+print('Predicting: No On-Call Scenario')
+future_df_no_oncall = future_df_base.copy()
+future_df_no_oncall['oncall_busy'] = 0.0
 
+forecast_no_oncall = pipeline.predict_df(
+    all_variable_df,
+    prediction_length=24,
+    future_df=future_df_no_oncall,
+    id_column=ID_COL,
+    timestamp_column=TS_COL,
+    target=TARGETS,
+    quantile_levels=[0.5]
+)
 
-if __name__ == "__main__":
-    main()
+# --- SCENARIO 2: ON-CALL FOR 8 HOURS ---
+print('Predicting: On-Call for 8 Hours Scenario')
+future_df_with_oncall = future_df_base.copy()
+future_df_with_oncall['oncall_busy'] = 0.0
+# Set first 8 hours to 1
+future_df_with_oncall.iloc[0:8, future_df_with_oncall.columns.get_loc('oncall_busy')] = 1.0
+
+forecast_with_oncall = pipeline.predict_df(
+    all_variable_df,
+    prediction_length=24,
+    future_df=future_df_with_oncall,
+    id_column=ID_COL,
+    timestamp_column=TS_COL,
+    target=TARGETS,
+    quantile_levels=[0.5]
+)
+
+# --- COMPARISON ---
+# Process results to a long format for PowerBI
+def process_forecast(f, name):
+    return f[['ds', 'target_name', 'predictions']].rename(columns={'predictions': name})
+
+res_no = process_forecast(forecast_no_oncall, 'tbs_no_oncall')
+res_yes = process_forecast(forecast_with_oncall, 'tbs_with_oncall')
+
+comparison_df = res_no.merge(res_yes, on=['ds', 'target_name'])
+comparison_df['tbs_reduction'] = comparison_df['tbs_no_oncall'] - comparison_df['tbs_with_oncall']
+
+comparison_df.to_csv('oncall_impact_forecast.csv', index=False)
+print('Saved oncall_impact_forecast.csv')
