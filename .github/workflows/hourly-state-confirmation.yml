@@ -1,0 +1,143 @@
+name: Hourly Report state confirmation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - chronos2-hourly-report-ablation
+    paths:
+      - '.github/workflows/hourly-state-confirmation.yml'
+      - 'chronos-requirements.txt'
+      - 'scripts/backtest_hourly_state_confirmation.py'
+      - 'scripts/backtest_hourly_report_features.py'
+      - 'scripts/backtest_hourly_final_features.py'
+      - 'scripts/backtest_hourly_calendar_features.py'
+      - 'scripts/backtest_hourly_weather_features.py'
+      - 'scripts/backtest_staffing_features.py'
+      - 'scripts/hourly_feature_routing.py'
+      - 'scripts/hourly_calendar_features.py'
+      - 'scripts/hourly_weather_features.py'
+      - 'scripts/staffing_features.py'
+      - 'scripts/forecast_oncall_impact.py'
+      - 'validation/hourly-final-ablation/cutoffs.csv'
+      - 'validation/hourly-report-state-ablation/top_individual_features_by_target_horizon_band.csv'
+
+permissions:
+  contents: write
+
+jobs:
+  confirm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Check out confirmation branch
+        uses: actions/checkout@v7
+
+      - name: Record run id
+        run: |
+          mkdir -p validation/hourly-state-confirmation
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/hourly-state-confirmation/run-id.txt
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-hourly-state-confirm-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-hourly-state-confirm-${{ runner.os }}-
+            huggingface-hourly-report-state-${{ runner.os }}-
+            huggingface-hourly-final-${{ runner.os }}-
+            huggingface-staffing-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+
+      - name: Compile confirmation code
+        run: |
+          python -m py_compile scripts/backtest_hourly_state_confirmation.py
+          python -m py_compile scripts/backtest_hourly_report_features.py
+
+      - name: Verify comparison inputs
+        run: |
+          test -s validation/hourly-final-ablation/cutoffs.csv
+          test -s validation/hourly-report-state-ablation/top_individual_features_by_target_horizon_band.csv
+          echo 'Final-ablation cutoffs:'
+          cat validation/hourly-final-ablation/cutoffs.csv
+
+      - name: Run common-cutoff state confirmation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          mkdir -p validation-output-hourly-state-confirmation
+          set +e
+          timeout 330m python scripts/backtest_hourly_state_confirmation.py \
+            --horizon 24 \
+            --top-n 3 \
+            --max-history-days 365 \
+            --effect-min-hours 24 \
+            --effect-shrinkage-hours 72 \
+            --cutoffs-file validation/hourly-final-ablation/cutoffs.csv \
+            --screening-file validation/hourly-report-state-ablation/top_individual_features_by_target_horizon_band.csv \
+            --output-dir validation-output-hourly-state-confirmation \
+            2>&1 | tee validation-output-hourly-state-confirmation/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output-hourly-state-confirmation/exit_code.txt
+          exit 0
+
+      - name: Upload confirmation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos2-hourly-state-confirmation
+          path: validation-output-hourly-state-confirmation/*
+          if-no-files-found: warn
+
+      - name: Record latest confirmation results on branch
+        if: always()
+        run: |
+          mkdir -p validation/hourly-state-confirmation
+          for file in \
+            cutoffs.csv \
+            feature_inventory.csv \
+            candidate_manifest.csv \
+            detail.phase1.partial.csv \
+            detail.phase1.csv \
+            confirmation_by_target_horizon.csv \
+            phase1_winners.csv \
+            leave_one_out_detail.csv \
+            leave_one_out.csv \
+            exit_code.txt; do
+            if [ -f "validation-output-hourly-state-confirmation/$file" ]; then
+              cp "validation-output-hourly-state-confirmation/$file" "validation/hourly-state-confirmation/$file"
+            fi
+          done
+          if [ -f validation-output-hourly-state-confirmation/run.log ]; then
+            tail -n 2400 validation-output-hourly-state-confirmation/run.log \
+              > validation/hourly-state-confirmation/latest.log
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/hourly-state-confirmation
+          if ! git diff --cached --quiet; then
+            git commit -m "Record Hourly Report state confirmation results [skip ci]"
+            git push
+          fi
+
+      - name: Fail if confirmation failed
+        if: always()
+        run: |
+          test -f validation-output-hourly-state-confirmation/exit_code.txt
+          test "$(cat validation-output-hourly-state-confirmation/exit_code.txt)" = "0"
