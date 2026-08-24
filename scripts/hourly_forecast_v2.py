@@ -3,10 +3,15 @@
 
 This script is intentionally independent from ``chronos_forecast.py``. It does not read,
 modify, replace, or upload any existing production forecast CSV. Its only output is
-``forecast-v2.csv`` containing the six validated hourly flow targets for the next 24h.
+``forecast-v2.csv``.
 
-For Power BI, each row also carries the same anomaly reference interval and colour logic
-used by ``ED_Hourly_Forecasts_Anomalies_v1.0.csv``:
+For each of the six validated flow targets, the output contains the latest 24 observed
+hourly values ending at the forecast origin plus the next 24 routed Chronos-2 forecasts.
+Observed values and forecasts live in separate ``actual`` and ``forecast`` columns so
+Power BI can plot the two series independently without reshaping the file.
+
+Observed and forecast rows both carry the same anomaly reference intervals and colour
+logic used by ``ED_Hourly_Forecasts_Anomalies_v1.0.csv``:
 - outside anomaly interval -> red ``#D13438``
 - inside interval and above expected -> amber ``#FFB900``
 - inside interval and at/below expected -> green ``#107C10``
@@ -42,6 +47,7 @@ from staffing_features import build_schedule_feature_frames
 from utils import upload
 
 HORIZON = 24
+HISTORY_HOURS = 24
 MAX_HISTORY_DAYS = 365
 EFFECT_MIN_HOURS = 24
 EFFECT_SHRINKAGE_HOURS = 72.0
@@ -51,9 +57,6 @@ ANOMALY_RANGES_URL = (
     "anomaly_detection_ranges.csv?rlkey=lib9w0jz2zei5n566jv76o7ol&raw=1"
 )
 
-# The anomaly-range file uses the legacy target names from the current production
-# forecast pipeline. Keep the v2 public target names canonical while resolving the
-# corresponding anomaly columns here.
 ANOMALY_TARGET_ALIASES = {
     "Total_TBS": "total_tbs",
     "POD_TBS": "pod_tbs",
@@ -108,7 +111,9 @@ def _load_anomaly_ranges() -> pd.DataFrame:
     frame = pd.read_csv(ANOMALY_RANGES_URL)
     if "ds" not in frame.columns:
         raise ValueError("Anomaly range file is missing ds")
-    frame["ds"] = pd.to_datetime(frame["ds"], format="mixed", errors="coerce").dt.floor("h")
+    frame["ds"] = pd.to_datetime(
+        frame["ds"], format="mixed", errors="coerce"
+    ).dt.floor("h")
     frame = frame.dropna(subset=["ds"]).drop_duplicates("ds", keep="last")
     return frame
 
@@ -134,10 +139,12 @@ def _anomaly_values(
     *,
     target: str,
     stamp: pd.Timestamp,
-    forecast: float,
+    value: float,
 ) -> dict[str, object]:
     yhat_col, lower_col, upper_col = _anomaly_columns(anomaly_ranges, target)
-    match = anomaly_ranges.loc[anomaly_ranges["ds"].eq(stamp), [yhat_col, lower_col, upper_col]]
+    match = anomaly_ranges.loc[
+        anomaly_ranges["ds"].eq(stamp), [yhat_col, lower_col, upper_col]
+    ]
     if len(match) != 1:
         raise ValueError(
             f"Expected one anomaly-range row for {target} at {stamp}; got {len(match)}"
@@ -152,15 +159,69 @@ def _anomaly_values(
     yhat = float(yhat)
     lower = float(lower)
     upper = float(upper)
-    is_anomaly = forecast < lower or forecast > upper
-    colour = RED if is_anomaly else (AMBER if forecast > yhat else GREEN)
+    is_anomaly = value < lower or value > upper
+    colour = RED if is_anomaly else (AMBER if value > yhat else GREEN)
     return {
         "anomaly_yhat": yhat,
         "anomaly_yhat_lower": lower,
         "anomaly_yhat_upper": upper,
-        "anomaly": "yes" if is_anomaly else "no",
+        "is_anomaly": "yes" if is_anomaly else "no",
         "colour": colour,
     }
+
+
+def _observed_rows(
+    flow: pd.DataFrame,
+    anomaly_ranges: pd.DataFrame,
+    *,
+    cutoff: pd.Timestamp,
+    generated_at_utc: str,
+    allow_weather: bool,
+) -> list[dict[str, object]]:
+    history = flow.loc[flow["ds"].le(cutoff), ["ds", *FLOW_TARGETS]].tail(HISTORY_HOURS)
+    if len(history) != HISTORY_HOURS:
+        raise ValueError(
+            f"Expected {HISTORY_HOURS} recent observed hours; got {len(history)}"
+        )
+
+    rows: list[dict[str, object]] = []
+    for _, source in history.iterrows():
+        stamp = pd.Timestamp(source["ds"]).floor("h")
+        for target in FLOW_TARGETS:
+            actual = pd.to_numeric(source[target], errors="coerce")
+            if pd.isna(actual):
+                raise ValueError(f"Missing observed {target} at {stamp}")
+            actual = float(actual)
+            anomaly = _anomaly_values(
+                anomaly_ranges, target=target, stamp=stamp, value=actual
+            )
+            rows.append(
+                {
+                    "ds": stamp,
+                    "target_name": target,
+                    "actual": actual,
+                    "forecast": None,
+                    "forecast_lower": None,
+                    "forecast_upper": None,
+                    "anomaly_yhat": anomaly["anomaly_yhat"],
+                    "anomaly_yhat_lower": anomaly["anomaly_yhat_lower"],
+                    "anomaly_yhat_upper": anomaly["anomaly_yhat_upper"],
+                    "actual_anomaly": anomaly["is_anomaly"],
+                    "actual_colour": anomaly["colour"],
+                    "forecast_anomaly": None,
+                    "forecast_colour": None,
+                    "row_type": "observed",
+                    "horizon_hour": None,
+                    "horizon_band": None,
+                    "scenario": None,
+                    "feature_family": None,
+                    "forecast_origin": cutoff,
+                    "generated_at_utc": generated_at_utc,
+                    "routing_version": ROUTING_VERSION,
+                    "weather_routing_enabled": allow_weather,
+                }
+            )
+    return rows
 
 
 def build_forecast_v2(
@@ -198,11 +259,17 @@ def build_forecast_v2(
         scenario_forecasts[scenario] = _predict_scenario(pipeline, history, future)
 
     generated_at_utc = pd.Timestamp.now(tz="UTC").isoformat()
+    rows = _observed_rows(
+        flow,
+        anomaly_ranges,
+        cutoff=cutoff,
+        generated_at_utc=generated_at_utc,
+        allow_weather=allow_weather,
+    )
+
     expected_hours = pd.date_range(
         cutoff + pd.Timedelta(hours=1), periods=HORIZON, freq="h"
     )
-    rows: list[dict[str, object]] = []
-
     for target in FLOW_TARGETS:
         for horizon_hour, stamp in enumerate(expected_hours, start=1):
             scenario = scenario_for(
@@ -219,22 +286,30 @@ def build_forecast_v2(
                     f"scenario={scenario}; got {len(match)}"
                 )
 
-            row = match.iloc[0]
-            forecast_value = float(row["predictions"])
+            source = match.iloc[0]
+            forecast_value = float(source["predictions"])
             anomaly = _anomaly_values(
                 anomaly_ranges,
                 target=target,
                 stamp=stamp,
-                forecast=forecast_value,
+                value=forecast_value,
             )
             rows.append(
                 {
                     "ds": stamp,
                     "target_name": target,
+                    "actual": None,
                     "forecast": forecast_value,
-                    "forecast_lower": float(row["0.2"]),
-                    "forecast_upper": float(row["0.8"]),
-                    **anomaly,
+                    "forecast_lower": float(source["0.2"]),
+                    "forecast_upper": float(source["0.8"]),
+                    "anomaly_yhat": anomaly["anomaly_yhat"],
+                    "anomaly_yhat_lower": anomaly["anomaly_yhat_lower"],
+                    "anomaly_yhat_upper": anomaly["anomaly_yhat_upper"],
+                    "actual_anomaly": None,
+                    "actual_colour": None,
+                    "forecast_anomaly": anomaly["is_anomaly"],
+                    "forecast_colour": anomaly["colour"],
+                    "row_type": "forecast",
                     "horizon_hour": horizon_hour,
                     "horizon_band": horizon_band(horizon_hour),
                     "scenario": scenario,
@@ -249,23 +324,26 @@ def build_forecast_v2(
     result = pd.DataFrame(rows).sort_values(
         ["ds", "target_name"], ignore_index=True
     )
-    expected_rows = len(FLOW_TARGETS) * HORIZON
+    expected_rows = len(FLOW_TARGETS) * (HISTORY_HOURS + HORIZON)
     if len(result) != expected_rows:
         raise RuntimeError(
             f"Incomplete forecast-v2.csv: expected {expected_rows} rows, got {len(result)}"
         )
     if result[["ds", "target_name"]].duplicated().any():
         raise RuntimeError("Duplicate ds/target_name rows in forecast-v2.csv")
-    numeric_required = [
-        "forecast",
-        "forecast_lower",
-        "forecast_upper",
-        "anomaly_yhat",
-        "anomaly_yhat_lower",
-        "anomaly_yhat_upper",
-    ]
-    if result[numeric_required].isna().any().any():
-        raise RuntimeError("Missing routed forecast or anomaly values in forecast-v2.csv")
+
+    observed = result["row_type"].eq("observed")
+    future = result["row_type"].eq("forecast")
+    if result.loc[observed, "actual"].isna().any() or result.loc[observed, "forecast"].notna().any():
+        raise RuntimeError("Observed rows must populate actual only")
+    if result.loc[future, "forecast"].isna().any() or result.loc[future, "actual"].notna().any():
+        raise RuntimeError("Forecast rows must populate forecast only")
+    if result[["anomaly_yhat", "anomaly_yhat_lower", "anomaly_yhat_upper"]].isna().any().any():
+        raise RuntimeError("Missing anomaly reference intervals in forecast-v2.csv")
+    if result.loc[observed, ["actual_anomaly", "actual_colour"]].isna().any().any():
+        raise RuntimeError("Missing observed anomaly annotations in forecast-v2.csv")
+    if result.loc[future, ["forecast_anomaly", "forecast_colour"]].isna().any().any():
+        raise RuntimeError("Missing forecast anomaly annotations in forecast-v2.csv")
     return result
 
 
@@ -306,18 +384,12 @@ def main() -> None:
     pipeline: Chronos2Pipeline = BaseChronosPipeline.from_pretrained(
         base.MODEL_ID, device_map=device
     )
-    forecast = build_forecast_v2(pipeline, allow_weather=allow_weather)
-    forecast.to_csv(OUTPUT_PATH, index=False)
+    output = build_forecast_v2(pipeline, allow_weather=allow_weather)
+    output.to_csv(OUTPUT_PATH, index=False)
     _upload_to_dropbox(OUTPUT_PATH)
 
-    print(f"Wrote and uploaded {OUTPUT_PATH} ({len(forecast)} rows)")
-    print(
-        forecast.groupby(["target_name", "scenario", "anomaly", "colour"])
-        .size()
-        .rename("hours")
-        .reset_index()
-        .to_string(index=False)
-    )
+    print(f"Wrote and uploaded {OUTPUT_PATH} ({len(output)} rows)")
+    print(output.groupby(["row_type", "target_name"]).size().rename("rows"))
 
 
 if __name__ == "__main__":
