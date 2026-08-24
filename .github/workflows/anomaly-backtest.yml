@@ -57,9 +57,12 @@ jobs:
 
       - name: Run retrospective anomaly benchmark
         env:
-          EVALUATION_DAYS: ${{ github.event.inputs.evaluation_days || '21' }}
-          CALIBRATION_DAYS: ${{ github.event.inputs.calibration_days || '70' }}
-          TRAINING_DAYS: ${{ github.event.inputs.training_days || '365' }}
+          # Branch pushes deliberately run a broader research benchmark than the
+          # lightweight PR smoke test. This workflow never publishes production
+          # anomaly ranges.
+          EVALUATION_DAYS: ${{ github.event.inputs.evaluation_days || '42' }}
+          CALIBRATION_DAYS: ${{ github.event.inputs.calibration_days || '90' }}
+          TRAINING_DAYS: ${{ github.event.inputs.training_days || '180,365,730,all' }}
         run: |
           python scripts/backtest_anomaly_detection.py \
             --evaluation-days "$EVALUATION_DAYS" \
