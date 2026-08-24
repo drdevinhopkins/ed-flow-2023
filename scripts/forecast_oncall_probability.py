@@ -12,6 +12,7 @@ import numpy as np
 import requests
 import pandas as pd
 from catboost import CatBoostClassifier
+from catboost.utils import get_gpu_device_count
 from sklearn.isotonic import IsotonicRegression
 from dotenv import load_dotenv
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
@@ -29,6 +30,8 @@ HORIZONS = (4, 6, 8)
 VALIDATION_FRACTION = 0.20
 RANDOM_SEED = 42
 STRETCHER_CAPACITY = 53.0
+CATBOOST_GPU_COUNT = get_gpu_device_count()
+CATBOOST_TASK_TYPE = "GPU" if CATBOOST_GPU_COUNT > 0 else "CPU"
 
 HOURLY_DATA_URL = (
     "https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/"
@@ -252,17 +255,25 @@ def train_horizon(
     target = f"oncall_within_{horizon}h"
     cat_indices = [features.index(c) for c in categorical]
 
-    model = CatBoostClassifier(
-        iterations=700,
-        depth=7,
-        learning_rate=0.04,
-        loss_function="Logloss",
-        eval_metric="AUC",
-        random_seed=RANDOM_SEED,
-        auto_class_weights="Balanced",
-        verbose=False,
-        allow_writing_files=False,
-    )
+    model_params: dict[str, object] = {
+        "iterations": 700,
+        "depth": 7,
+        "learning_rate": 0.04,
+        "loss_function": "Logloss",
+        "eval_metric": "AUC",
+        "random_seed": RANDOM_SEED,
+        "auto_class_weights": "Balanced",
+        "verbose": False,
+        "allow_writing_files": False,
+        "task_type": CATBOOST_TASK_TYPE,
+    }
+    if CATBOOST_TASK_TYPE == "GPU":
+        # Use only logical device 0. On jgh000533svaps the wrapper sets
+        # CUDA_VISIBLE_DEVICES=0, so this maps to physical GPU 0 and cannot
+        # consume GPUs reserved for Scribbler.
+        model_params["devices"] = "0"
+
+    model = CatBoostClassifier(**model_params)
     model.fit(
         train[features],
         train[target].astype(int),
@@ -314,6 +325,13 @@ def upload_outputs(output_paths: Iterable[str]) -> None:
 
 def main() -> None:
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    if CATBOOST_TASK_TYPE == "GPU":
+        print(
+            f"CatBoost training device: GPU 0 "
+            f"({CATBOOST_GPU_COUNT} visible CatBoost GPU(s))"
+        )
+    else:
+        print("CatBoost training device: CPU (no CatBoost-compatible GPU visible)")
     df = add_horizon_targets(add_time_and_trend_features(load_dataset()))
     current = df.iloc[[-1]].copy()
 
