@@ -1,0 +1,24 @@
+name: Server wrapper CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/run_ed_flow_update.sh'
+      - '.github/workflows/server-wrapper-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/run_ed_flow_update.sh'
+      - '.github/workflows/server-wrapper-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  shell-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate JGH server wrapper shell syntax
+        run: bash -n scripts/run_ed_flow_update.sh
