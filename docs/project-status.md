@@ -111,6 +111,21 @@ Important interpretation:
 - simpler/current staffing and engineered structure were promoted only in the target/horizon cells where they improved validation
 - physician-associated effects are predictive associations, not causal productivity scores
 
+## AutoGluon evaluation
+
+Status: **deferred / not currently planned**.
+
+AutoGluon TimeSeries was evaluated as a possible wrapper around Chronos-2 to provide model comparison, rolling validation, and ensembling. Since then, the native Chronos-2 workflow gained explicit operational targets, dedicated backtesting, target × horizon feature routing, and the independent `forecast-v2.csv` production product.
+
+Current decision: continue with **native Chronos-2** and avoid the additional AutoGluon dependency/runtime layer for now.
+
+- Issue #6 closed as `not planned`
+- PR #15 closed without merge
+- PR #20 closed without merge
+- AutoGluon branches retired after preserving the work in closed PR/Git history
+
+This can be revisited later if a broad ensemble benchmark or another concrete need justifies it.
+
 ## On-call decision support
 
 Status: **active / not complete**.
@@ -151,7 +166,10 @@ Remaining priorities:
 - #24 — master feature-engineering roadmap
 - #23 — physician staffing feature engineering (**completed**)
 - #18 — forecast input gates / initial covariate ablation (**completed**)
+- #6 — AutoGluon evaluation (**deferred / not planned**)
 - #22 — on-call activation probability
 - #7 — on-call counterfactual impact
+- PR #15 — AutoGluon flow forecast evaluation (**closed without merge**)
+- PR #20 — staffing-only AutoGluon benchmark (**closed without merge**)
 - PR #25 — independent target/horizon-routed hourly forecast v2
 - PR #26 — directional historical anomaly colours
