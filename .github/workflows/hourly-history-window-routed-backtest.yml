@@ -8,6 +8,7 @@ on:
     paths:
       - '.github/workflows/hourly-history-window-routed-backtest.yml'
       - 'scripts/backtest_hourly_history_windows_routed.py'
+      - 'scripts/run_fixed_hourly_history_routed.py'
       - 'scripts/hourly_feature_routing.py'
       - 'scripts/backtest_hourly_final_features.py'
       - 'scripts/staffing_features.py'
@@ -40,11 +41,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r chronos-requirements.txt
-      - name: Run sequential comparison
+      - name: Run fixed-cutoff sequential comparison
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          python scripts/backtest_hourly_history_windows_routed.py \
+          python scripts/run_fixed_hourly_history_routed.py \
             --horizon 24 \
             --num-cutoffs 8 \
             --spacing-hours 1008 \
