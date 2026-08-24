@@ -65,3 +65,5 @@ jobs:
           git add validation/legacy-restore/status.txt
           git commit -m 'Record legacy forecast restore [skip ci]' || exit 0
           git push origin HEAD:chronos2-hourly-target-routing
+
+# Final restore after obsolete routed smoke completed.
