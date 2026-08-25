@@ -9,10 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-import numpy as np
 import pandas as pd
 
-from forecast_oncall_impact import derive_flow_metrics
 from hourly_feature_routing import FLOW_TARGETS as PRODUCTION_FLOW_TARGETS
 
 CANDIDATE_TARGETS: tuple[str, ...] = (
@@ -25,6 +23,28 @@ CANDIDATE_TARGETS: tuple[str, ...] = (
 
 ALL_EXPERIMENT_TARGETS: tuple[str, ...] = (*PRODUCTION_FLOW_TARGETS, *CANDIDATE_TARGETS)
 
+TOTAL_TBS_COMPONENTS: tuple[str, ...] = (
+    "TRG_HALLWAY_TBS",
+    "POD_GREEN_TBS",
+    "POD_YELLOW_TBS",
+    "POD_ORANGE_TBS",
+    "RAZ_TBS",
+    "AMBVERTTBS",
+    "QTrack_TBS",
+    "Garage_TBS",
+)
+POD_TBS_COMPONENTS: tuple[str, ...] = (
+    "TRG_HALLWAY_TBS",
+    "POD_GREEN_TBS",
+    "POD_YELLOW_TBS",
+    "POD_ORANGE_TBS",
+)
+VERTICAL_TBS_COMPONENTS: tuple[str, ...] = (
+    "RAZ_TBS",
+    "AMBVERTTBS",
+    "QTrack_TBS",
+    "Garage_TBS",
+)
 WORKUP_DELAY_COMPONENTS: tuple[str, ...] = (
     "POD_CONS_MORE2H",
     "POD_IMCONS_MORE4H",
@@ -42,6 +62,32 @@ COUNT_LIKE_TARGETS: frozenset[str] = frozenset(CANDIDATE_TARGETS)
 def _numeric(frame: pd.DataFrame, columns: Sequence[str]) -> pd.DataFrame:
     out = frame.loc[:, columns].copy()
     for column in columns:
+        out[column] = pd.to_numeric(out[column], errors="coerce")
+    return out
+
+
+def _derive_sum(frame: pd.DataFrame, target: str, components: Sequence[str]) -> None:
+    missing = [column for column in components if column not in frame.columns]
+    if missing:
+        raise ValueError(f"Cannot derive {target}; missing: {', '.join(missing)}")
+    values = _numeric(frame, components)
+    frame[target] = values.sum(axis=1, min_count=len(components))
+
+
+def add_production_metrics(raw: pd.DataFrame) -> pd.DataFrame:
+    """Recreate the eight current production targets without importing model code."""
+
+    out = raw.copy()
+    _derive_sum(out, "Total_TBS", TOTAL_TBS_COMPONENTS)
+    _derive_sum(out, "POD_TBS", POD_TBS_COMPONENTS)
+    _derive_sum(out, "Vertical_TBS", VERTICAL_TBS_COMPONENTS)
+    _derive_sum(out, "Overflow", ("POST_POD1", "TRG_HALLWAY1"))
+
+    direct = ("TTStr", "WAITINGADM", "TRG_HALLWAY1", "TRG_HALLWAY_TBS")
+    missing = [column for column in direct if column not in out.columns]
+    if missing:
+        raise ValueError(f"Missing direct production target(s): {', '.join(missing)}")
+    for column in direct:
         out[column] = pd.to_numeric(out[column], errors="coerce")
     return out
 
@@ -98,19 +144,7 @@ def build_experiment_flow(raw: pd.DataFrame) -> pd.DataFrame:
     frame["ds"] = frame["ds"].dt.floor("h")
     frame = frame.dropna(subset=["ds"]).sort_values("ds").drop_duplicates("ds", keep="last")
 
-    derived, _ = derive_flow_metrics(frame)
-    aliases = {
-        "Total_TBS": "total_tbs",
-        "POD_TBS": "pod_tbs",
-        "Vertical_TBS": "vertical_tbs",
-        "Overflow": "overflow",
-    }
-    for target, source in aliases.items():
-        if target not in derived.columns:
-            if source not in derived.columns:
-                raise ValueError(f"Could not derive production target {target} from {source}")
-            derived[target] = pd.to_numeric(derived[source], errors="coerce")
-
+    derived = add_production_metrics(frame)
     derived = add_candidate_metrics(derived)
     missing = [target for target in ALL_EXPERIMENT_TARGETS if target not in derived.columns]
     if missing:
