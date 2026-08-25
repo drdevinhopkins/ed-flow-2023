@@ -1,0 +1,175 @@
+name: Candidate metric feature ablation
+
+on:
+  push:
+    branches:
+      - forecast-candidate-metrics
+    paths:
+      - '.github/workflows/candidate-metrics-ablation.yml'
+      - 'scripts/candidate_flow_metrics.py'
+      - 'scripts/evaluation/backtests/backtest_candidate_metrics_cutoff.py'
+      - 'scripts/evaluation/backtests/summarize_candidate_metrics_ablation.py'
+      - 'scripts/backtest_covariate_ablation.py'
+      - 'scripts/backtest_hourly_final_features.py'
+      - 'scripts/backtest_hourly_calendar_features.py'
+      - 'scripts/backtest_hourly_weather_features.py'
+      - 'scripts/backtest_staffing_features.py'
+      - 'scripts/hourly_calendar_features.py'
+      - 'scripts/hourly_weather_features.py'
+      - 'scripts/staffing_features.py'
+      - 'scripts/forecast_oncall_impact.py'
+      - 'tests/test_candidate_flow_metrics.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PYTHONPATH: scripts
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: chronos-requirements.txt
+      - name: Install lightweight dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy pytest holidays python-dotenv dropbox requests
+      - name: Compile candidate experiment
+        run: |
+          python -m py_compile scripts/candidate_flow_metrics.py
+          python -m py_compile scripts/evaluation/backtests/backtest_candidate_metrics_cutoff.py
+          python -m py_compile scripts/evaluation/backtests/summarize_candidate_metrics_ablation.py
+      - name: Test candidate derivations
+        run: pytest -q tests/test_candidate_flow_metrics.py
+      - name: Validate candidate source data
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          from candidate_flow_metrics import build_experiment_flow, candidate_quality_summary
+          from backtest_staffing_features import FLOW_URL
+
+          raw = pd.read_csv(FLOW_URL)
+          flow = build_experiment_flow(raw)
+          quality = candidate_quality_summary(flow)
+          print(quality.to_string(index=False))
+          if quality['n_nonnull'].eq(0).any():
+              raise SystemExit('At least one candidate target has no usable observations')
+          if quality['missing_pct'].gt(1.0).any():
+              raise SystemExit('Candidate target missingness exceeds 1%; inspect before Chronos run')
+          PY
+
+  ablation-cutoff:
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        cutoff_index: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: chronos-requirements.txt
+      - name: Cache Chronos model
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-candidate-metrics-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-triage-hallway-${{ runner.os }}-
+            huggingface-hourly-final-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+      - name: Run one common cutoff across all feature families
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          mkdir -p cutoff-output
+          python scripts/evaluation/backtests/backtest_candidate_metrics_cutoff.py \
+            --cutoff-index '${{ matrix.cutoff_index }}' \
+            --horizon 24 \
+            --num-cutoffs 8 \
+            --spacing-hours 168 \
+            --max-history-days 365 \
+            --min-history-hours 672 \
+            --effect-min-hours 24 \
+            --effect-shrinkage-hours 72 \
+            --output-dir cutoff-output
+      - name: Upload cutoff result
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-metrics-cutoff-${{ matrix.cutoff_index }}
+          path: cutoff-output/*
+          if-no-files-found: error
+
+  aggregate:
+    needs: ablation-cutoff
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install aggregation dependencies
+        run: pip install pandas numpy
+      - name: Download cutoff results
+        uses: actions/download-artifact@v5
+        with:
+          pattern: candidate-metrics-cutoff-*
+          path: matrix-results
+      - name: Aggregate apples-to-apples results
+        run: |
+          mkdir -p validation-output-candidate-metrics
+          PYTHONPATH=scripts python scripts/evaluation/backtests/summarize_candidate_metrics_ablation.py \
+            --input-dir matrix-results \
+            --output-dir validation-output-candidate-metrics \
+            --expected-cutoffs 8
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+
+          paths = sorted(Path('matrix-results').rglob('cutoff-*.csv'))
+          cutoffs = pd.concat((pd.read_csv(path) for path in paths), ignore_index=True)
+          cutoffs.sort_values('cutoff_index').to_csv(
+              'validation-output-candidate-metrics/cutoffs.csv', index=False
+          )
+          PY
+          printf '0\n' > validation-output-candidate-metrics/exit_code.txt
+      - name: Upload aggregate result
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-metrics-feature-ablation
+          path: validation-output-candidate-metrics/*
+          if-no-files-found: error
+      - name: Record results on branch
+        run: |
+          git fetch origin forecast-candidate-metrics
+          git reset --hard origin/forecast-candidate-metrics
+          mkdir -p validation/candidate-metrics-ablation
+          cp validation-output-candidate-metrics/* validation/candidate-metrics-ablation/
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/candidate-metrics-ablation/run-id.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f validation/candidate-metrics-ablation
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record candidate metric ablation results [skip ci]'
+            git push origin HEAD:forecast-candidate-metrics
+          fi
