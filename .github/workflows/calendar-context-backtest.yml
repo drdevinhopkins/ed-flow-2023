@@ -7,7 +7,7 @@ on:
     paths:
       - 'data/jgh_ramq_holidays.csv'
       - 'scripts/calendar_context_features.py'
-      - 'scripts/backtest_daily_calendar_context.py'
+      - 'scripts/evaluation/backtests/backtest_daily_calendar_context.py'
       - 'tests/test_calendar_context_features.py'
       - '.github/workflows/calendar-context-backtest.yml'
       - 'scripts/holiday_features.py'
@@ -27,6 +27,8 @@ jobs:
   backtest:
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      PYTHONPATH: scripts
     steps:
       - uses: actions/checkout@v7
 
@@ -74,7 +76,7 @@ jobs:
           python -m py_compile scripts/backtest_holiday_features.py
           python -m py_compile scripts/backtest_daily_holiday_targeted.py
           python -m py_compile scripts/calendar_context_features.py
-          python -m py_compile scripts/backtest_daily_calendar_context.py
+          python -m py_compile scripts/evaluation/backtests/backtest_daily_calendar_context.py
           python -m py_compile tests/test_calendar_context_features.py
 
       - name: Test holiday calendar logic
@@ -91,7 +93,7 @@ jobs:
           mkdir -p validation-output-social
           cp validation/calendar-context-backtest/run-id.txt validation-output-social/run-id.txt
           set +e
-          python scripts/backtest_daily_calendar_context.py \
+          python scripts/evaluation/backtests/backtest_daily_calendar_context.py \
             --horizon-days 7 \
             --num-cutoffs 24 \
             --context-days 1095 \
