@@ -9,6 +9,8 @@ artificially depress weather win rate.
 Directional accuracy criteria are reported immediately, but are deliberately separated
 from evidence readiness. A weather route is not considered promotion-evaluable until its
 prospective observations span at least 56 days and at least 28 distinct issue dates.
+When forecast intervals are available, weather interval coverage must also remain within
+5 percentage points of the paired baseline coverage before directional criteria can pass.
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ import backtest_covariate_ablation as base  # noqa: E402
 
 MIN_PROSPECTIVE_SPAN_DAYS = 56
 MIN_ISSUE_DATES = 28
+MAX_INTERVAL_COVERAGE_DROP = 0.05
 
 
 def parse_args() -> argparse.Namespace:
@@ -43,22 +46,31 @@ def parse_args() -> argparse.Namespace:
 
 def _summarize(detail: pd.DataFrame) -> pd.DataFrame:
     group = ["target_name", "horizon_band"]
-    summary = detail.groupby(group, as_index=False).agg(
-        n=("actual", "size"),
-        n_runs=("forecast_run_id", "nunique"),
-        n_issue_dates=("forecast_issue_date", "nunique"),
-        first_issued_at=("forecast_issued_at", "min"),
-        last_issued_at=("forecast_issued_at", "max"),
-        baseline_mae=("baseline_absolute_error", "mean"),
-        weather_mae=("weather_absolute_error", "mean"),
-        mean_paired_mae_delta=("paired_absolute_error_delta", "mean"),
-        median_paired_mae_delta=("paired_absolute_error_delta", "median"),
-        weather_win_rate=("weather_wins", "mean"),
-        baseline_bias=("baseline_error", "mean"),
-        weather_bias=("weather_error", "mean"),
-        baseline_mse=("baseline_squared_error", "mean"),
-        weather_mse=("weather_squared_error", "mean"),
-    )
+    aggregations: dict[str, tuple[str, str]] = {
+        "n": ("actual", "size"),
+        "n_runs": ("forecast_run_id", "nunique"),
+        "n_issue_dates": ("forecast_issue_date", "nunique"),
+        "first_issued_at": ("forecast_issued_at", "min"),
+        "last_issued_at": ("forecast_issued_at", "max"),
+        "baseline_mae": ("baseline_absolute_error", "mean"),
+        "weather_mae": ("weather_absolute_error", "mean"),
+        "mean_paired_mae_delta": ("paired_absolute_error_delta", "mean"),
+        "median_paired_mae_delta": ("paired_absolute_error_delta", "median"),
+        "weather_win_rate": ("weather_wins", "mean"),
+        "baseline_bias": ("baseline_error", "mean"),
+        "weather_bias": ("weather_error", "mean"),
+        "baseline_mse": ("baseline_squared_error", "mean"),
+        "weather_mse": ("weather_squared_error", "mean"),
+    }
+    if {"baseline_interval_covered", "weather_interval_covered"}.issubset(detail.columns):
+        aggregations.update(
+            {
+                "baseline_interval_coverage": ("baseline_interval_covered", "mean"),
+                "weather_interval_coverage": ("weather_interval_covered", "mean"),
+            }
+        )
+
+    summary = detail.groupby(group, as_index=False).agg(**aggregations)
     summary["baseline_rmse"] = np.sqrt(summary.pop("baseline_mse"))
     summary["weather_rmse"] = np.sqrt(summary.pop("weather_mse"))
     summary["mae_improvement_pct"] = (
@@ -69,11 +81,26 @@ def _summarize(detail: pd.DataFrame) -> pd.DataFrame:
     summary["prospective_span_days"] = (
         summary["last_issued_at"] - summary["first_issued_at"]
     ).dt.total_seconds() / 86400.0
+
+    if {"baseline_interval_coverage", "weather_interval_coverage"}.issubset(summary.columns):
+        summary["interval_coverage_delta"] = (
+            summary["weather_interval_coverage"] - summary["baseline_interval_coverage"]
+        )
+        summary["interval_coverage_ok"] = (
+            summary["interval_coverage_delta"] >= -MAX_INTERVAL_COVERAGE_DROP
+        )
+    else:
+        summary["baseline_interval_coverage"] = np.nan
+        summary["weather_interval_coverage"] = np.nan
+        summary["interval_coverage_delta"] = np.nan
+        summary["interval_coverage_ok"] = True
+
     summary["directional_criteria_met"] = (
         (summary["weather_mae"] < summary["baseline_mae"])
         & (summary["mean_paired_mae_delta"] > 0)
         & (summary["median_paired_mae_delta"] > 0)
         & (summary["weather_win_rate"] >= 0.55)
+        & summary["interval_coverage_ok"]
     )
     summary["promotion_evidence_ready"] = (
         (summary["prospective_span_days"] >= MIN_PROSPECTIVE_SPAN_DAYS)
@@ -151,6 +178,30 @@ def main() -> None:
     detail["weather_wins"] = detail["paired_absolute_error_delta"] > 0
     detail["baseline_squared_error"] = detail["baseline_error"] ** 2
     detail["weather_squared_error"] = detail["weather_error"] ** 2
+
+    interval_columns = {
+        "baseline_lower",
+        "baseline_upper",
+        "weather_lower",
+        "weather_upper",
+    }
+    if interval_columns.issubset(detail.columns):
+        bounds = list(interval_columns)
+        detail[bounds] = detail[bounds].apply(pd.to_numeric, errors="coerce")
+        valid_baseline = detail[["baseline_lower", "baseline_upper"]].notna().all(axis=1)
+        valid_weather = detail[["weather_lower", "weather_upper"]].notna().all(axis=1)
+        detail["baseline_interval_covered"] = np.where(
+            valid_baseline,
+            (detail["actual"] >= detail["baseline_lower"])
+            & (detail["actual"] <= detail["baseline_upper"]),
+            np.nan,
+        )
+        detail["weather_interval_covered"] = np.where(
+            valid_weather,
+            (detail["actual"] >= detail["weather_lower"])
+            & (detail["actual"] <= detail["weather_upper"]),
+            np.nan,
+        )
 
     detail_path = args.output_dir / "detail.csv"
     all_summary_path = args.output_dir / "summary-all-pairs.csv"
