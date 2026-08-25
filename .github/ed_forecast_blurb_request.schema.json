@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "generated_at_local",
+    "forecast_data_time_local",
+    "blurb",
+    "oncall_recommendation",
+    "oncall_rationale",
+    "source_status"
+  ],
+  "properties": {
+    "generated_at_local": {"type": "string"},
+    "forecast_data_time_local": {"type": "string"},
+    "blurb": {"type": "string"},
+    "oncall_recommendation": {"type": "string"},
+    "oncall_rationale": {"type": "string"},
+    "source_status": {"type": "string"}
+  }
+}
