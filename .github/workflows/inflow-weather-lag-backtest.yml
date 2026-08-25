@@ -1,0 +1,144 @@
+name: Chronos-2 inflow weather lag backtest
+
+on:
+  push:
+    branches:
+      - chronos2-inflow-weather-lags
+    paths:
+      - 'scripts/backtest_hourly_inflow_weather_lags.py'
+      - 'scripts/hourly_weather_features.py'
+      - 'scripts/backtest_hourly_weather_features.py'
+      - 'scripts/backtest_covariate_ablation.py'
+      - 'scripts/build_weather_history.py'
+      - '.github/workflows/inflow-weather-lag-backtest.yml'
+      - 'chronos-requirements.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chronos2-inflow-weather-lag-backtest
+  cancel-in-progress: true
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Publish run id
+        shell: bash
+        run: |
+          mkdir -p validation/inflow-weather-lag-backtest
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/inflow-weather-lag-backtest/run-id.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/inflow-weather-lag-backtest/run-id.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Record inflow weather lag backtest run id [skip ci]"
+            git push
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-inflow-weather-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-hourly-weather-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+
+      - name: Compile targeted backtest
+        run: |
+          python -m py_compile scripts/backtest_hourly_inflow_weather_lags.py
+          python -m py_compile scripts/hourly_weather_features.py
+          python -m py_compile scripts/backtest_hourly_weather_features.py
+          python -m py_compile scripts/backtest_covariate_ablation.py
+
+      - name: Build continuous historical forecast weather
+        shell: bash
+        run: |
+          WEATHER_BACKFILL="$RUNNER_TEMP/weather_backfilled.csv"
+          python scripts/build_weather_history.py \
+            --start-date 2021-01-01 \
+            --output "$WEATHER_BACKFILL"
+          echo "WEATHER_BACKFILL=$WEATHER_BACKFILL" >> "$GITHUB_ENV"
+
+      - name: Run inflow weather and lag ablation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        shell: bash
+        run: |
+          mkdir -p validation-output-inflow-weather
+          set +e
+          python scripts/backtest_hourly_inflow_weather_lags.py \
+            --weather-url "$WEATHER_BACKFILL" \
+            --horizon 24 \
+            --num-cutoffs 12 \
+            --spacing-hours 168 \
+            --max-history-days 180 \
+            --min-history-hours 672 \
+            --output-dir validation-output-inflow-weather \
+            2>&1 | tee validation-output-inflow-weather/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output-inflow-weather/exit_code.txt
+          exit 0
+
+      - name: Upload inflow weather results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos2-inflow-weather-lag-backtest
+          path: validation-output-inflow-weather/*
+
+      - name: Record latest inflow weather results
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p validation/inflow-weather-lag-backtest
+          for file in \
+            inflow_weather_cutoffs.csv \
+            inflow_weather_summary.csv \
+            inflow_weather_by_horizon.csv \
+            inflow_weather_by_event.csv \
+            inflow_weather_lag_associations.csv \
+            inflow_weather_winners.csv \
+            inflow_weather_horizon_winners.csv \
+            exit_code.txt; do
+            if [ -f "validation-output-inflow-weather/$file" ]; then
+              cp "validation-output-inflow-weather/$file" "validation/inflow-weather-lag-backtest/$file"
+            fi
+          done
+          if [ -f validation-output-inflow-weather/run.log ]; then
+            tail -n 1800 validation-output-inflow-weather/run.log > validation/inflow-weather-lag-backtest/latest.log
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/inflow-weather-lag-backtest
+          if ! git diff --cached --quiet; then
+            git commit -m "Record inflow weather lag backtest results [skip ci]"
+            git push
+          fi
+
+      - name: Fail if backtest failed
+        if: always()
+        run: |
+          test -f validation-output-inflow-weather/exit_code.txt
+          test "$(cat validation-output-inflow-weather/exit_code.txt)" = "0"
