@@ -4,6 +4,10 @@ Routes come from the common-cutoff 24-hour ablation recorded under
 ``validation/hourly-final-ablation``. Weather-winning routes are guarded because the
 historical weather ablation used revised/realized weather rather than archived
 forecast-time snapshots.
+
+Triage hallway occupancy and triage hallway TBS were added after the original six-target
+ablation. They use the history-only baseline route until target-specific feature-family
+validation is completed.
 """
 
 from __future__ import annotations
@@ -15,13 +19,15 @@ FLOW_TARGETS = (
     "TTStr",
     "Overflow",
     "WAITINGADM",
+    "TRG_HALLWAY1",
+    "TRG_HALLWAY_TBS",
 )
 
-ROUTING_VERSION = "hourly-final-ablation-2026-08-23"
+ROUTING_VERSION = "hourly-final-ablation-plus-triage-baseline-2026-08-25"
 
 # Conservative production routes. Every non-baseline route below beat baseline in the
 # common-cutoff ablation for the corresponding horizon band. Weather is excluded here
-# until prospective forecast-snapshot validation is available.
+# until archived forecast-time weather snapshots confirm the retrospective result.
 SAFE_ROUTES: dict[str, dict[str, str]] = {
     "Overflow": {
         "h01_04": "baseline",
@@ -58,6 +64,18 @@ SAFE_ROUTES: dict[str, dict[str, str]] = {
         "h01_04": "staffing_structure_effects",
         "h05_08": "staffing_structure_effects",
         "h09_12": "staffing_structure_effects",
+        "h13_24": "baseline",
+    },
+    "TRG_HALLWAY1": {
+        "h01_04": "baseline",
+        "h05_08": "baseline",
+        "h09_12": "baseline",
+        "h13_24": "baseline",
+    },
+    "TRG_HALLWAY_TBS": {
+        "h01_04": "baseline",
+        "h05_08": "baseline",
+        "h09_12": "baseline",
         "h13_24": "baseline",
     },
 }
@@ -109,7 +127,7 @@ def scenarios_needed(*, allow_weather: bool = False) -> set[str]:
 def validate_routes() -> None:
     expected_bands = {"h01_04", "h05_08", "h09_12", "h13_24"}
     if set(SAFE_ROUTES) != set(FLOW_TARGETS):
-        raise ValueError("Routing table does not cover exactly the six validated flow targets")
+        raise ValueError("Routing table does not cover exactly the eight forecast targets")
     for target, routes in SAFE_ROUTES.items():
         if set(routes) != expected_bands:
             raise ValueError(f"Incomplete routing bands for {target}: {sorted(routes)}")
