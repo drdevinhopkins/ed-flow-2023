@@ -9,7 +9,7 @@ on:
       - 'scripts/holiday_features.py'
       - 'scripts/backtest_holiday_features.py'
       - 'scripts/backtest_daily_holiday_targeted.py'
-      - 'scripts/backtest_jgh_ramq_ablation.py'
+      - 'scripts/evaluation/ablations/backtest_jgh_ramq_ablation.py'
       - 'tests/test_holiday_features.py'
       - 'tests/test_daily_visit_backtest.py'
       - '.github/workflows/holiday-feature-backtest.yml'
@@ -27,6 +27,8 @@ jobs:
   backtest:
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      PYTHONPATH: scripts
     steps:
       - uses: actions/checkout@v7
 
@@ -73,7 +75,7 @@ jobs:
           python -m py_compile scripts/holiday_features.py
           python -m py_compile scripts/backtest_holiday_features.py
           python -m py_compile scripts/backtest_daily_holiday_targeted.py
-          python -m py_compile scripts/backtest_jgh_ramq_ablation.py
+          python -m py_compile scripts/evaluation/ablations/backtest_jgh_ramq_ablation.py
           python -m py_compile tests/test_holiday_features.py
           python -m py_compile tests/test_daily_visit_backtest.py
 
@@ -108,7 +110,7 @@ jobs:
         run: |
           mkdir -p validation-output-ramq
           set +e
-          python scripts/backtest_jgh_ramq_ablation.py \
+          python scripts/evaluation/ablations/backtest_jgh_ramq_ablation.py \
             --horizon-days 7 \
             --num-cutoffs 24 \
             --context-days 1095 \
