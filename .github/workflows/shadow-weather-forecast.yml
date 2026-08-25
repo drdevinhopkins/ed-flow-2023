@@ -60,12 +60,7 @@ jobs:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            python scripts/evaluation/prospective/run_shadow_weather_forecast.py
-          else
-            python scripts/evaluation/prospective/run_shadow_weather_forecast.py --no-dropbox
-          fi
+        run: python scripts/evaluation/prospective/run_shadow_weather_forecast.py
 
       - name: Verify shadow-only outputs
         run: |
@@ -91,7 +86,7 @@ jobs:
           weather_routes = frame['weather_scenario'].astype(str).str.startswith('weather')
           assert weather_routes.any(), 'Weather-enabled run did not select any weather route'
           print(frame.groupby(['target_name', 'weather_scenario']).size())
-          print('Shadow forecast validated: paired safe/weather forecasts only; production files untouched.')
+          print('Shadow forecast validated and persisted under validation namespace; production files untouched.')
           PY
 
       - name: Upload shadow forecast artifact
