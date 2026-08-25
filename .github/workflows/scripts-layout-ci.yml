@@ -1,0 +1,64 @@
+name: Scripts layout CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/*backtest*.yml'
+      - '.github/workflows/external-signal-features.yml'
+      - '.github/workflows/scripts-layout-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-layout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Compile relocated Python runners
+        run: |
+          python -m py_compile scripts/evaluation/backtests/*.py
+          python -m py_compile scripts/evaluation/ablations/*.py
+          python -m py_compile scripts/experiments/autogluon/*.py
+
+      - name: Reject stale pre-cleanup paths
+        shell: bash
+        run: |
+          stale_paths=(
+            scripts/backtest_daily_calendar_context.py
+            scripts/backtest_daily_respiratory_features.py
+            scripts/backtest_daily_weather_features.py
+            scripts/backtest_daily_weather_features_dense.py
+            scripts/backtest_daily_weather_targeted.py
+            scripts/backtest_jgh_ramq_ablation.py
+            scripts/backtest_regional_ed_pressure.py
+            scripts/chronos_forecast_autogluon.py
+          )
+
+          failed=0
+          for path in "${stale_paths[@]}"; do
+            if git grep -n -F "$path" -- . ':!scripts/README.md'; then
+              echo "Found stale reference to $path"
+              failed=1
+            fi
+          done
+          exit "$failed"
+
+      - name: Verify production entrypoints remain in place
+        run: |
+          test -f scripts/hourly_forecast_v2.py
+          test -f scripts/hourly_forecast_v2_1.py
+          test -f scripts/forecast_daily_visits.py
+          test -f scripts/anomaly_detection.py
+          test -f scripts/update_weather.py
+          test -f scripts/watch_dropbox_pdf.py
+          test -f scripts/run_ed_flow_update.sh
