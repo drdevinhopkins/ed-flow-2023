@@ -48,6 +48,8 @@ FLOW_TARGETS = [
     "TTStr",
     "Overflow",
     "WAITINGADM",
+    "TRG_HALLWAY1",
+    "TRG_HALLWAY_TBS",
 ]
 SCENARIOS = [
     "baseline",
@@ -60,7 +62,7 @@ SCENARIOS = [
 
 
 def load_flow(url: str = FLOW_URL) -> pd.DataFrame:
-    """Load and regularize the six operational flow targets, retaining inflow for profiling."""
+    """Load and regularize the eight operational flow targets, retaining inflow for profiling."""
     raw = pd.read_csv(url)
     raw["ds"] = parse_hour(raw["ds"])
     raw = raw.dropna(subset=["ds"]).sort_values("ds").drop_duplicates("ds", keep="last")
