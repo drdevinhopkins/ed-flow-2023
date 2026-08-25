@@ -54,9 +54,12 @@ jobs:
           python - <<'PY'
           import pandas as pd
           from candidate_flow_metrics import build_experiment_flow, candidate_quality_summary
-          from backtest_staffing_features import FLOW_URL
 
-          raw = pd.read_csv(FLOW_URL)
+          flow_url = (
+              'https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/'
+              'allDataWithCalculatedColumns.csv?rlkey=9mm4zwaugxyj2r4ooyd39y4nl&raw=1'
+          )
+          raw = pd.read_csv(flow_url)
           flow = build_experiment_flow(raw)
           quality = candidate_quality_summary(flow)
           print(quality.to_string(index=False))
