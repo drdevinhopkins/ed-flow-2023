@@ -1,0 +1,102 @@
+name: Triage hallway feature ablation
+
+on:
+  push:
+    branches:
+      - forecast-triage-hallway
+    paths:
+      - '.github/workflows/triage-hallway-ablation.yml'
+      - 'scripts/backtest_covariate_ablation.py'
+      - 'scripts/backtest_hourly_final_features.py'
+      - 'scripts/backtest_hourly_calendar_features.py'
+      - 'scripts/backtest_hourly_weather_features.py'
+      - 'scripts/backtest_staffing_features.py'
+      - 'scripts/hourly_calendar_features.py'
+      - 'scripts/hourly_weather_features.py'
+      - 'scripts/staffing_features.py'
+      - 'scripts/forecast_oncall_impact.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ablation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: chronos-requirements.txt
+      - name: Cache Chronos model
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-triage-hallway-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-hourly-final-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+      - name: Compile feature stack
+        run: |
+          python -m py_compile scripts/backtest_covariate_ablation.py
+          python -m py_compile scripts/backtest_staffing_features.py
+          python -m py_compile scripts/backtest_hourly_final_features.py
+      - name: Run eight-target apples-to-apples ablation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          mkdir -p validation-output-triage-hallway
+          set +e
+          python scripts/backtest_hourly_final_features.py \
+            --horizon 24 \
+            --num-cutoffs 8 \
+            --spacing-hours 168 \
+            --max-history-days 365 \
+            --min-history-hours 672 \
+            --effect-min-hours 24 \
+            --effect-shrinkage-hours 72 \
+            --output-dir validation-output-triage-hallway \
+            2>&1 | tee validation-output-triage-hallway/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output-triage-hallway/exit_code.txt
+          exit 0
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triage-hallway-feature-ablation
+          path: validation-output-triage-hallway/*
+          if-no-files-found: warn
+      - name: Record results on branch
+        if: always()
+        run: |
+          mkdir -p validation/triage-hallway-ablation
+          for file in cutoffs.csv summary.csv by_horizon_band.csv by_horizon_hour.csv winners_by_target.csv winners_by_target_horizon_band.csv best_feature_family_by_target.csv exit_code.txt; do
+            if [ -f "validation-output-triage-hallway/$file" ]; then
+              cp "validation-output-triage-hallway/$file" "validation/triage-hallway-ablation/$file"
+            fi
+          done
+          if [ -f validation-output-triage-hallway/run.log ]; then
+            tail -n 1600 validation-output-triage-hallway/run.log > validation/triage-hallway-ablation/latest.log
+          fi
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' > validation/triage-hallway-ablation/run-id.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f validation/triage-hallway-ablation
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record triage hallway feature ablation results [skip ci]'
+            git push
+          fi
+      - name: Fail if ablation failed
+        if: always()
+        run: |
+          test -f validation-output-triage-hallway/exit_code.txt
+          test "$(cat validation-output-triage-hallway/exit_code.txt)" = '0'
