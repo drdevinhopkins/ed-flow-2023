@@ -46,7 +46,9 @@ jobs:
 
           failed=0
           for path in "${stale_paths[@]}"; do
-            if git grep -n -F "$path" -- . ':!scripts/README.md'; then
+            if git grep -n -F "$path" -- . \
+              ':!scripts/README.md' \
+              ':!.github/workflows/scripts-layout-ci.yml'; then
               echo "Found stale reference to $path"
               failed=1
             fi
