@@ -5,7 +5,7 @@ on:
     branches:
       - chronos2-weather-features
     paths:
-      - 'scripts/backtest_daily_weather_targeted.py'
+      - 'scripts/evaluation/backtests/backtest_daily_weather_targeted.py'
       - '.github/workflows/weather-targeted-backtest.yml'
   workflow_dispatch:
 
@@ -20,6 +20,8 @@ jobs:
   backtest:
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      PYTHONPATH: scripts
     steps:
       - uses: actions/checkout@v7
 
@@ -50,9 +52,9 @@ jobs:
         run: |
           python -m py_compile scripts/weather_features.py
           python -m py_compile scripts/build_weather_history.py
-          python -m py_compile scripts/backtest_daily_weather_features.py
-          python -m py_compile scripts/backtest_daily_weather_features_dense.py
-          python -m py_compile scripts/backtest_daily_weather_targeted.py
+          python -m py_compile scripts/evaluation/backtests/backtest_daily_weather_features.py
+          python -m py_compile scripts/evaluation/backtests/backtest_daily_weather_features_dense.py
+          python -m py_compile scripts/evaluation/backtests/backtest_daily_weather_targeted.py
 
       - name: Build continuous historical forecast weather
         shell: bash
@@ -70,7 +72,7 @@ jobs:
         run: |
           mkdir -p validation-output-weather-targeted
           set +e
-          python scripts/backtest_daily_weather_targeted.py \
+          python scripts/evaluation/backtests/backtest_daily_weather_targeted.py \
             --horizon-days 7 \
             --num-cutoffs 16 \
             --context-days 1095 \
