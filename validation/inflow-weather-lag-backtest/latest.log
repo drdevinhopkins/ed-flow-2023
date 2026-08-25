@@ -1,0 +1,140 @@
+Targets: INFLOW_AMBULATORY, INFLOW_STRETCHER, INFLOW_AMBULANCES, Inflow_Total
+Cutoffs (12): [Timestamp('2026-06-08 17:00:00'), Timestamp('2026-06-15 17:00:00'), Timestamp('2026-06-22 17:00:00'), Timestamp('2026-06-29 17:00:00'), Timestamp('2026-07-06 17:00:00'), Timestamp('2026-07-13 17:00:00'), Timestamp('2026-07-20 17:00:00'), Timestamp('2026-07-27 17:00:00'), Timestamp('2026-08-03 17:00:00'), Timestamp('2026-08-10 17:00:00'), Timestamp('2026-08-17 17:00:00'), Timestamp('2026-08-24 17:00:00')]
+Scenarios: ['baseline', 'rain_now', 'rain_lags', 'snow_now', 'snow_lags', 'snow_recovery', 'rain_snow_lags', 'raw_weather', 'raw_plus_snow']
+WARNING: historical weather is signal-potential data, not forecast-snapshot replay.
+Loading amazon/chronos-2 on cpu
+Loading weights:   0%|          | 0/170 [00:00<?, ?it/s]Loading weights: 100%|██████████| 170/170 [00:00<00:00, 3984.37it/s]
+Forecasting cutoff=2026-06-08 17:00:00 scenario=baseline
+Forecasting cutoff=2026-06-08 17:00:00 scenario=rain_now
+Forecasting cutoff=2026-06-08 17:00:00 scenario=rain_lags
+Forecasting cutoff=2026-06-08 17:00:00 scenario=snow_now
+Forecasting cutoff=2026-06-08 17:00:00 scenario=snow_lags
+Forecasting cutoff=2026-06-08 17:00:00 scenario=snow_recovery
+Forecasting cutoff=2026-06-08 17:00:00 scenario=rain_snow_lags
+Forecasting cutoff=2026-06-08 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-06-08 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-06-15 17:00:00 scenario=baseline
+Forecasting cutoff=2026-06-15 17:00:00 scenario=rain_now
+Forecasting cutoff=2026-06-15 17:00:00 scenario=rain_lags
+Forecasting cutoff=2026-06-15 17:00:00 scenario=snow_now
+Forecasting cutoff=2026-06-15 17:00:00 scenario=snow_lags
+Forecasting cutoff=2026-06-15 17:00:00 scenario=snow_recovery
+Forecasting cutoff=2026-06-15 17:00:00 scenario=rain_snow_lags
+Forecasting cutoff=2026-06-15 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-06-15 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-06-22 17:00:00 scenario=baseline
+Forecasting cutoff=2026-06-22 17:00:00 scenario=rain_now
+Forecasting cutoff=2026-06-22 17:00:00 scenario=rain_lags
+Forecasting cutoff=2026-06-22 17:00:00 scenario=snow_now
+Forecasting cutoff=2026-06-22 17:00:00 scenario=snow_lags
+Forecasting cutoff=2026-06-22 17:00:00 scenario=snow_recovery
+Forecasting cutoff=2026-06-22 17:00:00 scenario=rain_snow_lags
+Forecasting cutoff=2026-06-22 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-06-22 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-06-29 17:00:00 scenario=baseline
+Forecasting cutoff=2026-06-29 17:00:00 scenario=rain_now
+Forecasting cutoff=2026-06-29 17:00:00 scenario=rain_lags
+Forecasting cutoff=2026-06-29 17:00:00 scenario=snow_now
+Forecasting cutoff=2026-06-29 17:00:00 scenario=snow_lags
+Forecasting cutoff=2026-06-29 17:00:00 scenario=snow_recovery
+Forecasting cutoff=2026-06-29 17:00:00 scenario=rain_snow_lags
+Forecasting cutoff=2026-06-29 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-06-29 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-07-06 17:00:00 scenario=baseline
+Forecasting cutoff=2026-07-06 17:00:00 scenario=rain_now
+Forecasting cutoff=2026-07-06 17:00:00 scenario=rain_lags
+Forecasting cutoff=2026-07-06 17:00:00 scenario=snow_now
+Forecasting cutoff=2026-07-06 17:00:00 scenario=snow_lags
+Forecasting cutoff=2026-07-06 17:00:00 scenario=snow_recovery
+Forecasting cutoff=2026-07-06 17:00:00 scenario=rain_snow_lags
+Forecasting cutoff=2026-07-06 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-07-06 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-07-13 17:00:00 scenario=baseline
+Forecasting cutoff=2026-07-13 17:00:00 scenario=rain_now
+Forecasting cutoff=2026-07-13 17:00:00 scenario=rain_lags
+Forecasting cutoff=2026-07-13 17:00:00 scenario=snow_now
+Forecasting cutoff=2026-07-13 17:00:00 scenario=snow_lags
+Forecasting cutoff=2026-07-13 17:00:00 scenario=snow_recovery
+Forecasting cutoff=2026-07-13 17:00:00 scenario=rain_snow_lags
+Forecasting cutoff=2026-07-13 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-07-13 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-07-20 17:00:00 scenario=baseline
+Forecasting cutoff=2026-07-20 17:00:00 scenario=rain_now
+Forecasting cutoff=2026-07-20 17:00:00 scenario=rain_lags
+Forecasting cutoff=2026-07-20 17:00:00 scenario=snow_now
+Forecasting cutoff=2026-07-20 17:00:00 scenario=snow_lags
+Forecasting cutoff=2026-07-20 17:00:00 scenario=snow_recovery
+Forecasting cutoff=2026-07-20 17:00:00 scenario=rain_snow_lags
+Forecasting cutoff=2026-07-20 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-07-20 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-07-27 17:00:00 scenario=baseline
+Forecasting cutoff=2026-07-27 17:00:00 scenario=rain_now
+Forecasting cutoff=2026-07-27 17:00:00 scenario=rain_lags
+Forecasting cutoff=2026-07-27 17:00:00 scenario=snow_now
+Forecasting cutoff=2026-07-27 17:00:00 scenario=snow_lags
+Forecasting cutoff=2026-07-27 17:00:00 scenario=snow_recovery
+Forecasting cutoff=2026-07-27 17:00:00 scenario=rain_snow_lags
+Forecasting cutoff=2026-07-27 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-07-27 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-08-03 17:00:00 scenario=baseline
+Forecasting cutoff=2026-08-03 17:00:00 scenario=rain_now
+Forecasting cutoff=2026-08-03 17:00:00 scenario=rain_lags
+Forecasting cutoff=2026-08-03 17:00:00 scenario=snow_now
+Forecasting cutoff=2026-08-03 17:00:00 scenario=snow_lags
+Forecasting cutoff=2026-08-03 17:00:00 scenario=snow_recovery
+Forecasting cutoff=2026-08-03 17:00:00 scenario=rain_snow_lags
+Forecasting cutoff=2026-08-03 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-08-03 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-08-10 17:00:00 scenario=baseline
+Forecasting cutoff=2026-08-10 17:00:00 scenario=rain_now
+Forecasting cutoff=2026-08-10 17:00:00 scenario=rain_lags
+Forecasting cutoff=2026-08-10 17:00:00 scenario=snow_now
+Forecasting cutoff=2026-08-10 17:00:00 scenario=snow_lags
+Forecasting cutoff=2026-08-10 17:00:00 scenario=snow_recovery
+Forecasting cutoff=2026-08-10 17:00:00 scenario=rain_snow_lags
+Forecasting cutoff=2026-08-10 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-08-10 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-08-17 17:00:00 scenario=baseline
+Forecasting cutoff=2026-08-17 17:00:00 scenario=rain_now
+Forecasting cutoff=2026-08-17 17:00:00 scenario=rain_lags
+Forecasting cutoff=2026-08-17 17:00:00 scenario=snow_now
+Forecasting cutoff=2026-08-17 17:00:00 scenario=snow_lags
+Forecasting cutoff=2026-08-17 17:00:00 scenario=snow_recovery
+Forecasting cutoff=2026-08-17 17:00:00 scenario=rain_snow_lags
+Forecasting cutoff=2026-08-17 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-08-17 17:00:00 scenario=raw_plus_snow
+Forecasting cutoff=2026-08-24 17:00:00 scenario=baseline
+Forecasting cutoff=2026-08-24 17:00:00 scenario=rain_now
+Forecasting cutoff=2026-08-24 17:00:00 scenario=rain_lags
+Forecasting cutoff=2026-08-24 17:00:00 scenario=snow_now
+Forecasting cutoff=2026-08-24 17:00:00 scenario=snow_lags
+Forecasting cutoff=2026-08-24 17:00:00 scenario=snow_recovery
+Forecasting cutoff=2026-08-24 17:00:00 scenario=rain_snow_lags
+Forecasting cutoff=2026-08-24 17:00:00 scenario=raw_weather
+Forecasting cutoff=2026-08-24 17:00:00 scenario=raw_plus_snow
+
+Overall winners:
+      target_name    scenario   n      mae  mae_improvement_vs_baseline_pct
+INFLOW_AMBULANCES   rain_lags 288 1.176024                         0.012486
+INFLOW_AMBULATORY raw_weather 288 2.102876                         0.083066
+ INFLOW_STRETCHER raw_weather 288 1.985253                         1.007033
+     Inflow_Total raw_weather 288 2.432468                         0.951456
+
+Horizon winners:
+      target_name horizon_band       scenario      mae  mae_improvement_vs_baseline_pct
+INFLOW_AMBULANCES         1-4h  snow_recovery 1.226703                         0.620656
+INFLOW_AMBULANCES         5-8h       baseline 1.220364                         0.000000
+INFLOW_AMBULANCES        9-12h       baseline 0.876399                         0.000000
+INFLOW_AMBULANCES       13-24h       rain_now 1.237656                         0.346959
+INFLOW_AMBULATORY         1-4h  raw_plus_snow 2.108024                         0.321343
+INFLOW_AMBULATORY         5-8h       baseline 2.020463                         0.000000
+INFLOW_AMBULATORY        9-12h      snow_lags 1.160494                         1.262399
+INFLOW_AMBULATORY       13-24h    raw_weather 2.420999                         0.739838
+ INFLOW_STRETCHER         1-4h rain_snow_lags 1.944241                         1.746770
+ INFLOW_STRETCHER         5-8h    raw_weather 2.042362                         3.924183
+ INFLOW_STRETCHER        9-12h    raw_weather 1.238228                         6.192703
+ INFLOW_STRETCHER       13-24h       baseline 2.202712                         0.000000
+     Inflow_Total         1-4h    raw_weather 1.933907                         2.910628
+     Inflow_Total         5-8h    raw_weather 2.340615                         0.099809
+     Inflow_Total        9-12h       baseline 1.624091                         0.000000
+     Inflow_Total       13-24h    raw_weather 2.896543                         0.985021
