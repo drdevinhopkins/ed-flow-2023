@@ -1,0 +1,64 @@
+name: ED forecast operational blurb
+
+on:
+  schedule:
+    # GitHub cron is UTC. Run both EDT and EST candidates, then let the
+    # script keep only 07:45/11:45/15:45/19:45 America/Montreal.
+    - cron: '45 0,11,12,15,16,19,20,23 * * *'
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/ed-forecast-blurb.yml'
+      - 'scripts/generate_ed_forecast_blurb.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ed-forecast-operational-blurb-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  append-blurb:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests dropbox
+
+      - name: Compile blurb script
+        run: python -m py_compile scripts/generate_ed_forecast_blurb.py
+
+      - name: Generate blurb and append Dropbox CSV
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            python scripts/generate_ed_forecast_blurb.py --enforce-schedule
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            python scripts/generate_ed_forecast_blurb.py --dry-run
+          else
+            python scripts/generate_ed_forecast_blurb.py
+          fi
+
+      - name: Upload generated row for audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ed-forecast-blurb-row
+          path: ed_forecast_blurb_row.csv
+          if-no-files-found: ignore
