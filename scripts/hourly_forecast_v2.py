@@ -5,10 +5,10 @@ This script is intentionally independent from ``chronos_forecast.py``. It does n
 modify, replace, or upload any existing production forecast CSV. Its only output is
 ``forecast-v2.csv``.
 
-For each of the six validated flow targets, the output contains the latest 24 observed
-hourly values ending at the forecast origin plus the next 24 routed Chronos-2 forecasts.
-Observed values and forecasts live in separate ``actual`` and ``forecast`` columns so
-Power BI can plot the two series independently without reshaping the file.
+For each configured flow target, the output contains the latest 24 observed hourly values
+ending at the forecast origin plus the next 24 routed Chronos-2 forecasts. Observed values
+and forecasts live in separate ``actual`` and ``forecast`` columns so Power BI can plot
+the two series independently without reshaping the file.
 
 Observed and forecast rows both carry the same anomaly reference intervals used by
 ``ED_Hourly_Forecasts_Anomalies_v1.0.csv``. Observed colours are directional for ED flow:
@@ -63,6 +63,8 @@ ANOMALY_TARGET_ALIASES = {
     "TTStr": "TTStr",
     "Overflow": "overflow",
     "WAITINGADM": "WAITINGADM",
+    "TRG_HALLWAY1": "TRG_HALLWAY1",
+    "TRG_HALLWAY_TBS": "TRG_HALLWAY_TBS",
 }
 
 RED = "#D13438"
