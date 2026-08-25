@@ -32,16 +32,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Download latest immutable shadow forecast pointer
+      - name: Download immutable shadow forecast archive
         env:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
         run: |
           python - <<'PY'
+          import io
           import os
           from pathlib import Path
           import dropbox
+          import pandas as pd
           import requests
           from dropbox.exceptions import ApiError
 
@@ -62,26 +64,57 @@ jobs:
           )
           response.raise_for_status()
           dbx = dropbox.Dropbox(response.json()['access_token'])
+
           try:
-              _metadata, payload = dbx.files_download(
-                  '/validation/prospective-weather/latest-shadow-weather-forecast.csv'
-              )
+              result = dbx.files_list_folder('/validation/prospective-weather', recursive=True)
           except ApiError as exc:
               if exc.error.is_path() and exc.error.get_path().is_not_found():
                   Path('.no-shadow-forecast').write_text('No prospective shadow archive exists yet.\n')
                   print('No prospective shadow archive yet; scoring will be skipped safely.')
-              else:
-                  raise
-          else:
-              Path('shadow-weather-forecast.csv').write_bytes(payload.content)
-              print('Downloaded latest prospective shadow forecast')
+                  raise SystemExit(0)
+              raise
+
+          entries = list(result.entries)
+          while result.has_more:
+              result = dbx.files_list_folder_continue(result.cursor)
+              entries.extend(result.entries)
+
+          paths = sorted({
+              entry.path_lower
+              for entry in entries
+              if isinstance(entry, dropbox.files.FileMetadata)
+              and entry.name == 'shadow-weather-forecast.csv'
+              and '/latest-run/' not in entry.path_lower
+          })
+
+          if not paths:
+              Path('.no-shadow-forecast').write_text('No immutable prospective shadow runs exist yet.\n')
+              print('No immutable prospective shadow runs yet; scoring will be skipped safely.')
+              raise SystemExit(0)
+
+          frames = []
+          for path in paths:
+              _metadata, payload = dbx.files_download(path)
+              frame = pd.read_csv(io.BytesIO(payload.content))
+              frame['archive_path'] = path
+              frames.append(frame)
+
+          archive = pd.concat(frames, ignore_index=True)
+          key = ['forecast_run_id', 'ds', 'target_name', 'horizon_hour']
+          before = len(archive)
+          archive = archive.drop_duplicates(key, keep='last')
+          archive.to_csv('all-shadow-weather-forecasts.csv', index=False)
+          print(
+              f'Downloaded {len(paths)} immutable shadow run(s): '
+              f'{len(archive)} unique forecast rows ({before - len(archive)} duplicates removed)'
+          )
           PY
 
       - name: Score matured rows only
         run: |
-          if [ -s shadow-weather-forecast.csv ]; then
+          if [ -s all-shadow-weather-forecasts.csv ]; then
             python scripts/evaluation/prospective/score_shadow_weather_forecast.py \
-              shadow-weather-forecast.csv \
+              all-shadow-weather-forecasts.csv \
               --output-dir validation/prospective-weather/latest-score
           else
             echo 'No archived shadow forecast available yet; nothing to score.'
@@ -92,7 +125,7 @@ jobs:
           test ! -e forecast-v2.csv
           test ! -e chronos_forecast.csv
           test ! -e ED_Hourly_Forecasts_Anomalies_v1.0.csv
-          if [ -s shadow-weather-forecast.csv ]; then
+          if [ -s all-shadow-weather-forecasts.csv ]; then
             echo 'Scoring remained shadow-only; production artifacts untouched.'
           else
             test -s .no-shadow-forecast
@@ -106,7 +139,7 @@ jobs:
           name: prospective-weather-score
           path: |
             validation/prospective-weather/latest-score/*.csv
-            shadow-weather-forecast.csv
+            all-shadow-weather-forecasts.csv
             .no-shadow-forecast
           if-no-files-found: warn
           retention-days: 90
