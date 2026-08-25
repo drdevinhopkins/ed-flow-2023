@@ -48,6 +48,8 @@ FLOW_TARGETS = [
     "TTStr",
     "Overflow",
     "WAITINGADM",
+    "TRG_HALLWAY1",
+    "TRG_HALLWAY_TBS",
 ]
 SCENARIOS = ["baseline", "holidays", "staffing", "weather", "all_covariates"]
 
@@ -60,7 +62,7 @@ def parse_ds(series: pd.Series) -> pd.Series:
 
 
 def load_flow() -> pd.DataFrame:
-    """Load hourly data and construct the six canonical operational targets."""
+    """Load hourly data and construct the eight operational forecast targets."""
     raw = pd.read_csv(FLOW_URL)
     raw["ds"] = parse_ds(raw["ds"])
     raw = raw.dropna(subset=["ds"]).sort_values("ds").drop_duplicates("ds", keep="last")

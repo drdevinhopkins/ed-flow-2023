@@ -12,6 +12,7 @@ on:
       - '.github/workflows/hourly-forecast-v2.yml'
       - 'scripts/hourly_forecast_v2.py'
       - 'scripts/hourly_feature_routing.py'
+      - 'scripts/backtest_covariate_ablation.py'
       - 'scripts/backtest_hourly_final_features.py'
       - 'scripts/backtest_staffing_features.py'
       - 'scripts/backtest_hourly_calendar_features.py'
@@ -87,7 +88,8 @@ jobs:
           frame = pd.read_csv('forecast-v2.csv')
           expected_targets = {
               'Total_TBS', 'POD_TBS', 'Vertical_TBS',
-              'TTStr', 'Overflow', 'WAITINGADM'
+              'TTStr', 'Overflow', 'WAITINGADM',
+              'TRG_HALLWAY1', 'TRG_HALLWAY_TBS'
           }
           required = {
               'ds', 'target_name', 'actual', 'forecast',
@@ -101,15 +103,15 @@ jobs:
               'weather_routing_enabled'
           }
           assert required.issubset(frame.columns), sorted(required - set(frame.columns))
-          assert len(frame) == 288, len(frame)
+          assert len(frame) == 384, len(frame)
           assert set(frame['target_name']) == expected_targets
           assert set(frame['row_type']) == {'observed', 'forecast'}
           assert not frame[['ds', 'target_name']].duplicated().any()
 
           observed = frame[frame['row_type'].eq('observed')].copy()
           future = frame[frame['row_type'].eq('forecast')].copy()
-          assert len(observed) == 144, len(observed)
-          assert len(future) == 144, len(future)
+          assert len(observed) == 192, len(observed)
+          assert len(future) == 192, len(future)
           assert observed.groupby('target_name').size().eq(24).all()
           assert future.groupby('target_name').size().eq(24).all()
 
@@ -163,6 +165,27 @@ jobs:
           assert future['horizon_hour'].min() == 1
           assert future['horizon_hour'].max() == 24
 
+          expected_triage_routes = {
+              'TRG_HALLWAY1': {
+                  'h01_04': 'staffing_current',
+                  'h05_08': 'calendar_demand',
+                  'h09_12': 'calendar_demand',
+                  'h13_24': 'staffing_current',
+              },
+              'TRG_HALLWAY_TBS': {
+                  'h01_04': 'staffing_structure_effects',
+                  'h05_08': 'calendar_demand',
+                  'h09_12': 'calendar_demand',
+                  'h13_24': 'staffing_current',
+              },
+          }
+          for target, routes in expected_triage_routes.items():
+              target_rows = future[future['target_name'].eq(target)]
+              for band, scenario in routes.items():
+                  band_rows = target_rows[target_rows['horizon_band'].eq(band)]
+                  assert len(band_rows) > 0
+                  assert band_rows['scenario'].eq(scenario).all()
+
           assert frame[['anomaly_yhat', 'anomaly_yhat_lower', 'anomaly_yhat_upper']].notna().all().all()
           assert not frame['weather_routing_enabled'].astype(bool).any()
           assert not future['scenario'].str.startswith('weather').any()
@@ -175,7 +198,7 @@ jobs:
           assert future_times.min() - observed_times.max() == pd.Timedelta(hours=1)
 
           print(frame.groupby(['row_type', 'target_name']).size())
-          print('forecast-v2.csv validated: directional actual colours, separate observed/forecast columns, legacy files untouched.')
+          print('forecast-v2.csv validated: eight targets, validated triage routes, directional actual colours, separate observed/forecast columns, legacy files untouched.')
           PY
 
       - name: Upload v2 artifact

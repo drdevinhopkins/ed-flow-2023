@@ -1,9 +1,12 @@
 """Production routing table for validated hourly Chronos-2 feature families.
 
-Routes come from the common-cutoff 24-hour ablation recorded under
-``validation/hourly-final-ablation``. Weather-winning routes are guarded because the
-historical weather ablation used revised/realized weather rather than archived
-forecast-time snapshots.
+Routes for the original six targets come from the common-cutoff 24-hour ablation recorded
+under ``validation/hourly-final-ablation``. Triage hallway occupancy and triage hallway
+TBS use the same eight-cutoff, 24-hour feature-family comparison recorded under
+``validation/triage-hallway-ablation``.
+
+Weather-winning routes are guarded because the historical weather ablation used
+revised/realized weather rather than archived forecast-time snapshots.
 """
 
 from __future__ import annotations
@@ -15,13 +18,15 @@ FLOW_TARGETS = (
     "TTStr",
     "Overflow",
     "WAITINGADM",
+    "TRG_HALLWAY1",
+    "TRG_HALLWAY_TBS",
 )
 
-ROUTING_VERSION = "hourly-final-ablation-2026-08-23"
+ROUTING_VERSION = "hourly-final-ablation-plus-triage-2026-08-25"
 
 # Conservative production routes. Every non-baseline route below beat baseline in the
-# common-cutoff ablation for the corresponding horizon band. Weather is excluded here
-# until prospective forecast-snapshot validation is available.
+# corresponding common-cutoff ablation and horizon band. Weather is excluded here until
+# archived forecast-time weather snapshots confirm the retrospective result.
 SAFE_ROUTES: dict[str, dict[str, str]] = {
     "Overflow": {
         "h01_04": "baseline",
@@ -60,10 +65,25 @@ SAFE_ROUTES: dict[str, dict[str, str]] = {
         "h09_12": "staffing_structure_effects",
         "h13_24": "baseline",
     },
+    "TRG_HALLWAY1": {
+        # Aggregate MAE improvement vs baseline: +16.37%, +3.55%, +3.04%, +4.68%.
+        "h01_04": "staffing_current",
+        "h05_08": "calendar_demand",
+        "h09_12": "calendar_demand",
+        "h13_24": "staffing_current",
+    },
+    "TRG_HALLWAY_TBS": {
+        # Aggregate MAE improvement vs baseline: +12.05%, +4.82%, +3.74%, +1.52%.
+        "h01_04": "staffing_structure_effects",
+        "h05_08": "calendar_demand",
+        "h09_12": "calendar_demand",
+        "h13_24": "staffing_current",
+    },
 }
 
-# Opt-in overrides for the two weather winners. These should stay disabled in production
-# until archived forecast-time weather snapshots confirm the retrospective result.
+# Opt-in overrides for the original weather winners. These should stay disabled in
+# production until archived forecast-time weather snapshots confirm the retrospective
+# result. No weather scenario won a triage-hallway horizon band.
 WEATHER_OVERRIDES: dict[tuple[str, str], str] = {
     ("Overflow", "h09_12"): "weather_raw",
     ("Overflow", "h13_24"): "weather_raw",
@@ -109,7 +129,7 @@ def scenarios_needed(*, allow_weather: bool = False) -> set[str]:
 def validate_routes() -> None:
     expected_bands = {"h01_04", "h05_08", "h09_12", "h13_24"}
     if set(SAFE_ROUTES) != set(FLOW_TARGETS):
-        raise ValueError("Routing table does not cover exactly the six validated flow targets")
+        raise ValueError("Routing table does not cover exactly the eight forecast targets")
     for target, routes in SAFE_ROUTES.items():
         if set(routes) != expected_bands:
             raise ValueError(f"Incomplete routing bands for {target}: {sorted(routes)}")

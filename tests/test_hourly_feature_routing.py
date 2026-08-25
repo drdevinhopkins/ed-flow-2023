@@ -37,6 +37,39 @@ def test_safe_routes_match_validated_production_policy():
     assert scenario_for("Overflow", 18) == "baseline"
 
 
+def test_triage_targets_match_target_specific_ablation_routes():
+    assert "TRG_HALLWAY1" in FLOW_TARGETS
+    assert "TRG_HALLWAY_TBS" in FLOW_TARGETS
+    assert len(FLOW_TARGETS) == 8
+
+    expected = {
+        "TRG_HALLWAY1": {
+            "h01_04": "staffing_current",
+            "h05_08": "calendar_demand",
+            "h09_12": "calendar_demand",
+            "h13_24": "staffing_current",
+        },
+        "TRG_HALLWAY_TBS": {
+            "h01_04": "staffing_structure_effects",
+            "h05_08": "calendar_demand",
+            "h09_12": "calendar_demand",
+            "h13_24": "staffing_current",
+        },
+    }
+    representative_hours = {
+        "h01_04": 2,
+        "h05_08": 6,
+        "h09_12": 10,
+        "h13_24": 18,
+    }
+    for target, routes in expected.items():
+        for band, scenario in routes.items():
+            hour = representative_hours[band]
+            assert scenario_for(target, hour) == scenario
+            # There are no triage-specific weather overrides.
+            assert scenario_for(target, hour, allow_weather=True) == scenario
+
+
 def test_weather_routes_are_opt_in():
     assert scenario_for("Overflow", 10) == "baseline"
     assert scenario_for("Overflow", 10, allow_weather=True) == "weather_raw"
@@ -69,6 +102,7 @@ def test_all_targets_have_all_hours_and_needed_scenarios():
 if __name__ == "__main__":
     test_horizon_bands()
     test_safe_routes_match_validated_production_policy()
+    test_triage_targets_match_target_specific_ablation_routes()
     test_weather_routes_are_opt_in()
     test_all_targets_have_all_hours_and_needed_scenarios()
     print("hourly feature routing tests passed")
