@@ -1,0 +1,156 @@
+"""Candidate hourly ED flow targets used for pre-production validation only.
+
+Nothing in this module changes the production forecast target set. It provides
+reproducible derivations for candidate targets that can be evaluated with the same
+Chronos-2 common-cutoff framework as the existing operational targets.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+
+import numpy as np
+import pandas as pd
+
+from forecast_oncall_impact import derive_flow_metrics
+from hourly_feature_routing import FLOW_TARGETS as PRODUCTION_FLOW_TARGETS
+
+CANDIDATE_TARGETS: tuple[str, ...] = (
+    "Inflow_Total",
+    "INFLOW_STRETCHER",
+    "INFLOW_AMBULANCES",
+    "AdmissionRequests_New",
+    "Workup_Delay_Burden",
+)
+
+ALL_EXPERIMENT_TARGETS: tuple[str, ...] = (*PRODUCTION_FLOW_TARGETS, *CANDIDATE_TARGETS)
+
+WORKUP_DELAY_COMPONENTS: tuple[str, ...] = (
+    "POD_CONS_MORE2H",
+    "POD_IMCONS_MORE4H",
+    "POD_XRAY_MORE2H",
+    "POD_CT_MORE2H",
+    "RAZ_CONS_MORE2H",
+    "RAZ_IMCONS_MORE4H",
+    "RAZ_XRAY_MORE2H",
+    "RAZ_CT_MORE2H1",
+)
+
+COUNT_LIKE_TARGETS: frozenset[str] = frozenset(CANDIDATE_TARGETS)
+
+
+def _numeric(frame: pd.DataFrame, columns: Sequence[str]) -> pd.DataFrame:
+    out = frame.loc[:, columns].copy()
+    for column in columns:
+        out[column] = pd.to_numeric(out[column], errors="coerce")
+    return out
+
+
+def reset_aware_increment(counter: pd.Series, ds: pd.Series) -> pd.Series:
+    """Convert a cumulative counter into hourly increments without creating reset spikes.
+
+    A negative difference is interpreted as a counter reset and the post-reset counter
+    value becomes that hour's increment. Differences across gaps longer than one hour are
+    left missing so they are not falsely attributed to a single hour.
+    """
+
+    values = pd.to_numeric(counter, errors="coerce")
+    stamps = pd.to_datetime(ds, errors="coerce")
+    delta = values.diff()
+    elapsed = stamps.diff()
+
+    increment = delta.where(delta >= 0, values)
+    increment = increment.where(delta.notna())
+    increment = increment.where(elapsed.eq(pd.Timedelta(hours=1)))
+    return increment.clip(lower=0)
+
+
+def add_candidate_metrics(raw: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy with the five candidate targets derived and numeric."""
+
+    out = raw.copy()
+    required_direct = ["Inflow_Total", "INFLOW_STRETCHER", "INFLOW_AMBULANCES", "CUM_ADMREQ"]
+    missing_direct = [column for column in required_direct if column not in out.columns]
+    missing_workup = [column for column in WORKUP_DELAY_COMPONENTS if column not in out.columns]
+    missing = [*missing_direct, *missing_workup]
+    if missing:
+        raise ValueError(f"Missing candidate-metric source columns: {', '.join(missing)}")
+
+    for column in ["Inflow_Total", "INFLOW_STRETCHER", "INFLOW_AMBULANCES"]:
+        out[column] = pd.to_numeric(out[column], errors="coerce")
+
+    out["AdmissionRequests_New"] = reset_aware_increment(out["CUM_ADMREQ"], out["ds"])
+
+    workup = _numeric(out, WORKUP_DELAY_COMPONENTS)
+    # This is deliberately a burden score, not a unique-patient count: one patient can
+    # contribute to more than one delayed process bucket.
+    out["Workup_Delay_Burden"] = workup.sum(axis=1, min_count=len(WORKUP_DELAY_COMPONENTS))
+    return out
+
+
+def build_experiment_flow(raw: pd.DataFrame) -> pd.DataFrame:
+    """Build a regular hourly 13-target frame for common-cutoff candidate validation."""
+
+    frame = raw.copy()
+    frame["ds"] = pd.to_datetime(frame["ds"], format="mixed", errors="coerce")
+    if getattr(frame["ds"].dt, "tz", None) is not None:
+        frame["ds"] = frame["ds"].dt.tz_convert("America/Montreal").dt.tz_localize(None)
+    frame["ds"] = frame["ds"].dt.floor("h")
+    frame = frame.dropna(subset=["ds"]).sort_values("ds").drop_duplicates("ds", keep="last")
+
+    derived, _ = derive_flow_metrics(frame)
+    aliases = {
+        "Total_TBS": "total_tbs",
+        "POD_TBS": "pod_tbs",
+        "Vertical_TBS": "vertical_tbs",
+        "Overflow": "overflow",
+    }
+    for target, source in aliases.items():
+        if target not in derived.columns:
+            if source not in derived.columns:
+                raise ValueError(f"Could not derive production target {target} from {source}")
+            derived[target] = pd.to_numeric(derived[source], errors="coerce")
+
+    derived = add_candidate_metrics(derived)
+    missing = [target for target in ALL_EXPERIMENT_TARGETS if target not in derived.columns]
+    if missing:
+        raise ValueError(f"Missing experiment target(s): {', '.join(missing)}")
+
+    flow = derived[["ds", *ALL_EXPERIMENT_TARGETS]].copy()
+    for target in ALL_EXPERIMENT_TARGETS:
+        flow[target] = pd.to_numeric(flow[target], errors="coerce")
+
+    index = pd.date_range(flow["ds"].min(), flow["ds"].max(), freq="h", name="ds")
+    flow = flow.set_index("ds").reindex(index).reset_index()
+
+    # Existing operational targets are state-like measures and keep production's forward
+    # fill convention. Candidate hourly counts/burdens are not forward-filled across data
+    # gaps; short isolated gaps are interpolated only to preserve regular model frequency.
+    for target in PRODUCTION_FLOW_TARGETS:
+        flow[target] = flow[target].ffill()
+    for target in CANDIDATE_TARGETS:
+        flow[target] = flow[target].interpolate(limit=1, limit_direction="both")
+
+    return flow
+
+
+def candidate_quality_summary(flow: pd.DataFrame) -> pd.DataFrame:
+    """Compact completeness/range diagnostics used before launching expensive backtests."""
+
+    rows: list[dict[str, object]] = []
+    for target in CANDIDATE_TARGETS:
+        series = pd.to_numeric(flow[target], errors="coerce")
+        rows.append(
+            {
+                "target_name": target,
+                "n": int(series.size),
+                "n_nonnull": int(series.notna().sum()),
+                "missing_pct": float(series.isna().mean() * 100.0),
+                "mean": float(series.mean()),
+                "median": float(series.median()),
+                "p95": float(series.quantile(0.95)),
+                "max": float(series.max()),
+                "zero_pct": float(series.eq(0).mean() * 100.0),
+            }
+        )
+    return pd.DataFrame(rows)
