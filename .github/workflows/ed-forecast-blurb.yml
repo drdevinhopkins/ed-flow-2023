@@ -50,7 +50,8 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ]; then
             python scripts/generate_ed_forecast_blurb.py --enforce-schedule
           elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            python scripts/generate_ed_forecast_blurb.py --dry-run
+            # Temporary branch-only write test. This file will not be merged.
+            python scripts/generate_ed_forecast_blurb.py
           else
             python scripts/generate_ed_forecast_blurb.py
           fi
