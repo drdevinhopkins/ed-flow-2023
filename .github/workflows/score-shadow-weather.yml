@@ -43,6 +43,7 @@ jobs:
           from pathlib import Path
           import dropbox
           import requests
+          from dropbox.exceptions import ApiError
 
           required = ['DROPBOX_APP_KEY', 'DROPBOX_APP_SECRET', 'DROPBOX_REFRESH_TOKEN']
           missing = [name for name in required if not os.environ.get(name)]
@@ -61,26 +62,42 @@ jobs:
           )
           response.raise_for_status()
           dbx = dropbox.Dropbox(response.json()['access_token'])
-          _metadata, payload = dbx.files_download(
-              '/validation/prospective-weather/latest-shadow-weather-forecast.csv'
-          )
-          Path('shadow-weather-forecast.csv').write_bytes(payload.content)
-          print('Downloaded latest prospective shadow forecast')
+          try:
+              _metadata, payload = dbx.files_download(
+                  '/validation/prospective-weather/latest-shadow-weather-forecast.csv'
+              )
+          except ApiError as exc:
+              if exc.error.is_path() and exc.error.get_path().is_not_found():
+                  Path('.no-shadow-forecast').write_text('No prospective shadow archive exists yet.\n')
+                  print('No prospective shadow archive yet; scoring will be skipped safely.')
+              else:
+                  raise
+          else:
+              Path('shadow-weather-forecast.csv').write_bytes(payload.content)
+              print('Downloaded latest prospective shadow forecast')
           PY
 
       - name: Score matured rows only
         run: |
-          python scripts/evaluation/prospective/score_shadow_weather_forecast.py \
-            shadow-weather-forecast.csv \
-            --output-dir validation/prospective-weather/latest-score
+          if [ -s shadow-weather-forecast.csv ]; then
+            python scripts/evaluation/prospective/score_shadow_weather_forecast.py \
+              shadow-weather-forecast.csv \
+              --output-dir validation/prospective-weather/latest-score
+          else
+            echo 'No archived shadow forecast available yet; nothing to score.'
+          fi
 
       - name: Verify scorer safety
         run: |
-          test -s shadow-weather-forecast.csv
           test ! -e forecast-v2.csv
           test ! -e chronos_forecast.csv
           test ! -e ED_Hourly_Forecasts_Anomalies_v1.0.csv
-          echo 'Scoring remained shadow-only; production artifacts untouched.'
+          if [ -s shadow-weather-forecast.csv ]; then
+            echo 'Scoring remained shadow-only; production artifacts untouched.'
+          else
+            test -s .no-shadow-forecast
+            echo 'No shadow archive yet; scorer exited safely without touching production.'
+          fi
 
       - name: Upload score artifact
         if: always()
@@ -90,5 +107,6 @@ jobs:
           path: |
             validation/prospective-weather/latest-score/*.csv
             shadow-weather-forecast.csv
+            .no-shadow-forecast
           if-no-files-found: warn
           retention-days: 90
