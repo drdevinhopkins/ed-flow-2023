@@ -1,29 +1,31 @@
-name: ED forecast operational blurb
+name: ED forecast operational blurb append
 
 on:
-  schedule:
-    # GitHub cron is UTC. Run both EDT and EST candidates, then let the
-    # script keep only 07:45/11:45/15:45/19:45 America/Montreal.
-    - cron: '45 0,11,12,15,16,19,20,23 * * *'
-  workflow_dispatch:
+  push:
+    branches:
+      - ed-forecast-blurb-trigger
+    paths:
+      - '.github/ed_forecast_blurb_request.json'
   pull_request:
     branches:
       - main
     paths:
       - '.github/workflows/ed-forecast-blurb.yml'
+      - 'scripts/append_ed_forecast_blurb_request.py'
       - 'scripts/generate_ed_forecast_blurb.py'
+      - '.github/ed_forecast_blurb_request.json'
 
 permissions:
   contents: read
 
 concurrency:
-  group: ed-forecast-operational-blurb-${{ github.event_name }}
+  group: ed-forecast-operational-blurb-append
   cancel-in-progress: false
 
 jobs:
   append-blurb:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -38,24 +40,28 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas requests dropbox
 
-      - name: Compile blurb script
-        run: python -m py_compile scripts/generate_ed_forecast_blurb.py
+      - name: Compile append worker
+        run: |
+          python -m py_compile scripts/generate_ed_forecast_blurb.py
+          python -m py_compile scripts/append_ed_forecast_blurb_request.py
 
-      - name: Generate blurb and append Dropbox CSV
+      - name: Validate or append exact requested blurb
         env:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            python scripts/generate_ed_forecast_blurb.py --enforce-schedule
-          elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            python scripts/generate_ed_forecast_blurb.py --dry-run
+          if [ ! -f .github/ed_forecast_blurb_request.json ]; then
+            echo 'No blurb request file in this ref; compile validation only.'
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            python scripts/append_ed_forecast_blurb_request.py --dry-run
           else
-            python scripts/generate_ed_forecast_blurb.py
+            python scripts/append_ed_forecast_blurb_request.py
           fi
 
-      - name: Upload generated row for audit
+      - name: Upload appended row for audit
         if: always()
         uses: actions/upload-artifact@v4
         with:
