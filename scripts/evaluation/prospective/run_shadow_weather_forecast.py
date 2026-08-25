@@ -3,7 +3,7 @@
 
 This runner is deliberately non-production. It never writes ``forecast-v2.csv`` and never
 uses the production Dropbox filename. Instead it archives a paired forecast table plus the
-exact weather-source slice visible at forecast time so weather routes can be scored later
+exact weather-source slice used by the shadow forecast so weather routes can be scored later
 without hindsight.
 """
 
@@ -27,7 +27,6 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import backtest_covariate_ablation as base  # noqa: E402
-import backtest_hourly_weather_features as weather_bt  # noqa: E402
 import hourly_forecast_v2 as forecast_v2  # noqa: E402
 
 DEFAULT_OUTPUT_DIR = Path("validation/prospective-weather/latest-run")
@@ -71,8 +70,30 @@ def _future_rows(frame: pd.DataFrame, label: str) -> pd.DataFrame:
     return future
 
 
-def _weather_snapshot(cutoff: pd.Timestamp) -> pd.DataFrame:
-    weather = weather_bt.load_weather(base.WEATHER_URL)
+def _capture_weather_run(
+    pipeline: Chronos2Pipeline,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Run weather routing while retaining the exact raw weather dataframe it consumed."""
+    captured: dict[str, pd.DataFrame] = {}
+    original = forecast_v2.weather_bt.load_weather
+
+    def capture(source: str) -> pd.DataFrame:
+        frame = original(source)
+        captured["weather"] = frame.copy(deep=True)
+        return frame
+
+    forecast_v2.weather_bt.load_weather = capture
+    try:
+        forecast = forecast_v2.build_forecast_v2(pipeline, allow_weather=True)
+    finally:
+        forecast_v2.weather_bt.load_weather = original
+
+    if "weather" not in captured:
+        raise RuntimeError("Weather input capture failed")
+    return forecast, captured["weather"]
+
+
+def _weather_snapshot(weather: pd.DataFrame, cutoff: pd.Timestamp) -> pd.DataFrame:
     start = cutoff - pd.Timedelta(days=7)
     end = cutoff + pd.Timedelta(hours=forecast_v2.HORIZON)
     snapshot = weather.loc[weather["ds"].between(start, end)].copy()
@@ -135,9 +156,9 @@ def main() -> None:
     )
 
     # Paired predictions from the same code revision. The safe run never uses weather;
-    # the shadow run allows the existing weather-winning routes.
+    # the shadow run allows the existing weather-winning routes and captures its inputs.
     safe = forecast_v2.build_forecast_v2(pipeline, allow_weather=False)
-    weather = forecast_v2.build_forecast_v2(pipeline, allow_weather=True)
+    weather, weather_used = _capture_weather_run(pipeline)
 
     safe_future = _future_rows(safe, "baseline")
     weather_future = _future_rows(weather, "weather")
@@ -158,7 +179,7 @@ def main() -> None:
     if not paired["forecast_origin"].eq(cutoff).all():
         raise RuntimeError("Paired runs did not use one common forecast origin")
 
-    snapshot = _weather_snapshot(cutoff)
+    snapshot = _weather_snapshot(weather_used, cutoff)
     snapshot_id = _snapshot_id(snapshot)
     issued_at = pd.Timestamp.now(tz="UTC")
     run_id = f"{issued_at.strftime('%Y%m%dT%H%M%SZ')}-{snapshot_id}"
