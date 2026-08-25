@@ -50,10 +50,10 @@ jobs:
         run: |
           python -m py_compile scripts/regional_ed_pressure.py
           python -m py_compile scripts/update_regional_ed_pressure.py
-          python -m py_compile scripts/backtest_regional_ed_pressure.py
+          python -m py_compile scripts/evaluation/backtests/backtest_regional_ed_pressure.py
           python -m py_compile scripts/respiratory_surveillance.py
           python -m py_compile scripts/update_respiratory_surveillance.py
-          python -m py_compile scripts/backtest_daily_respiratory_features.py
+          python -m py_compile scripts/evaluation/backtests/backtest_daily_respiratory_features.py
       - name: Run feature tests
         run: |
           python tests/test_regional_ed_pressure.py
@@ -117,6 +117,8 @@ jobs:
     needs: [test-feature-code, archive-respiratory]
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      PYTHONPATH: scripts
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -148,7 +150,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p validation-output-respiratory
-          python scripts/backtest_daily_respiratory_features.py \
+          python scripts/evaluation/backtests/backtest_daily_respiratory_features.py \
             --respiratory-csv external-inputs/inspq_montreal_weekly.csv \
             --num-cutoffs "$NUM_CUTOFFS" \
             --horizon-days 7 \
