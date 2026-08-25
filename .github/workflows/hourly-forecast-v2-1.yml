@@ -155,9 +155,27 @@ jobs:
           baseline_selected = future['scenario'].eq('baseline')
           assert future.loc[baseline_selected, 'feature_effect'].abs().lt(1e-8).all()
           assert future.loc[baseline_selected, 'explanation_direction'].eq('unchanged').all()
-          assert future.loc[
-              future['target_name'].isin(['TRG_HALLWAY1', 'TRG_HALLWAY_TBS']), 'scenario'
-          ].eq('baseline').all()
+
+          expected_triage_routes = {
+              'TRG_HALLWAY1': {
+                  'h01_04': 'staffing_current',
+                  'h05_08': 'calendar_demand',
+                  'h09_12': 'calendar_demand',
+                  'h13_24': 'staffing_current',
+              },
+              'TRG_HALLWAY_TBS': {
+                  'h01_04': 'staffing_structure_effects',
+                  'h05_08': 'calendar_demand',
+                  'h09_12': 'calendar_demand',
+                  'h13_24': 'staffing_current',
+              },
+          }
+          for target, routes in expected_triage_routes.items():
+              target_rows = future[future['target_name'].eq(target)]
+              for band, scenario in routes.items():
+                  band_rows = target_rows[target_rows['horizon_band'].eq(band)]
+                  assert len(band_rows) > 0
+                  assert band_rows['scenario'].eq(scenario).all()
 
           positive = future['feature_effect'].gt(1e-8)
           negative = future['feature_effect'].lt(-1e-8)
@@ -213,7 +231,7 @@ jobs:
                   ['target_name', 'horizon_band', 'scenario', 'explanation_direction']
               )['feature_effect'].mean()
           )
-          print('forecast-v2.1.csv validated: eight targets with additive baseline attribution; v2/legacy outputs untouched.')
+          print('forecast-v2.1.csv validated: eight targets with validated triage routes and additive baseline attribution; v2/legacy outputs untouched.')
           PY
 
       - name: Upload v2.1 artifact
