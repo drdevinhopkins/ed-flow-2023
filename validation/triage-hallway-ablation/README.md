@@ -16,7 +16,7 @@ Historical weather is a stitched/revised series rather than archived forecast-ti
 
 | Target | 1-4h | 5-8h | 9-12h | 13-24h |
 | --- | --- | --- | --- | --- |
-| TRG_HALLWAY1 | staffing_current (+16.37% MAE) | calendar_demand (+3.55%) | calendar_demand (+3.04%) | staffing_current (+4.68%) |
+| TRG_HALLWAY1 | staffing_current (+16.37%) | calendar_demand (+3.55%) | calendar_demand (+3.04%) | staffing_current (+4.68%) |
 | TRG_HALLWAY_TBS | staffing_structure_effects (+12.05%) | calendar_demand (+4.82%) | calendar_demand (+3.74%) | staffing_current (+1.52%) |
 
 Percentages are aggregate MAE improvements relative to the history-only baseline across the eight cutoffs. The 1-4h improvements are the strongest and most consistent; later-horizon gains are smaller and should be interpreted accordingly.
