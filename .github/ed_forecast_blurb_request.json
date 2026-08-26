@@ -1,8 +1,11 @@
 {
-  "generated_at_local": "",
-  "forecast_data_time_local": "",
-  "blurb": "",
-  "oncall_recommendation": "",
-  "oncall_rationale": "",
-  "source_status": ""
+  "generated_at_local": "2026-08-25T19:45:00-04:00",
+  "forecast_data_time_local": "2026-08-25 19:00:00",
+  "blurb_id": "placeholder-20260825-1945",
+  "blurb": "Placeholder request used only for pull-request validation.",
+  "oncall_recommendation": "NOT INDICATED",
+  "oncall_rationale": "Placeholder only.",
+  "send_recommended": false,
+  "send_reason": "NONE",
+  "source_status": "PLACEHOLDER"
 }
