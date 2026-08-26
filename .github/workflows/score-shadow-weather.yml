@@ -14,6 +14,7 @@ on:
       - 'scripts/evaluation/prospective/summarize_shadow_weather_trajectory.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_high_congestion.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_independence.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_unique_hour_sensitivity.py'
 
 permissions:
   contents: read
@@ -168,6 +169,16 @@ jobs:
               --output-dir validation/prospective-weather/latest-score
           else
             echo 'No matured detail rows yet; independence diagnostics skipped.'
+          fi
+
+      - name: Summarize unique-realized-hour sensitivity
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_unique_hour_sensitivity.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score
+          else
+            echo 'No matured detail rows yet; unique-hour sensitivity skipped.'
           fi
 
       - name: Estimate weather-route confidence
