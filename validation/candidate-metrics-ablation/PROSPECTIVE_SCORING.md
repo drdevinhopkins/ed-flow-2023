@@ -1,0 +1,105 @@
+# Prospective scoring plan for candidate hourly metrics
+
+This document defines the next pre-production validation stage for the five candidate hourly forecast targets on `forecast-candidate-metrics`.
+
+## Goal
+
+Replace retrospective-only selection with forecast-time evaluation. Each candidate forecast should be archived exactly as emitted, then joined later to the first finalized observed value for the same target timestamp. No production routing is changed by this plan.
+
+## Candidates and provisional routes
+
+| Target | 1-4h | 5-8h | 9-12h | 13-24h |
+| --- | --- | --- | --- | --- |
+| `Inflow_Total` | selected non-weather route | baseline | baseline | baseline |
+| `INFLOW_STRETCHER` | selected non-weather route | robustness-aware non-weather route | selected non-weather route | baseline |
+| `INFLOW_AMBULANCES` | selected non-weather route | baseline | baseline | baseline |
+| `AdmissionRequests_New` | baseline | selected non-weather route | baseline | `staffing_structure_effects` |
+| `Workup_Delay_Burden` | selected non-weather route | selected non-weather route | selected non-weather route | baseline |
+
+The exact scenario names should be read from `DECISION.md` / `safe_nonweather_winners_by_target_horizon_band.csv`; this table deliberately avoids duplicating route constants in another source of truth.
+
+## Forecast archive schema
+
+One row per forecast target and target timestamp.
+
+Required fields:
+
+- `forecast_run_id`: stable identifier for one forecast execution.
+- `forecast_issued_at`: timestamp when the forecast was generated, stored in UTC.
+- `forecast_issue_ds`: same issue time represented in the model's Montreal-local hourly timeline where needed for joins/debugging.
+- `target_ds`: forecasted timestamp in Montreal local time.
+- `target`: metric name.
+- `horizon_hours`: integer lead time from issue to target timestamp.
+- `horizon_band`: one of `1-4h`, `5-8h`, `9-12h`, `13-24h`.
+- `scenario`: selected route used for this row (`baseline`, `calendar_demand`, `staffing_current`, etc.).
+- `prediction`: point forecast.
+- `prediction_lower` / `prediction_upper`: uncertainty interval when available.
+- `model_family`: e.g. `chronos2`.
+- `model_version`: immutable model/checkpoint identifier when available.
+- `git_sha`: commit used to generate the forecast.
+- `data_cutoff_ds`: latest historical observation timestamp included in model input.
+- `feature_snapshot_id`: optional identifier tying exogenous inputs to their forecast-time snapshot.
+- `weather_snapshot_is_prospective`: boolean guard; must be true before weather-derived routes are considered production-valid.
+
+The archive is append-only. Re-runs create new `forecast_run_id` values rather than overwriting older predictions.
+
+## Observation / score schema
+
+Scoring occurs only after the observed target timestamp is available and finalized enough for operational reporting.
+
+Required score fields:
+
+- all forecast identity fields needed to reproduce the row;
+- `actual`;
+- `actual_observed_at`;
+- `absolute_error = abs(prediction - actual)`;
+- `signed_error = prediction - actual`;
+- `squared_error`;
+- `ape` only when a denominator policy is safe for that target;
+- `interval_covered` when bounds exist;
+- `baseline_prediction` and `baseline_absolute_error` for paired comparison;
+- `paired_absolute_error_delta = baseline_absolute_error - absolute_error`;
+- `candidate_wins = paired_absolute_error_delta > 0`.
+
+Do not use MAPE as the primary metric for sparse/count-like targets with frequent zeros. MAE and paired MAE improvement remain the primary promotion measures; WAPE can be reported at aggregate level where denominator volume is adequate.
+
+## Evaluation windows
+
+Report by target and horizon band over rolling windows:
+
+- 7 days: monitoring only; too noisy for promotion decisions.
+- 28 days: early directional signal.
+- 56 days: minimum preferred window for a promotion recommendation.
+- full prospective history: stability check.
+
+Also report day-of-week and hour-of-day slices to identify hidden failure modes.
+
+## Promotion guardrails
+
+A candidate route should not be promoted from prospective validation unless all of the following are met over the preferred evaluation window:
+
+1. aggregate MAE is lower than the paired baseline;
+2. mean and median paired error improvement are both positive;
+3. candidate wins on at least 55% of scored forecast rows;
+4. no material systematic signed-error bias appears in a major hour/day slice;
+5. benefit is not driven by one short period or a small number of extreme observations;
+6. interval coverage is not materially worse when uncertainty bounds are available;
+7. for weather routes, all weather covariates must come from archived forecast-time snapshots rather than realized/revised weather.
+
+These prospective criteria complement, rather than replace, the existing 8-cutoff retrospective robustness rule.
+
+## Implementation sequence
+
+1. Add an append-only candidate forecast archive generated by the experimental branch/workflow only.
+2. Persist the baseline forecast alongside the routed candidate forecast for exact paired scoring.
+3. Add a scorer that joins matured forecast rows to observed candidate values without mutating the forecast archive.
+4. Emit compact rolling score tables by target × horizon band and a paired row-level detail table.
+5. Run prospectively in parallel with production for at least 56 days before recommending promotion.
+6. Keep all candidate outputs namespaced separately from current production CSVs until explicitly approved.
+
+## Safety constraints
+
+- Do not modify the production target list or production routing from this branch.
+- Do not overwrite legacy/current production forecast artifacts.
+- Do not enable weather routing based on retrospective weather features.
+- Preserve every issued forecast so later scoring cannot benefit from hindsight or regenerated inputs.
