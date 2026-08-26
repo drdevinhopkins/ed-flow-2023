@@ -10,6 +10,7 @@ on:
       - 'scripts/evaluation/prospective/score_shadow_weather_forecast.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_slices.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_confidence.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_trajectory.py'
 
 permissions:
   contents: read
@@ -144,6 +145,16 @@ jobs:
               --output-dir validation/prospective-weather/latest-score
           else
             echo 'No matured detail rows yet; confidence diagnostics skipped.'
+          fi
+
+      - name: Summarize issue-date evidence trajectory
+        run: |
+          if [ -s validation/prospective-weather/latest-score/weather-route-by-issue-date.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_trajectory.py \
+              validation/prospective-weather/latest-score/weather-route-by-issue-date.csv \
+              --output-dir validation/prospective-weather/latest-score
+          else
+            echo 'No issue-date summary yet; trajectory skipped.'
           fi
 
       - name: Verify confidence evidence labeling
