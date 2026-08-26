@@ -4,6 +4,11 @@
 Rows from the same forecast issue are correlated across horizons, so confidence intervals
 are produced by resampling issue dates rather than individual forecast rows. This output
 is diagnostic only and does not alter promotion guardrails or routing.
+
+Bootstrap intervals are computed as soon as at least two issue dates exist, but they are
+explicitly exploratory until the prospective validation plan's 28-issue-date evidence
+threshold is reached. This prevents a very small number of clusters from being described
+as confirmatory evidence merely because their bootstrap interval excludes zero.
 """
 
 from __future__ import annotations
@@ -16,6 +21,7 @@ import pandas as pd
 
 N_BOOTSTRAP = 5000
 SEED = 20260826
+MIN_CONFIDENCE_ISSUE_DATES = 28
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,6 +44,7 @@ def _bootstrap_group(frame: pd.DataFrame, rng: np.random.Generator) -> dict[str,
         "mae_improvement_pct": observed_pct,
         "bootstrap_method": "issue-date cluster bootstrap",
         "bootstrap_replicates": N_BOOTSTRAP,
+        "min_issue_dates_for_confidence_claim": MIN_CONFIDENCE_ISSUE_DATES,
     }
     if len(issue_dates) < 2:
         result.update({
@@ -46,6 +53,8 @@ def _bootstrap_group(frame: pd.DataFrame, rng: np.random.Generator) -> dict[str,
             "mae_improvement_pct_ci95_lower": np.nan,
             "mae_improvement_pct_ci95_upper": np.nan,
             "probability_improvement_positive": np.nan,
+            "exploratory_ci_direction": "not_estimable",
+            "confidence_evidence_ready": False,
             "confidence_status": "insufficient_issue_dates",
         })
         return result
@@ -62,13 +71,25 @@ def _bootstrap_group(frame: pd.DataFrame, rng: np.random.Generator) -> dict[str,
         pcts[i] = delta / base * 100 if base else np.nan
 
     finite_pct = pcts[np.isfinite(pcts)]
+    delta_lower = float(np.quantile(deltas, 0.025))
+    delta_upper = float(np.quantile(deltas, 0.975))
+    if delta_lower > 0:
+        exploratory_direction = "supports_improvement"
+    elif delta_upper < 0:
+        exploratory_direction = "supports_harm"
+    else:
+        exploratory_direction = "uncertain"
+
+    evidence_ready = len(issue_dates) >= MIN_CONFIDENCE_ISSUE_DATES
     result.update({
-        "paired_delta_ci95_lower": float(np.quantile(deltas, 0.025)),
-        "paired_delta_ci95_upper": float(np.quantile(deltas, 0.975)),
+        "paired_delta_ci95_lower": delta_lower,
+        "paired_delta_ci95_upper": delta_upper,
         "mae_improvement_pct_ci95_lower": float(np.quantile(finite_pct, 0.025)) if len(finite_pct) else np.nan,
         "mae_improvement_pct_ci95_upper": float(np.quantile(finite_pct, 0.975)) if len(finite_pct) else np.nan,
         "probability_improvement_positive": float(np.mean(deltas > 0)),
-        "confidence_status": "supports_improvement" if np.quantile(deltas, 0.025) > 0 else "uncertain",
+        "exploratory_ci_direction": exploratory_direction,
+        "confidence_evidence_ready": evidence_ready,
+        "confidence_status": exploratory_direction if evidence_ready else "insufficient_issue_dates",
     })
     return result
 
