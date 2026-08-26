@@ -3,8 +3,9 @@
 
 This is diagnostic only. High congestion is defined within each target × horizon band from
 *unique realized target timestamps* so repeated shadow forecasts of the same ED hour cannot
-move the congestion threshold. The script reports both pooled tail performance and an
-issue-date-balanced view so days with more archived runs cannot dominate the conclusion.
+move the congestion threshold. The script reports pooled tail performance, an equal-weight
+unique-realized-hour view, and an issue-date-balanced view so repeated runs cannot dominate
+the conclusion.
 """
 
 from __future__ import annotations
@@ -60,6 +61,20 @@ def _prepare_tail(detail: pd.DataFrame) -> pd.DataFrame:
     ].copy()
 
 
+def _add_direction(frame: pd.DataFrame, *, output_column: str) -> pd.DataFrame:
+    frame["mae_improvement_pct"] = (
+        (frame["baseline_mae"] - frame["weather_mae"])
+        / frame["baseline_mae"].replace(0, np.nan)
+        * 100
+    )
+    frame[output_column] = np.where(
+        frame["weather_mae"] < frame["baseline_mae"],
+        "weather_better",
+        np.where(frame["weather_mae"] > frame["baseline_mae"], "weather_worse", "tie"),
+    )
+    return frame
+
+
 def summarize(detail: pd.DataFrame) -> pd.DataFrame:
     tail = _prepare_tail(detail)
     if tail.empty:
@@ -79,17 +94,49 @@ def summarize(detail: pd.DataFrame) -> pd.DataFrame:
         median_paired_mae_delta=("paired_absolute_error_delta", "median"),
         weather_win_rate=("weather_wins", "mean"),
     )
-    summary["mae_improvement_pct"] = (
-        (summary["baseline_mae"] - summary["weather_mae"])
-        / summary["baseline_mae"].replace(0, np.nan)
-        * 100
+    return _add_direction(summary, output_column="high_congestion_direction").sort_values(group)
+
+
+def summarize_unique_realized_hours(detail: pd.DataFrame) -> pd.DataFrame:
+    """Give every realized high-congestion ED hour equal weight.
+
+    Multiple forecast runs may target the same realized timestamp. First average the paired
+    forecast errors for each target × band × realized hour, then aggregate those hour-level
+    values. This prevents frequent shadow runs from making one realized crowded hour count
+    many times in the tail diagnostic.
+    """
+    tail = _prepare_tail(detail)
+    if tail.empty:
+        return pd.DataFrame()
+
+    hour_group = ["target_name", "horizon_band", "ds"]
+    by_hour = tail.groupby(hour_group, as_index=False).agg(
+        actual=("actual", "first"),
+        baseline_absolute_error=("baseline_absolute_error", "mean"),
+        weather_absolute_error=("weather_absolute_error", "mean"),
+        paired_absolute_error_delta=("paired_absolute_error_delta", "mean"),
+        weather_win_rate=("weather_wins", "mean"),
+        n_forecasts_for_realized_hour=("forecast_run_id", "nunique"),
+        high_congestion_threshold_q75=("high_congestion_threshold_q75", "first"),
     )
-    summary["high_congestion_direction"] = np.where(
-        summary["weather_mae"] < summary["baseline_mae"],
-        "weather_better",
-        np.where(summary["weather_mae"] > summary["baseline_mae"], "weather_worse", "tie"),
+
+    group = ["target_name", "horizon_band"]
+    summary = by_hour.groupby(group, as_index=False).agg(
+        n_unique_target_hours=("ds", "nunique"),
+        high_congestion_threshold_q75=("high_congestion_threshold_q75", "first"),
+        mean_actual=("actual", "mean"),
+        baseline_mae=("baseline_absolute_error", "mean"),
+        weather_mae=("weather_absolute_error", "mean"),
+        mean_paired_mae_delta=("paired_absolute_error_delta", "mean"),
+        median_paired_mae_delta=("paired_absolute_error_delta", "median"),
+        realized_hour_weather_win_rate=(
+            "paired_absolute_error_delta", lambda x: (x > 0).mean()
+        ),
+        max_forecasts_per_realized_hour=("n_forecasts_for_realized_hour", "max"),
     )
-    return summary.sort_values(group)
+    return _add_direction(
+        summary, output_column="unique_hour_high_congestion_direction"
+    ).sort_values(group)
 
 
 def summarize_by_issue_date(detail: pd.DataFrame) -> pd.DataFrame:
@@ -150,10 +197,14 @@ def main() -> None:
     detail = pd.read_csv(args.detail_csv)
 
     pooled = summarize(detail)
+    unique_hours = summarize_unique_realized_hours(detail)
     by_date = summarize_by_issue_date(detail)
     balanced = summarize_issue_date_balanced(detail)
 
     pooled.to_csv(args.output_dir / "weather-route-high-congestion.csv", index=False)
+    unique_hours.to_csv(
+        args.output_dir / "weather-route-high-congestion-unique-hours.csv", index=False
+    )
     by_date.to_csv(
         args.output_dir / "weather-route-high-congestion-by-issue-date.csv", index=False
     )
@@ -166,6 +217,8 @@ def main() -> None:
     else:
         print("High-congestion prospective weather diagnostics (top quartile of unique realized target hours):")
         print(pooled.to_string(index=False))
+        print("\nEqual-weight unique-realized-hour high-congestion diagnostics:")
+        print(unique_hours.to_string(index=False))
         print("\nIssue-date-balanced high-congestion diagnostics:")
         print(balanced.to_string(index=False))
 
