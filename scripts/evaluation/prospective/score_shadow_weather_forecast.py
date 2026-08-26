@@ -8,8 +8,9 @@ artificially depress weather win rate.
 
 Directional accuracy criteria are reported immediately, but are deliberately separated
 from evidence readiness. A weather route is not considered promotion-evaluable until its
-prospective observations span at least 56 days and at least 28 distinct issue dates.
-When forecast intervals are available, weather interval coverage must also remain within
+prospective observations span at least 56 days, cover at least 28 distinct issue dates,
+and include at least 100 matured rows where weather routing was actually active. When
+forecast intervals are available, weather interval coverage must also remain within
 5 percentage points of the paired baseline coverage before directional criteria can pass.
 """
 
@@ -30,6 +31,7 @@ import backtest_covariate_ablation as base  # noqa: E402
 
 MIN_PROSPECTIVE_SPAN_DAYS = 56
 MIN_ISSUE_DATES = 28
+MIN_ACTIVE_ROWS = 100
 MAX_INTERVAL_COVERAGE_DROP = 0.05
 
 
@@ -105,6 +107,7 @@ def _summarize(detail: pd.DataFrame) -> pd.DataFrame:
     summary["promotion_evidence_ready"] = (
         (summary["prospective_span_days"] >= MIN_PROSPECTIVE_SPAN_DAYS)
         & (summary["n_issue_dates"] >= MIN_ISSUE_DATES)
+        & (summary["n"] >= MIN_ACTIVE_ROWS)
     )
     summary["promotion_status"] = np.select(
         [
