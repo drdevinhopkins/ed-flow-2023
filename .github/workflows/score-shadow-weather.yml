@@ -146,6 +146,29 @@ jobs:
             echo 'No matured detail rows yet; confidence diagnostics skipped.'
           fi
 
+      - name: Verify confidence evidence labeling
+        run: |
+          if [ -s validation/prospective-weather/latest-score/weather-route-confidence.csv ]; then
+            python - <<'PY'
+          import pandas as pd
+
+          path = 'validation/prospective-weather/latest-score/weather-route-confidence.csv'
+          frame = pd.read_csv(path)
+          required = {
+              'n_issue_dates', 'min_issue_dates_for_confidence_claim',
+              'exploratory_ci_direction', 'confidence_evidence_ready', 'confidence_status'
+          }
+          missing = required - set(frame.columns)
+          assert not missing, sorted(missing)
+          ready = frame['n_issue_dates'] >= frame['min_issue_dates_for_confidence_claim']
+          assert frame['confidence_evidence_ready'].astype(bool).eq(ready).all()
+          assert frame.loc[~ready, 'confidence_status'].eq('insufficient_issue_dates').all()
+          print('Bootstrap labels remain exploratory until the issue-date evidence threshold is met.')
+          PY
+          else
+            echo 'No confidence summary yet; labeling check skipped.'
+          fi
+
       - name: Verify scorer safety
         run: |
           test ! -e forecast-v2.csv
