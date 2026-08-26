@@ -11,7 +11,9 @@ from evidence readiness. A weather route is not considered promotion-evaluable u
 prospective observations span at least 56 days, cover at least 28 distinct issue dates,
 and include at least 100 matured rows where weather routing was actually active. When
 forecast intervals are available, weather interval coverage must also remain within
-5 percentage points of the paired baseline coverage before directional criteria can pass.
+5 percentage points of the paired baseline coverage. Weather must also avoid materially
+worsening systematic signed-error bias: absolute bias deterioration may not exceed 10%
+of the paired baseline MAE.
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ MIN_PROSPECTIVE_SPAN_DAYS = 56
 MIN_ISSUE_DATES = 28
 MIN_ACTIVE_ROWS = 100
 MAX_INTERVAL_COVERAGE_DROP = 0.05
+MAX_ABS_BIAS_WORSENING_FRACTION_OF_BASELINE_MAE = 0.10
 
 
 def parse_args() -> argparse.Namespace:
@@ -97,12 +100,25 @@ def _summarize(detail: pd.DataFrame) -> pd.DataFrame:
         summary["interval_coverage_delta"] = np.nan
         summary["interval_coverage_ok"] = True
 
+    summary["baseline_abs_bias"] = summary["baseline_bias"].abs()
+    summary["weather_abs_bias"] = summary["weather_bias"].abs()
+    summary["absolute_bias_worsening"] = (
+        summary["weather_abs_bias"] - summary["baseline_abs_bias"]
+    )
+    summary["bias_worsening_tolerance"] = (
+        summary["baseline_mae"] * MAX_ABS_BIAS_WORSENING_FRACTION_OF_BASELINE_MAE
+    )
+    summary["bias_not_materially_worse"] = (
+        summary["absolute_bias_worsening"] <= summary["bias_worsening_tolerance"]
+    )
+
     summary["directional_criteria_met"] = (
         (summary["weather_mae"] < summary["baseline_mae"])
         & (summary["mean_paired_mae_delta"] > 0)
         & (summary["median_paired_mae_delta"] > 0)
         & (summary["weather_win_rate"] >= 0.55)
         & summary["interval_coverage_ok"]
+        & summary["bias_not_materially_worse"]
     )
     summary["promotion_evidence_ready"] = (
         (summary["prospective_span_days"] >= MIN_PROSPECTIVE_SPAN_DAYS)
