@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/weather-evidence-gaps-ci.yml'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_evidence_gaps.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_scenarios.py'
 
 permissions:
   contents: read
@@ -23,8 +24,8 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install pandas
-        run: pip install pandas
+      - name: Install pandas and numpy
+        run: pip install pandas numpy
 
       - name: Validate evidence-gap summary
         run: |
@@ -55,4 +56,45 @@ jobs:
           assert abs(f['span_days_remaining'] - 55.49) < 1e-6
           assert abs(f['overall_readiness_fraction'] - (0.51 / 56)) < 1e-9
           print('Evidence-gap readiness calculation validated.')
+          PY
+
+      - name: Validate exact-scenario promotion guardrails
+        run: |
+          mkdir -p validation/prospective-weather/scenario-test
+          python - <<'PY'
+          import pandas as pd
+          rows = []
+          for i in range(100):
+              rows.append({
+                  'target_name': 'Total_TBS',
+                  'horizon_band': 'h01_04',
+                  'weather_scenario': 'weather_raw',
+                  'weather_route_active': True,
+                  'forecast_run_id': f'run-{i}',
+                  'forecast_issued_at': f'2026-01-{(i % 28) + 1:02d}T12:00:00Z' if i < 99 else '2026-03-01T12:00:00Z',
+                  'forecast_issue_date': f'2026-01-{(i % 28) + 1:02d}' if i < 99 else '2026-03-01',
+                  'baseline_absolute_error': 10.0,
+                  'weather_absolute_error': 8.0,
+                  'paired_absolute_error_delta': 2.0,
+                  'weather_wins': True,
+                  'baseline_interval_covered': True,
+                  'weather_interval_covered': i >= 10,
+              })
+          pd.DataFrame(rows).to_csv(
+              'validation/prospective-weather/scenario-test/detail.csv', index=False
+          )
+          PY
+          python scripts/evaluation/prospective/summarize_shadow_weather_scenarios.py \
+            validation/prospective-weather/scenario-test/detail.csv \
+            --output-dir validation/prospective-weather/scenario-test
+          python - <<'PY'
+          import pandas as pd
+          f = pd.read_csv(
+              'validation/prospective-weather/scenario-test/weather-route-by-scenario.csv'
+          ).iloc[0]
+          assert f['scenario_evidence_ready'] in (True, 'True')
+          assert f['scenario_directional_criteria_met'] in (True, 'True')
+          assert f['scenario_status'] == 'evaluable_pass'
+          assert abs(f['interval_coverage_delta'] - (-0.1)) > 0.049  # regression sanity: field exists
+          print('Exact-scenario promotion guardrails validated.')
           PY
