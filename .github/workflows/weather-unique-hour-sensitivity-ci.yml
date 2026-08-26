@@ -37,9 +37,10 @@ jobs:
           from summarize_shadow_weather_unique_hour_sensitivity import summarize_unique_hour_sensitivity
 
           rows = []
-          # Three realized hours. Duplicate the first hour heavily with later forecasts that
-          # favor weather; the one-hour-one-vote summaries must still contain exactly three
-          # unique hours rather than being dominated by duplicate rows.
+          # Use the exact canonical columns emitted by score_shadow_weather_forecast.py.
+          # Three realized hours are supplied; the first is duplicated heavily with later
+          # forecasts that favor weather. The one-hour-one-vote summaries must still contain
+          # exactly three unique realized hours rather than being dominated by duplicates.
           for hour, baseline_err, weather_err in [
               ('2026-08-25 12:00:00', 5.0, 4.0),
               ('2026-08-25 13:00:00', 2.0, 3.0),
@@ -54,9 +55,9 @@ jobs:
                   'baseline_absolute_error': baseline_err,
                   'weather_absolute_error': weather_err,
                   'paired_absolute_error_delta': baseline_err - weather_err,
-                  'candidate_wins': weather_err < baseline_err,
-                  'baseline_signed_error': baseline_err,
-                  'weather_signed_error': weather_err,
+                  'weather_wins': weather_err < baseline_err,
+                  'baseline_error': baseline_err,
+                  'weather_error': weather_err,
               })
 
           for minute in range(1, 8):
@@ -69,9 +70,9 @@ jobs:
                   'baseline_absolute_error': 10.0,
                   'weather_absolute_error': 1.0,
                   'paired_absolute_error_delta': 9.0,
-                  'candidate_wins': True,
-                  'baseline_signed_error': 10.0,
-                  'weather_signed_error': 1.0,
+                  'weather_wins': True,
+                  'baseline_error': 10.0,
+                  'weather_error': 1.0,
               })
 
           summary = summarize_unique_hour_sensitivity(pd.DataFrame(rows))
