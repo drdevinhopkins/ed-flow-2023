@@ -1,8 +1,8 @@
 {
-  "generated_at_local": "2026-08-25T19:29:00-04:00",
-  "forecast_data_time_local": "2026-08-25 19:00:00",
-  "blurb": "No key flow metric is currently significantly anomalous. Stretcher occupancy is ~238% (126/53). Overflow is 18, with 15 in overflow-room space and 3 in prepod—just beyond the range usually handled comfortably by the first two overflow rooms, so hallway accumulation remains sensitive to how quickly rooms 3–5 can be staffed. The forecast expects gradual decompression overnight, with both stretcher occupancy and overflow easing. Today's modeled physician/staffing mix appears weaker than usual for flow and is expected to add modest pressure later this evening, though this is associative rather than causal. On-call: NOT INDICATED — calibrated need is ~0–0.2% over 4–8 hours and the modeled activation scenarios show no meaningful flow benefit.",
+  "generated_at_local": "2026-08-25T20:19:10-04:00",
+  "forecast_data_time_local": "2026-08-25 20:00:00",
+  "blurb": "Things are starting to ease: stretcher occupancy is about 221%, overflow is down to 16 with only 2 patients in prepod, and boarding is down to 35. There are still a lot of patients waiting to be seen, but the overnight trend looks favorable, with occupancy and overflow expected to keep coming down. Today’s physician team looks a bit weaker than usual for flow. On-call is not indicated right now.",
   "oncall_recommendation": "NOT INDICATED",
-  "oncall_rationale": "Calibrated need is 0.0% at 4h, 0.22% at 6h, and 0.13% at 8h; modeled activation shows no consistent meaningful flow benefit.",
-  "source_status": "OK: current=2026-08-25 19:00; forecast_origin=2026-08-25 19:00; oncall=2026-08-25 19:00"
+  "oncall_rationale": "Calibrated need is 0.0% at 4h, 0.06% at 6h, and 0.13% at 8h; modeled activation shows no consistent meaningful flow benefit.",
+  "source_status": "OK: current=2026-08-25 20:00; forecast_origin=2026-08-25 19:00; oncall=2026-08-25 20:00; forecast origin is one hour behind current snapshot"
 }
