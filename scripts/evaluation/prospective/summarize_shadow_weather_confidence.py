@@ -124,6 +124,27 @@ def _issue_date_summary(active: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _issue_date_balanced_summary(by_date: pd.DataFrame) -> pd.DataFrame:
+    """Give each issue date equal weight, regardless of how many runs/rows it contributed."""
+    grouped = by_date.groupby(["target_name", "horizon_band"], as_index=False).agg(
+        n_issue_dates=("forecast_issue_date", "nunique"),
+        issue_date_mean_paired_mae_delta=("mean_paired_mae_delta", "mean"),
+        issue_date_median_paired_mae_delta=("mean_paired_mae_delta", "median"),
+        issue_date_mean_mae_improvement_pct=("mae_improvement_pct", "mean"),
+        issue_date_median_mae_improvement_pct=("mae_improvement_pct", "median"),
+        issue_date_win_rate=("mean_paired_mae_delta", lambda values: float((values > 0).mean())),
+    )
+    grouped["issue_date_direction"] = np.select(
+        [
+            grouped["issue_date_mean_paired_mae_delta"].gt(0),
+            grouped["issue_date_mean_paired_mae_delta"].lt(0),
+        ],
+        ["weather_better", "weather_worse"],
+        default="tie",
+    )
+    return grouped.sort_values(["target_name", "horizon_band"], ignore_index=True)
+
+
 def main() -> None:
     args = parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -150,6 +171,13 @@ def main() -> None:
         f"({issue_date_summary['forecast_issue_date'].nunique()} distinct issue date(s)):"
     )
     print(issue_date_summary.to_string(index=False))
+
+    balanced = _issue_date_balanced_summary(issue_date_summary)
+    balanced.to_csv(
+        args.output_dir / "weather-route-issue-date-balanced.csv", index=False
+    )
+    print("Issue-date-balanced weather-route summary (each date weighted equally):")
+    print(balanced.to_string(index=False))
 
     rng = np.random.default_rng(SEED)
     rows = []
