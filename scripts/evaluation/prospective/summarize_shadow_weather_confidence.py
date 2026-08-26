@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""Estimate uncertainty for prospective weather-route MAE improvement.
+
+Rows from the same forecast issue are correlated across horizons, so confidence intervals
+are produced by resampling issue dates rather than individual forecast rows. This output
+is diagnostic only and does not alter promotion guardrails or routing.
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+N_BOOTSTRAP = 5000
+SEED = 20260826
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("detail_csv", type=Path)
+    parser.add_argument("--output-dir", type=Path, required=True)
+    return parser.parse_args()
+
+
+def _bootstrap_group(frame: pd.DataFrame, rng: np.random.Generator) -> dict[str, object]:
+    issue_dates = pd.Index(frame["forecast_issue_date"].dropna().unique())
+    observed_delta = float(frame["paired_absolute_error_delta"].mean())
+    baseline_mae = float(frame["baseline_absolute_error"].mean())
+    observed_pct = observed_delta / baseline_mae * 100 if baseline_mae else np.nan
+
+    result: dict[str, object] = {
+        "n": len(frame),
+        "n_issue_dates": len(issue_dates),
+        "mean_paired_mae_delta": observed_delta,
+        "mae_improvement_pct": observed_pct,
+        "bootstrap_method": "issue-date cluster bootstrap",
+        "bootstrap_replicates": N_BOOTSTRAP,
+    }
+    if len(issue_dates) < 2:
+        result.update({
+            "paired_delta_ci95_lower": np.nan,
+            "paired_delta_ci95_upper": np.nan,
+            "mae_improvement_pct_ci95_lower": np.nan,
+            "mae_improvement_pct_ci95_upper": np.nan,
+            "probability_improvement_positive": np.nan,
+            "confidence_status": "insufficient_issue_dates",
+        })
+        return result
+
+    by_date = {date: frame.loc[frame["forecast_issue_date"].eq(date)] for date in issue_dates}
+    deltas = np.empty(N_BOOTSTRAP, dtype=float)
+    pcts = np.empty(N_BOOTSTRAP, dtype=float)
+    for i in range(N_BOOTSTRAP):
+        sampled = rng.choice(issue_dates.to_numpy(), size=len(issue_dates), replace=True)
+        sample = pd.concat([by_date[date] for date in sampled], ignore_index=True)
+        delta = float(sample["paired_absolute_error_delta"].mean())
+        base = float(sample["baseline_absolute_error"].mean())
+        deltas[i] = delta
+        pcts[i] = delta / base * 100 if base else np.nan
+
+    finite_pct = pcts[np.isfinite(pcts)]
+    result.update({
+        "paired_delta_ci95_lower": float(np.quantile(deltas, 0.025)),
+        "paired_delta_ci95_upper": float(np.quantile(deltas, 0.975)),
+        "mae_improvement_pct_ci95_lower": float(np.quantile(finite_pct, 0.025)) if len(finite_pct) else np.nan,
+        "mae_improvement_pct_ci95_upper": float(np.quantile(finite_pct, 0.975)) if len(finite_pct) else np.nan,
+        "probability_improvement_positive": float(np.mean(deltas > 0)),
+        "confidence_status": "supports_improvement" if np.quantile(deltas, 0.025) > 0 else "uncertain",
+    })
+    return result
+
+
+def main() -> None:
+    args = parse_args()
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    detail = pd.read_csv(args.detail_csv)
+    required = {
+        "target_name", "horizon_band", "forecast_issue_date", "weather_route_active",
+        "baseline_absolute_error", "weather_absolute_error", "paired_absolute_error_delta",
+    }
+    missing = required - set(detail.columns)
+    if missing:
+        raise ValueError(f"Detail file missing columns: {sorted(missing)}")
+
+    active = detail.loc[detail["weather_route_active"].astype(bool)].copy()
+    if active.empty:
+        print("No matured active weather-route rows; confidence summary skipped.")
+        return
+
+    rng = np.random.default_rng(SEED)
+    rows = []
+    for (target, band), frame in active.groupby(["target_name", "horizon_band"], sort=True):
+        row = {"target_name": target, "horizon_band": band}
+        row.update(_bootstrap_group(frame, rng))
+        rows.append(row)
+
+    output = pd.DataFrame(rows)
+    output.to_csv(args.output_dir / "weather-route-confidence.csv", index=False)
+    print("Prospective weather-route clustered-bootstrap confidence summary:")
+    print(output.to_string(index=False))
+
+
+if __name__ == "__main__":
+    main()
