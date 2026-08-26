@@ -4,17 +4,26 @@
   "required": [
     "generated_at_local",
     "forecast_data_time_local",
+    "blurb_id",
     "blurb",
     "oncall_recommendation",
     "oncall_rationale",
+    "send_recommended",
+    "send_reason",
     "source_status"
   ],
   "properties": {
     "generated_at_local": {"type": "string"},
     "forecast_data_time_local": {"type": "string"},
+    "blurb_id": {"type": "string"},
     "blurb": {"type": "string"},
     "oncall_recommendation": {"type": "string"},
     "oncall_rationale": {"type": "string"},
+    "send_recommended": {"type": "boolean"},
+    "send_reason": {
+      "type": "string",
+      "enum": ["ROUTINE", "ONCALL_ALERT", "ROUTINE_ONCALL", "NONE"]
+    },
     "source_status": {"type": "string"}
   }
 }
