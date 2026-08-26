@@ -29,6 +29,27 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _canonicalize_score_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    """Accept scorer-native names and older diagnostic aliases.
+
+    ``score_shadow_weather_forecast.py`` is the source of truth and emits
+    baseline_error/weather_error/weather_wins. Older synthetic tests and diagnostic
+    outputs used baseline_signed_error/weather_signed_error/candidate_wins. Normalize
+    aliases here so the integrated scorer and standalone regression tests exercise the
+    same implementation.
+    """
+    frame = frame.copy()
+    aliases = {
+        "baseline_signed_error": "baseline_error",
+        "weather_signed_error": "weather_error",
+        "candidate_wins": "weather_wins",
+    }
+    for legacy, canonical in aliases.items():
+        if canonical not in frame.columns and legacy in frame.columns:
+            frame[canonical] = frame[legacy]
+    return frame
+
+
 def _summarize(frame: pd.DataFrame, selection: str) -> pd.DataFrame:
     group_cols = ["target_name", "horizon_band"]
     out = frame.groupby(group_cols, as_index=False).agg(
@@ -37,9 +58,9 @@ def _summarize(frame: pd.DataFrame, selection: str) -> pd.DataFrame:
         weather_mae=("weather_absolute_error", "mean"),
         mean_paired_improvement=("paired_absolute_error_delta", "mean"),
         median_paired_improvement=("paired_absolute_error_delta", "median"),
-        weather_win_rate=("candidate_wins", "mean"),
-        baseline_bias=("baseline_signed_error", "mean"),
-        weather_bias=("weather_signed_error", "mean"),
+        weather_win_rate=("weather_wins", "mean"),
+        baseline_bias=("baseline_error", "mean"),
+        weather_bias=("weather_error", "mean"),
     )
     out["mae_improvement_pct"] = (
         out["baseline_mae"] - out["weather_mae"]
@@ -49,6 +70,7 @@ def _summarize(frame: pd.DataFrame, selection: str) -> pd.DataFrame:
 
 
 def summarize_unique_hour_sensitivity(detail: pd.DataFrame) -> pd.DataFrame:
+    detail = _canonicalize_score_columns(detail)
     required = {
         "forecast_issued_at",
         "ds",
@@ -58,9 +80,9 @@ def summarize_unique_hour_sensitivity(detail: pd.DataFrame) -> pd.DataFrame:
         "baseline_absolute_error",
         "weather_absolute_error",
         "paired_absolute_error_delta",
-        "candidate_wins",
-        "baseline_signed_error",
-        "weather_signed_error",
+        "weather_wins",
+        "baseline_error",
+        "weather_error",
     }
     missing = required - set(detail.columns)
     if missing:
