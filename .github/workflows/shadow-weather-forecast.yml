@@ -51,6 +51,60 @@ jobs:
           pip install -r chronos-requirements.txt
           pip install -r requirements.txt
 
+      - name: Regression-test frozen paired inputs
+        run: |
+          python - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          import pandas as pd
+
+          path = Path('scripts/evaluation/prospective/run_shadow_weather_forecast.py')
+          spec = importlib.util.spec_from_file_location('shadow_runner', path)
+          runner = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(runner)
+
+          source_calls = {'flow': 0, 'weather': 0}
+          flow = pd.DataFrame({'ds': pd.to_datetime(['2026-08-25 20:00:00'])})
+          weather = pd.DataFrame({'ds': pd.to_datetime(['2026-08-25 20:00:00'])})
+
+          original_flow = runner.forecast_v2.staffing_bt.load_flow
+          original_weather = runner.forecast_v2.weather_bt.load_weather
+          original_build = runner.forecast_v2.build_forecast_v2
+
+          def source_flow():
+              source_calls['flow'] += 1
+              return flow.copy()
+
+          def source_weather(_source):
+              source_calls['weather'] += 1
+              return weather.copy()
+
+          def fake_build(_pipeline, *, allow_weather):
+              seen_flow = runner.forecast_v2.staffing_bt.load_flow()
+              seen_weather = runner.forecast_v2.weather_bt.load_weather('ignored')
+              assert seen_flow.equals(flow)
+              assert seen_weather.equals(weather)
+              return pd.DataFrame({
+                  'forecast_origin': [seen_flow['ds'].max()],
+                  'route': ['weather' if allow_weather else 'safe'],
+              })
+
+          runner.forecast_v2.staffing_bt.load_flow = source_flow
+          runner.forecast_v2.weather_bt.load_weather = source_weather
+          runner.forecast_v2.build_forecast_v2 = fake_build
+          try:
+              safe, shadow, captured_weather = runner._run_paired_with_frozen_inputs(object())
+          finally:
+              runner.forecast_v2.staffing_bt.load_flow = original_flow
+              runner.forecast_v2.weather_bt.load_weather = original_weather
+              runner.forecast_v2.build_forecast_v2 = original_build
+
+          assert source_calls == {'flow': 1, 'weather': 1}, source_calls
+          assert safe['forecast_origin'].iloc[0] == shadow['forecast_origin'].iloc[0]
+          assert captured_weather.equals(weather)
+          print('Frozen-input regression test passed: one live flow/weather snapshot feeds both paired runs.')
+          PY
+
       - name: Validate current forecast inputs
         run: python scripts/validate_forecast_inputs.py
 
