@@ -94,6 +94,36 @@ def _bootstrap_group(frame: pd.DataFrame, rng: np.random.Generator) -> dict[str,
     return result
 
 
+def _issue_date_summary(active: pd.DataFrame) -> pd.DataFrame:
+    """Summarize active weather-route performance at the independent issue-date level."""
+    grouped = active.groupby(
+        ["target_name", "horizon_band", "forecast_issue_date"], as_index=False
+    ).agg(
+        n=("paired_absolute_error_delta", "size"),
+        baseline_mae=("baseline_absolute_error", "mean"),
+        weather_mae=("weather_absolute_error", "mean"),
+        mean_paired_mae_delta=("paired_absolute_error_delta", "mean"),
+        median_paired_mae_delta=("paired_absolute_error_delta", "median"),
+        weather_win_rate=("paired_absolute_error_delta", lambda values: float((values > 0).mean())),
+    )
+    grouped["mae_improvement_pct"] = np.where(
+        grouped["baseline_mae"].ne(0),
+        grouped["mean_paired_mae_delta"] / grouped["baseline_mae"] * 100,
+        np.nan,
+    )
+    grouped["issue_date_direction"] = np.select(
+        [
+            grouped["mean_paired_mae_delta"].gt(0),
+            grouped["mean_paired_mae_delta"].lt(0),
+        ],
+        ["weather_better", "weather_worse"],
+        default="tie",
+    )
+    return grouped.sort_values(
+        ["target_name", "horizon_band", "forecast_issue_date"], ignore_index=True
+    )
+
+
 def main() -> None:
     args = parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -110,6 +140,16 @@ def main() -> None:
     if active.empty:
         print("No matured active weather-route rows; confidence summary skipped.")
         return
+
+    issue_date_summary = _issue_date_summary(active)
+    issue_date_summary.to_csv(
+        args.output_dir / "weather-route-by-issue-date.csv", index=False
+    )
+    print(
+        "Issue-date weather-route summary "
+        f"({issue_date_summary['forecast_issue_date'].nunique()} distinct issue date(s)):"
+    )
+    print(issue_date_summary.to_string(index=False))
 
     rng = np.random.default_rng(SEED)
     rows = []
