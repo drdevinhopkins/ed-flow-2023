@@ -1,0 +1,66 @@
+name: ED blurb reference stats
+
+on:
+  schedule:
+    - cron: '30 6 * * 1'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/compute_ed_blurb_reference_stats.py'
+      - '.github/workflows/ed-blurb-reference-stats.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'scripts/compute_ed_blurb_reference_stats.py'
+      - '.github/workflows/ed-blurb-reference-stats.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ed-blurb-reference-stats-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  compute-reference-stats:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests dropbox
+
+      - name: Compile stats script
+        run: python -m py_compile scripts/compute_ed_blurb_reference_stats.py
+
+      - name: Compute ED blurb reference statistics
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            python scripts/compute_ed_blurb_reference_stats.py --dry-run
+          else
+            python scripts/compute_ed_blurb_reference_stats.py
+          fi
+
+      - name: Upload reference stats for audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ed-blurb-reference-stats
+          path: blurb_reference_stats.json
+          if-no-files-found: ignore
