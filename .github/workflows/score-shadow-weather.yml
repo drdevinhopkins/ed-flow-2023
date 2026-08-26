@@ -13,6 +13,7 @@ on:
       - 'scripts/evaluation/prospective/summarize_shadow_weather_confidence.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_trajectory.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_high_congestion.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_independence.py'
 
 permissions:
   contents: read
@@ -157,6 +158,16 @@ jobs:
               --output-dir validation/prospective-weather/latest-score
           else
             echo 'No matured detail rows yet; high-congestion diagnostics skipped.'
+          fi
+
+      - name: Summarize overlap and independence
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_independence.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score
+          else
+            echo 'No matured detail rows yet; independence diagnostics skipped.'
           fi
 
       - name: Estimate weather-route confidence
