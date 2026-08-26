@@ -70,27 +70,52 @@ def _future_rows(frame: pd.DataFrame, label: str) -> pd.DataFrame:
     return future
 
 
-def _capture_weather_run(
+def _run_paired_with_frozen_inputs(
     pipeline: Chronos2Pipeline,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Run weather routing while retaining the exact raw weather dataframe it consumed."""
-    captured: dict[str, pd.DataFrame] = {}
-    original = forecast_v2.weather_bt.load_weather
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Run both routes against one immutable live-data snapshot.
 
-    def capture(source: str) -> pd.DataFrame:
-        frame = original(source)
-        captured["weather"] = frame.copy(deep=True)
-        return frame
+    Each ``build_forecast_v2`` call normally reloads the current ED and weather sources.
+    Because a paired CPU run can take several minutes, the hourly ED source may advance
+    between the safe and weather calls. Freezing these two live inputs prevents mismatched
+    forecast origins and guarantees the archived weather snapshot is exactly what the
+    weather-enabled forecast consumed.
+    """
+    flow_used = forecast_v2.staffing_bt.load_flow().copy(deep=True)
+    weather_used = forecast_v2.weather_bt.load_weather(base.WEATHER_URL).copy(deep=True)
 
-    forecast_v2.weather_bt.load_weather = capture
+    original_flow_loader = forecast_v2.staffing_bt.load_flow
+    original_weather_loader = forecast_v2.weather_bt.load_weather
+
+    def frozen_flow() -> pd.DataFrame:
+        return flow_used.copy(deep=True)
+
+    def frozen_weather(_source: str) -> pd.DataFrame:
+        return weather_used.copy(deep=True)
+
+    forecast_v2.staffing_bt.load_flow = frozen_flow
+    forecast_v2.weather_bt.load_weather = frozen_weather
     try:
-        forecast = forecast_v2.build_forecast_v2(pipeline, allow_weather=True)
+        safe = forecast_v2.build_forecast_v2(pipeline, allow_weather=False)
+        weather = forecast_v2.build_forecast_v2(pipeline, allow_weather=True)
     finally:
-        forecast_v2.weather_bt.load_weather = original
+        forecast_v2.staffing_bt.load_flow = original_flow_loader
+        forecast_v2.weather_bt.load_weather = original_weather_loader
 
-    if "weather" not in captured:
-        raise RuntimeError("Weather input capture failed")
-    return forecast, captured["weather"]
+    safe_origins = pd.to_datetime(safe["forecast_origin"].dropna().unique())
+    weather_origins = pd.to_datetime(weather["forecast_origin"].dropna().unique())
+    if len(safe_origins) != 1 or len(weather_origins) != 1:
+        raise RuntimeError(
+            f"Expected one forecast origin per paired run; "
+            f"safe={safe_origins.tolist()} weather={weather_origins.tolist()}"
+        )
+    if safe_origins[0] != weather_origins[0]:
+        raise RuntimeError(
+            f"Frozen paired runs still disagree on forecast origin: "
+            f"safe={safe_origins[0]} weather={weather_origins[0]}"
+        )
+
+    return safe, weather, weather_used
 
 
 def _weather_snapshot(weather: pd.DataFrame, cutoff: pd.Timestamp) -> pd.DataFrame:
@@ -155,10 +180,8 @@ def main() -> None:
         base.MODEL_ID, device_map=device
     )
 
-    # Paired predictions from the same code revision. The safe run never uses weather;
-    # the shadow run allows the existing weather-winning routes and captures its inputs.
-    safe = forecast_v2.build_forecast_v2(pipeline, allow_weather=False)
-    weather, weather_used = _capture_weather_run(pipeline)
+    # Paired predictions from the same code revision and the same immutable live inputs.
+    safe, weather, weather_used = _run_paired_with_frozen_inputs(pipeline)
 
     safe_future = _future_rows(safe, "baseline")
     weather_future = _future_rows(weather, "weather")
@@ -173,7 +196,12 @@ def main() -> None:
 
     expected_rows = len(forecast_v2.FLOW_TARGETS) * forecast_v2.HORIZON
     if len(paired) != expected_rows:
-        raise RuntimeError(f"Expected {expected_rows} paired rows; got {len(paired)}")
+        safe_origin = safe_future["forecast_origin"].drop_duplicates().tolist()
+        weather_origin = weather_future["forecast_origin"].drop_duplicates().tolist()
+        raise RuntimeError(
+            f"Expected {expected_rows} paired rows; got {len(paired)}; "
+            f"safe_origin={safe_origin} weather_origin={weather_origin}"
+        )
 
     cutoff = pd.Timestamp(paired["forecast_origin"].iloc[0]).floor("h")
     if not paired["forecast_origin"].eq(cutoff).all():
