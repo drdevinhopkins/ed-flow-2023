@@ -93,8 +93,9 @@ jobs:
               'validation/prospective-weather/scenario-test/weather-route-by-scenario.csv'
           ).iloc[0]
           assert f['scenario_evidence_ready'] in (True, 'True')
-          assert f['scenario_directional_criteria_met'] in (True, 'True')
-          assert f['scenario_status'] == 'evaluable_pass'
-          assert abs(f['interval_coverage_delta'] - (-0.1)) > 0.049  # regression sanity: field exists
-          print('Exact-scenario promotion guardrails validated.')
+          assert f['scenario_directional_criteria_met'] in (False, 'False')
+          assert f['scenario_status'] == 'evaluable_fail'
+          assert abs(f['interval_coverage_delta'] - (-0.1)) < 1e-9
+          assert f['interval_coverage_ok'] in (False, 'False')
+          print('Exact-scenario interval-coverage guardrail validated.')
           PY
