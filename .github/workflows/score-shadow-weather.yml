@@ -9,6 +9,7 @@ on:
       - '.github/workflows/score-shadow-weather.yml'
       - 'scripts/evaluation/prospective/score_shadow_weather_forecast.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_slices.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_confidence.py'
 
 permissions:
   contents: read
@@ -133,6 +134,16 @@ jobs:
               --output-dir validation/prospective-weather/latest-score
           else
             echo 'No matured detail rows yet; diagnostic slices skipped.'
+          fi
+
+      - name: Estimate weather-route confidence
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_confidence.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score
+          else
+            echo 'No matured detail rows yet; confidence diagnostics skipped.'
           fi
 
       - name: Verify scorer safety
