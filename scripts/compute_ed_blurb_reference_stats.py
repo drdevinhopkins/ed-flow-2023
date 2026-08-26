@@ -183,14 +183,16 @@ def build_stats(frame: pd.DataFrame) -> dict:
         },
         "evening_vertical_vs_pod": {
             "hours_local": "15:00-23:00",
+            "vertical_tbs": quantiles(evening["__Vertical_TBS"]),
+            "pod_tbs": quantiles(evening["__POD_TBS"]),
             "vertical_minus_pod": quantiles(evening["vertical_minus_pod"]),
             "vertical_to_pod_ratio": quantiles(evening["vertical_to_pod_ratio"]),
             "suggested_reassignment_gate": {
-                "minimum_absolute_difference": 5,
-                "minimum_ratio": 1.5,
-                "historical_context": "Prefer a difference at or above the historical p75; call it a marked imbalance at or above p90.",
-                "persistence": "Prefer current plus at least one near-term forecast hour, unless the current imbalance is extreme.",
-                "guardrail": "Do not recommend moving a POD/overlap physician if POD itself is under substantial pressure or if the relevant physician is not available.",
+                "trigger": "Consider reassignment when Vertical_TBS itself and the Vertical_TBS-minus-POD_TBS gap are both at or above their historical evening p75, or when either is at or above p90 and POD is not simultaneously under unusual pressure.",
+                "persistence": "Prefer the imbalance to be present now and for at least one near-term forecast hour, unless it is extreme now.",
+                "pod_guardrail": "Treat POD as under unusual pressure when POD_TBS is at or above its historical evening p75; in that case avoid moving POD coverage unless another suitable overlap physician is available.",
+                "availability_guardrail": "Only recommend a concrete move when the relevant evening physician is plausibly available: A2 on weekdays, Y5 on weekends, or L1 overlap; otherwise phrase it as a staffing option rather than an instruction.",
+                "wording": "Use plain language such as: 'Vertical is much heavier than usual compared with POD; consider moving A2/Y5 or L1 to vertical for a while.'",
             },
         },
     }
