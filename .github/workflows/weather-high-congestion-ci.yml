@@ -28,7 +28,7 @@ jobs:
       - name: Install minimal dependencies
         run: pip install pandas numpy
 
-      - name: Verify unique-hour threshold and issue-date balancing
+      - name: Verify unique-hour threshold and equal-weight realized-hour scoring
         run: |
           python - <<'PY'
           import sys
@@ -37,6 +37,7 @@ jobs:
           sys.path.insert(0, 'scripts/evaluation/prospective')
           from summarize_shadow_weather_high_congestion import (
               summarize,
+              summarize_unique_realized_hours,
               summarize_by_issue_date,
               summarize_issue_date_balanced,
           )
@@ -59,7 +60,9 @@ jobs:
                   'forecast_run_id': f'run-{i}',
                   'forecast_issue_date': '2026-08-25' if i < 3 else '2026-08-26',
               })
-          # Duplicate the high-congestion target hour heavily; this must not alter q75.
+          # Duplicate the high-congestion target hour heavily with worse weather errors.
+          # The pooled view may move, but the equal-weight realized-hour view must still
+          # represent one realized hour, not nine independent observations.
           for j in range(8):
               rows.append({
                   'ds': '2026-08-25 13:00:00',
@@ -68,23 +71,30 @@ jobs:
                   'actual': 40.0,
                   'weather_route_active': True,
                   'baseline_absolute_error': 4.0,
-                  'weather_absolute_error': 3.0,
-                  'paired_absolute_error_delta': 1.0,
-                  'weather_wins': True,
+                  'weather_absolute_error': 5.0,
+                  'paired_absolute_error_delta': -1.0,
+                  'weather_wins': False,
                   'forecast_run_id': f'dup-{j}',
                   'forecast_issue_date': '2026-08-26',
               })
 
           detail = pd.DataFrame(rows)
           pooled = summarize(detail)
+          unique_hours = summarize_unique_realized_hours(detail)
           by_date = summarize_by_issue_date(detail)
           balanced = summarize_issue_date_balanced(detail)
 
           assert len(pooled) == 1
           assert abs(float(pooled.iloc[0]['high_congestion_threshold_q75']) - 32.5) < 1e-9
           assert int(pooled.iloc[0]['n_unique_target_hours']) == 1
+          assert len(unique_hours) == 1
+          assert int(unique_hours.iloc[0]['n_unique_target_hours']) == 1
+          assert int(unique_hours.iloc[0]['max_forecasts_per_realized_hour']) == 9
+          # For the one realized high-congestion hour, baseline MAE stays 4.0 and
+          # weather MAE is the mean of one 3.0 forecast plus eight 5.0 forecasts.
+          assert abs(float(unique_hours.iloc[0]['baseline_mae']) - 4.0) < 1e-9
+          assert abs(float(unique_hours.iloc[0]['weather_mae']) - (43.0 / 9.0)) < 1e-9
           assert set(by_date['forecast_issue_date'].astype(str)) == {'2026-08-26'}
           assert int(balanced.iloc[0]['n_issue_dates']) == 1
-          assert float(balanced.iloc[0]['issue_date_win_rate']) == 1.0
-          print('High-congestion thresholds use unique realized hours and summaries balance by issue date.')
+          print('High-congestion thresholding and scoring now protect against repeated realized-hour weighting.')
           PY
