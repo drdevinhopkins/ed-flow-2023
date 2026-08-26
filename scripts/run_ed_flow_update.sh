@@ -43,18 +43,29 @@ export CUDA_VISIBLE_DEVICES="${ED_FLOW_CUDA_VISIBLE_DEVICES:-0}"
 export CHRONOS_HOURLY_ENABLE_WEATHER_ROUTING=0
 
 run_step() {
+    local started_at=$SECONDS
+    local elapsed
     printf "\n=== START: %s ===\n" "$*"
     "$@"
-    printf "=== DONE: %s ===\n" "$*"
+    elapsed=$((SECONDS - started_at))
+    printf "=== DONE [%02d:%02d:%02d]: %s ===\n" \
+        "$((elapsed / 3600))" "$(((elapsed % 3600) / 60))" "$((elapsed % 60))" "$*"
 }
 
 run_optional_step() {
+    local started_at=$SECONDS
+    local elapsed
     printf "\n=== START (additive): %s ===\n" "$*"
     if "$@"; then
-        printf "=== DONE: %s ===\n" "$*"
+        elapsed=$((SECONDS - started_at))
+        printf "=== DONE [%02d:%02d:%02d]: %s ===\n" \
+            "$((elapsed / 3600))" "$(((elapsed % 3600) / 60))" "$((elapsed % 60))" "$*"
     else
         rc=$?
-        printf "=== WARNING: additive step failed (%d): %s ===\n" "$rc" "$*" >&2
+        elapsed=$((SECONDS - started_at))
+        printf "=== WARNING [%02d:%02d:%02d]: additive step failed (%d): %s ===\n" \
+            "$((elapsed / 3600))" "$(((elapsed % 3600) / 60))" "$((elapsed % 60))" \
+            "$rc" "$*" >&2
     fi
 }
 
@@ -79,7 +90,7 @@ else:
 PY
 }
 
-report_accelerator
+run_step report_accelerator
 
 # Refresh source data and staffing. METAR refresh is intentionally not run on
 # jgh000533svaps: the hospital server cannot currently reach the IEM/Mesonet
