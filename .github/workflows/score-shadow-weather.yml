@@ -255,8 +255,8 @@ jobs:
           assert not missing, sorted(missing)
           ready = frame['n_issue_dates'] >= frame['min_issue_dates_for_confidence_claim']
           assert frame['confidence_evidence_ready'].astype(bool).eq(ready).all()
-          assert frame.loc[~ready, 'confidence_status'].eq('insufficient_issue_dates').all()
-          print('Bootstrap labels remain exploratory until the issue-date evidence threshold is met.')
+          assert frame.loc[~ready, 'confidence_status'].eq('insufficient_complete_issue_dates').all()
+          print('Bootstrap labels remain exploratory until enough complete issue dates are available.')
           PY
           else
             echo 'No confidence summary yet; labeling check skipped.'
