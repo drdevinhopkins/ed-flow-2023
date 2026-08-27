@@ -59,7 +59,11 @@ jobs:
           assert fold['held_out_improvement_pct']==-4.0
           # Other folds should reveal instability in which policy is selected.
           assert int(summary['n_distinct_selected_policies'].iloc[0]) >= 2
-          assert not bool(summary['selection_stable_across_dates'].iloc[0])
+          assert not bool(summary['exploratory_selection_stable_across_dates'].iloc[0])
           assert float(summary['held_out_baseline_win_rate'].iloc[0]) < 1.0
-          print('Leave-one-date-out diagnostic catches a policy that looks best in-sample but fails on an independent date.')
+          # Three issue dates are exploratory only; no formal stability claim is allowed.
+          assert int(summary['min_issue_dates_for_loo_claim'].iloc[0]) == 28
+          assert not bool(summary['loo_evidence_ready'].iloc[0])
+          assert summary['loo_status'].iloc[0] == 'insufficient_issue_dates'
+          print('Leave-one-date-out diagnostic catches unstable selection and remains exploratory until 28 issue dates.')
           PY
