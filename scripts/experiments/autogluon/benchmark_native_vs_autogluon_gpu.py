@@ -122,9 +122,10 @@ def run_worker(a: argparse.Namespace) -> int:
         def tsdf(x: pd.DataFrame):
             return TimeSeriesDataFrame.from_data_frame(x, id_column="item_id", timestamp_column="ds")
 
+        ag_path = Path("/tmp") / f"ed-flow-autogluon-bench-{os.getpid()}"
         predictor = TimeSeriesPredictor(
             target="target", prediction_length=a.horizon, freq="h",
-            quantile_levels=[0.1, 0.5, 0.9], path=a.worker_json.parent / "autogluon-model",
+            quantile_levels=[0.1, 0.5, 0.9], path=ag_path,
             verbosity=1, log_to_file=True,
         ).fit(
             tsdf(long_context(flow, cs[0], a.context_hours)),
@@ -208,6 +209,9 @@ def run_worker(a: argparse.Namespace) -> int:
         "windows": windows,
     }
     a.worker_json.write_text(json.dumps(result, indent=2))
+    if a.worker == "autogluon":
+        predictor.unpersist()
+        shutil.rmtree(ag_path, ignore_errors=True)
     return 0
 
 
@@ -243,7 +247,9 @@ def run_arm(a: argparse.Namespace, arm: str, snapshot: Path, out: Path) -> tuple
         raise RuntimeError(f"{arm} failed; see {out / f'{arm}.log'}")
     telemetry = pd.DataFrame(samples)
     telemetry.to_csv(out / f"gpu_telemetry_{arm}.csv", index=False)
-    return json.loads(result_path.read_text()), telemetry
+    result = json.loads(result_path.read_text())
+    result_path.unlink(missing_ok=True)
+    return result, telemetry
 
 
 def summarize_gpu(result: dict, telemetry: pd.DataFrame) -> dict:
@@ -271,7 +277,7 @@ def run_parent(a: argparse.Namespace) -> int:
     out.mkdir(parents=True, exist_ok=False)
     snapshot = out / "flow_snapshot.csv"
     flow = freeze_flow(a.flow_url, snapshot)
-    (out / "cutoffs.json").write_text(json.dumps([str(x) for x in cutoffs(flow, a.num_cutoffs, a.spacing_hours, a.horizon)], indent=2))
+    pd.DataFrame({"cutoff": cutoffs(flow, a.num_cutoffs, a.spacing_hours, a.horizon)}).to_csv(out / "cutoffs.csv", index=False)
 
     rows, accuracy = [], []
     for arm in selected:
