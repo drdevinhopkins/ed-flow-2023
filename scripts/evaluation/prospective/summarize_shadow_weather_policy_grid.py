@@ -25,6 +25,7 @@ from summarize_shadow_weather_confidence import (
     _as_of_local,
     _issue_date_completion_time,
 )
+from summarize_shadow_weather_policy_confirmation import summarize as summarize_confirmation
 
 MIN_ISSUE_DATES = 28
 MIN_PROSPECTIVE_SPAN_DAYS = 56.0
@@ -209,6 +210,11 @@ def main() -> None:
     by_date = pd.concat(date_frames, ignore_index=True)
     by_date.to_csv(args.output_dir / "weather-policy-grid-by-issue-date.csv", index=False)
 
+    discovery, confirmation = summarize_confirmation(by_date)
+    if not discovery.empty:
+        discovery.to_csv(args.output_dir / "weather-policy-discovery-ranking.csv", index=False)
+    confirmation.to_csv(args.output_dir / "weather-policy-confirmation-status.csv", index=False)
+
     complete_dates = set(
         by_date.loc[by_date["issue_date_complete"].astype(bool), "forecast_issue_date"].astype(str)
     )
@@ -239,6 +245,8 @@ def main() -> None:
         print(stability.to_string(index=False))
     else:
         print("\nNo complete issue dates yet for formal policy stability.")
+    print("\nPre-registered discovery/confirmation status:")
+    print(confirmation.to_string(index=False))
 
 
 if __name__ == "__main__":
