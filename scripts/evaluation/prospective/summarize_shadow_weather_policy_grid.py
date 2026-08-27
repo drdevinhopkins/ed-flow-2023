@@ -7,8 +7,9 @@ prediction on all other hours. It also includes all-baseline and the current wea
 
 In addition to pooled performance, it emits an issue-date-balanced stability table so a
 policy cannot look attractive merely because one date contributes many repeated intraday
-forecasts. Policy-selection labels remain explicitly non-actionable until the same
-prospective evidence thresholds used elsewhere are met.
+forecasts. Formal policy-selection stability uses only complete issue dates: an issue date
+is complete only after the full local calendar day plus the horizon band's maximum lead
+has matured. Partial dates remain visible in the per-date diagnostic table.
 """
 
 from __future__ import annotations
@@ -19,6 +20,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+from summarize_shadow_weather_confidence import (
+    _as_of_local,
+    _issue_date_completion_time,
+)
 
 MIN_ISSUE_DATES = 28
 MIN_PROSPECTIVE_SPAN_DAYS = 56.0
@@ -76,9 +82,13 @@ def summarize_issue_date_stability(
     n_unique_target_hours: int,
     prospective_span_days: float,
 ) -> pd.DataFrame:
-    """Give each issue date one vote and pre-register when policy selection is evaluable."""
+    """Give each complete issue date one vote and pre-register when selection is evaluable."""
+    complete = by_date.loc[by_date["issue_date_complete"].astype(bool)].copy()
+    if complete.empty:
+        return pd.DataFrame()
+
     rows: list[dict[str, object]] = []
-    for (policy, weather_hours), group in by_date.groupby(["policy", "weather_hours"], dropna=False):
+    for (policy, weather_hours), group in complete.groupby(["policy", "weather_hours"], dropna=False):
         improvement = pd.to_numeric(group["mae_improvement_pct_vs_baseline"], errors="coerce").dropna()
         delta = pd.to_numeric(group["mean_paired_mae_delta_vs_baseline"], errors="coerce").dropna()
         vs_current = pd.to_numeric(group["mae_improvement_pct_vs_current_weather_policy"], errors="coerce").dropna()
@@ -151,6 +161,12 @@ def main() -> None:
     parser.add_argument("--target", default="Total_TBS")
     parser.add_argument("--horizon-band", default="h01_04")
     parser.add_argument("--candidate-hours", type=int, nargs="+", default=[1, 2, 3, 4])
+    parser.add_argument(
+        "--as-of",
+        type=str,
+        default=None,
+        help="Optional timezone-aware timestamp used for deterministic completeness tests.",
+    )
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -164,7 +180,7 @@ def main() -> None:
         raise ValueError(f"Missing required scorer columns: {sorted(missing)}")
 
     frame["forecast_issued_at"] = pd.to_datetime(frame["forecast_issued_at"], utc=True, errors="coerce")
-    frame["forecast_issue_date"] = frame["forecast_issued_at"].dt.date.astype("string")
+    frame["forecast_issue_date"] = frame["forecast_issued_at"].dt.tz_convert("America/Toronto").dt.date.astype("string")
     frame["ds"] = pd.to_datetime(frame["ds"], errors="coerce")
     frame["horizon_hour"] = pd.to_numeric(frame["horizon_hour"], errors="coerce").astype("Int64")
     frame = frame.loc[
@@ -181,22 +197,33 @@ def main() -> None:
     summary["horizon_band"] = args.horizon_band
     summary.to_csv(args.output_dir / "weather-policy-grid.csv", index=False)
 
+    as_of_local = _as_of_local(args.as_of)
     date_frames = []
     for issue_date, group in frame.groupby("forecast_issue_date"):
         date_summary = summarize(group, candidate_hours)
         date_summary["forecast_issue_date"] = issue_date
+        complete_at = _issue_date_completion_time(issue_date, args.horizon_band)
+        date_summary["issue_date_complete_at"] = complete_at.isoformat()
+        date_summary["issue_date_complete"] = as_of_local >= complete_at
         date_frames.append(date_summary)
     by_date = pd.concat(date_frames, ignore_index=True)
     by_date.to_csv(args.output_dir / "weather-policy-grid-by-issue-date.csv", index=False)
 
-    first_issued = frame["forecast_issued_at"].min()
-    last_issued = frame["forecast_issued_at"].max()
-    span_days = float((last_issued - first_issued).total_seconds() / 86400.0)
-    stability = summarize_issue_date_stability(
-        by_date,
-        n_unique_target_hours=int(frame["ds"].nunique()),
-        prospective_span_days=span_days,
+    complete_dates = set(
+        by_date.loc[by_date["issue_date_complete"].astype(bool), "forecast_issue_date"].astype(str)
     )
+    complete_frame = frame.loc[frame["forecast_issue_date"].astype(str).isin(complete_dates)].copy()
+    if complete_frame.empty:
+        stability = pd.DataFrame()
+    else:
+        first_issued = complete_frame["forecast_issued_at"].min()
+        last_issued = complete_frame["forecast_issued_at"].max()
+        span_days = float((last_issued - first_issued).total_seconds() / 86400.0)
+        stability = summarize_issue_date_stability(
+            by_date,
+            n_unique_target_hours=int(complete_frame["ds"].nunique()),
+            prospective_span_days=span_days,
+        )
     if not stability.empty:
         stability["target_name"] = args.target
         stability["horizon_band"] = args.horizon_band
@@ -204,12 +231,14 @@ def main() -> None:
 
     print("Short-horizon weather policy grid (best pooled MAE first):")
     print(summary.to_string(index=False))
-    print("\nTop policy by issue date:")
+    print("\nTop policy by issue date (partial dates remain diagnostic only):")
     winners = by_date.sort_values(["forecast_issue_date", "mae", "policy"]).groupby("forecast_issue_date", as_index=False).first()
-    print(winners[["forecast_issue_date", "policy", "weather_hours", "mae", "mae_improvement_pct_vs_baseline"]].to_string(index=False))
+    print(winners[["forecast_issue_date", "issue_date_complete", "policy", "weather_hours", "mae", "mae_improvement_pct_vs_baseline"]].to_string(index=False))
     if not stability.empty:
-        print("\nIssue-date-balanced policy stability (selection remains collecting until pre-registered evidence thresholds are met):")
+        print("\nIssue-date-balanced policy stability (complete dates only; selection remains collecting until pre-registered evidence thresholds are met):")
         print(stability.to_string(index=False))
+    else:
+        print("\nNo complete issue dates yet for formal policy stability.")
 
 
 if __name__ == "__main__":
