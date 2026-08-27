@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/candidate-prospective-routes-ci.yml'
       - 'scripts/evaluation/prospective/candidate_metric_routes.py'
+      - 'scripts/evaluation/prospective/run_shadow_candidate_forecast.py'
       - 'scripts/candidate_flow_metrics.py'
       - 'validation/candidate-metrics-ablation/DECISION.md'
 
@@ -91,6 +92,41 @@ jobs:
               raise AssertionError('horizon >24 must fail')
 
           print('Prospective candidate routing policy matches DECISION.md and excludes non-robust nominal winners.')
+          PY
+
+      - name: Validate trailing complete history selection
+        run: |
+          PYTHONPATH=scripts python - <<'PY'
+          import pandas as pd
+          from candidate_flow_metrics import trailing_complete_history_window
+
+          targets = ['a', 'b']
+          ds = pd.date_range('2026-01-01', periods=24 * 60, freq='h')
+          frame = pd.DataFrame({'ds': ds, 'a': 1.0, 'b': 2.0})
+          cutoff = ds[-1]
+
+          # An older isolated gap should shorten, not kill, the live prospective window.
+          frame.loc[24 * 10, 'b'] = float('nan')
+          days, start, missing = trailing_complete_history_window(
+              frame, cutoff, targets=targets, max_history_days=365, min_history_days=28
+          )
+          assert days == 49, days
+          assert start == cutoff - pd.Timedelta(days=49) + pd.Timedelta(hours=1)
+          assert missing == 1
+
+          # A recent gap leaving <28 complete days must fail closed.
+          recent = frame.copy()
+          recent.loc[len(recent) - 24 * 20, 'a'] = float('nan')
+          try:
+              trailing_complete_history_window(
+                  recent, cutoff, targets=targets, max_history_days=365, min_history_days=28
+              )
+          except ValueError as exc:
+              assert 'minimum=28d' in str(exc)
+          else:
+              raise AssertionError('recent candidate gap must fail closed')
+
+          print('Prospective candidate history tolerates older gaps but fails closed on inadequate recent history.')
           PY
 
       - name: Verify production routing is not imported or modified
