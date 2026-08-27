@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install pandas numpy
-      - name: Verify policy subset ranking
+      - name: Verify policy subset ranking and issue-date stability
         run: |
           python - <<'PY'
           import pandas as pd
@@ -53,5 +53,12 @@ jobs:
           assert f.loc[f['policy'].isin(expected),'mae_improvement_pct_vs_current_weather_policy'].gt(0).all()
           by=pd.read_csv('/tmp/out/weather-policy-grid-by-issue-date.csv')
           assert set(by['forecast_issue_date'].astype(str)) == {'2026-08-25','2026-08-26'}
-          print('Policy grid correctly identifies the tied optimal h3-h4 / h2-h4 policies when h2 is neutral.')
+          stability=pd.read_csv('/tmp/out/weather-policy-grid-issue-date-stability.csv')
+          assert set(expected).issubset(set(stability['policy']))
+          stable_best=stability['issue_date_mean_mae_improvement_pct'].max()
+          stable_tied=set(stability.loc[stability['issue_date_mean_mae_improvement_pct'].eq(stable_best),'policy'])
+          assert stable_tied == expected, {'stable_tied': sorted(stable_tied), 'stability': stability.head(4).to_dict('records')}
+          assert stability.loc[stability['policy'].isin(expected),'issue_date_win_rate'].eq(1.0).all()
+          assert stability.loc[stability['policy'].isin(expected),'harmful_issue_date_rate'].eq(0.0).all()
+          print('Policy grid correctly identifies tied pooled and issue-date-balanced h3-h4 / h2-h4 optima.')
           PY
