@@ -1,0 +1,54 @@
+name: Weather policy grid CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/weather-policy-grid-ci.yml'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_policy_grid.py'
+
+permissions:
+  contents: read
+
+jobs:
+  policy-grid:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install pandas numpy
+      - name: Verify policy subset ranking
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          rows=[]
+          # Weather is harmful at h1, neutral at h2, and beneficial at h3-h4.
+          for day in ['2026-08-25','2026-08-26']:
+              for h in [1,2,3,4]:
+                  actual=10.0
+                  baseline=12.0
+                  weather={1:13.0,2:12.0,3:10.5,4:10.0}[h]
+                  rows.append({
+                      'forecast_run_id':f'{day}-r{h}',
+                      'forecast_issued_at':f'{day}T12:00:00Z',
+                      'ds':f'{day} {12+h:02d}:00:00',
+                      'target_name':'Total_TBS','horizon_band':'h01_04','horizon_hour':h,
+                      'actual':actual,'baseline_prediction':baseline,'weather_prediction':weather,
+                  })
+          pd.DataFrame(rows).to_csv('/tmp/detail.csv',index=False)
+          PY
+          python scripts/evaluation/prospective/summarize_shadow_weather_policy_grid.py \
+            /tmp/detail.csv --output-dir /tmp/out --target Total_TBS --horizon-band h01_04
+          python - <<'PY'
+          import pandas as pd
+          f=pd.read_csv('/tmp/out/weather-policy-grid.csv')
+          best=f.iloc[0]
+          assert best['policy']=='weather_hours_3_4', best.to_dict()
+          assert best['mae_improvement_pct_vs_current_weather_policy'] > 0
+          by=pd.read_csv('/tmp/out/weather-policy-grid-by-issue-date.csv')
+          assert set(by['forecast_issue_date'].astype(str)) == {'2026-08-25','2026-08-26'}
+          print('Policy grid correctly identifies h3-h4 selective weather when h1 is harmful.')
+          PY
