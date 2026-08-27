@@ -17,6 +17,7 @@ on:
       - 'scripts/evaluation/prospective/summarize_shadow_weather_unique_hour_sensitivity.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_by_horizon_hour.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_selective_policy.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_policy_grid.py'
 
 permissions:
   contents: read
@@ -174,6 +175,18 @@ jobs:
               --weather-hours 3 4
           else
             echo 'No matured detail rows yet; selective-policy diagnostic skipped.'
+          fi
+
+      - name: Evaluate exhaustive short-horizon weather policy grid
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_policy_grid.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score \
+              --target Total_TBS \
+              --horizon-band h01_04
+          else
+            echo 'No matured detail rows yet; policy-grid diagnostic skipped.'
           fi
 
       - name: Summarize high-congestion weather performance
