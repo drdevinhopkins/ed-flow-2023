@@ -1,0 +1,69 @@
+name: Weather complete issue-date CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_confidence.py'
+      - '.github/workflows/weather-complete-issue-date-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  complete-issue-date:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install pandas numpy
+      - name: Verify incomplete dates stay out of formal confidence evidence
+        run: |
+          python - <<'PY'
+          import subprocess
+          from pathlib import Path
+          import pandas as pd
+
+          rows = []
+          # Two issue dates for Total_TBS h1-4. At the as-of time below, Aug 25 is complete
+          # (completion = Aug 26 04:00 EDT) while Aug 26 is incomplete
+          # (completion = Aug 27 04:00 EDT).
+          for issue_date, delta in [('2026-08-25', 1.0), ('2026-08-26', -5.0)]:
+              for i in range(4):
+                  rows.append({
+                      'target_name': 'Total_TBS',
+                      'horizon_band': 'h01_04',
+                      'forecast_issue_date': issue_date,
+                      'weather_route_active': True,
+                      'baseline_absolute_error': 10.0,
+                      'weather_absolute_error': 10.0 - delta,
+                      'paired_absolute_error_delta': delta,
+                  })
+
+          Path('tmp-completeness').mkdir(exist_ok=True)
+          pd.DataFrame(rows).to_csv('tmp-completeness/detail.csv', index=False)
+          subprocess.run([
+              'python', 'scripts/evaluation/prospective/summarize_shadow_weather_confidence.py',
+              'tmp-completeness/detail.csv', '--output-dir', 'tmp-completeness/out',
+              '--as-of', '2026-08-26T12:00:00-04:00'
+          ], check=True)
+
+          by_date = pd.read_csv('tmp-completeness/out/weather-route-by-issue-date.csv')
+          complete = by_date.set_index('forecast_issue_date')['issue_date_complete'].astype(bool)
+          assert complete.loc['2026-08-25']
+          assert not complete.loc['2026-08-26']
+
+          balanced = pd.read_csv('tmp-completeness/out/weather-route-issue-date-balanced.csv')
+          assert len(balanced) == 1
+          assert balanced.iloc[0]['n_issue_dates'] == 1
+          assert balanced.iloc[0]['issue_date_mean_paired_mae_delta'] == 1.0
+
+          confidence = pd.read_csv('tmp-completeness/out/weather-route-confidence.csv')
+          row = confidence.iloc[0]
+          assert row['n_all_issue_dates'] == 2
+          assert row['n_issue_dates'] == 1
+          assert row['confidence_status'] == 'insufficient_complete_issue_dates'
+          print('Partial issue dates remain visible but are excluded from balanced/bootstrap evidence.')
+          PY
