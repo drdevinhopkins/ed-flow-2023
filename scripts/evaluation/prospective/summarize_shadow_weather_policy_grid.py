@@ -7,7 +7,8 @@ prediction on all other hours. It also includes all-baseline and the current wea
 
 In addition to pooled performance, it emits an issue-date-balanced stability table so a
 policy cannot look attractive merely because one date contributes many repeated intraday
-forecasts. Each issue date gets one equal vote in the stability summary.
+forecasts. Policy-selection labels remain explicitly non-actionable until the same
+prospective evidence thresholds used elsewhere are met.
 """
 
 from __future__ import annotations
@@ -18,6 +19,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+MIN_ISSUE_DATES = 28
+MIN_PROSPECTIVE_SPAN_DAYS = 56.0
+MIN_UNIQUE_TARGET_HOURS = 100
+MIN_ISSUE_DATE_WIN_RATE = 0.55
 
 
 def metrics(frame: pd.DataFrame, prediction: pd.Series, label: str, hours: tuple[int, ...] | None) -> dict[str, object]:
@@ -64,38 +70,76 @@ def summarize(frame: pd.DataFrame, candidate_hours: list[int]) -> pd.DataFrame:
     return result.sort_values(["mae", "policy"], ignore_index=True)
 
 
-def summarize_issue_date_stability(by_date: pd.DataFrame) -> pd.DataFrame:
-    """Give each forecast issue date one equal vote for each candidate policy."""
+def summarize_issue_date_stability(
+    by_date: pd.DataFrame,
+    *,
+    n_unique_target_hours: int,
+    prospective_span_days: float,
+) -> pd.DataFrame:
+    """Give each issue date one vote and pre-register when policy selection is evaluable."""
     rows: list[dict[str, object]] = []
     for (policy, weather_hours), group in by_date.groupby(["policy", "weather_hours"], dropna=False):
         improvement = pd.to_numeric(group["mae_improvement_pct_vs_baseline"], errors="coerce").dropna()
         delta = pd.to_numeric(group["mean_paired_mae_delta_vs_baseline"], errors="coerce").dropna()
+        vs_current = pd.to_numeric(group["mae_improvement_pct_vs_current_weather_policy"], errors="coerce").dropna()
         if improvement.empty:
             continue
+        n_issue_dates = int(group["forecast_issue_date"].nunique())
+        evidence_ready = (
+            n_issue_dates >= MIN_ISSUE_DATES
+            and n_unique_target_hours >= MIN_UNIQUE_TARGET_HOURS
+            and prospective_span_days >= MIN_PROSPECTIVE_SPAN_DAYS
+        )
+        mean_improvement = float(improvement.mean())
+        median_improvement = float(improvement.median())
+        issue_date_win_rate = float((improvement > 0).mean())
+        mean_vs_current = float(vs_current.mean()) if not vs_current.empty else np.nan
+        is_baseline = policy == "all_baseline"
+        is_current = policy == "current_weather_policy"
+        directional_candidate = (
+            (not is_baseline)
+            and mean_improvement > 0
+            and median_improvement > 0
+            and issue_date_win_rate >= MIN_ISSUE_DATE_WIN_RATE
+            and (is_current or (pd.notna(mean_vs_current) and mean_vs_current > 0))
+        )
         rows.append({
             "policy": policy,
             "weather_hours": "" if pd.isna(weather_hours) else str(weather_hours),
-            "n_issue_dates": int(group["forecast_issue_date"].nunique()),
-            "issue_date_mean_mae_improvement_pct": float(improvement.mean()),
-            "issue_date_median_mae_improvement_pct": float(improvement.median()),
+            "n_issue_dates": n_issue_dates,
+            "n_unique_target_hours": n_unique_target_hours,
+            "prospective_span_days": prospective_span_days,
+            "issue_date_mean_mae_improvement_pct": mean_improvement,
+            "issue_date_median_mae_improvement_pct": median_improvement,
             "issue_date_mean_paired_mae_delta": float(delta.mean()) if not delta.empty else np.nan,
-            "issue_date_win_rate": float((improvement > 0).mean()),
+            "issue_date_win_rate": issue_date_win_rate,
             "harmful_issue_date_rate": float((improvement < 0).mean()),
             "worst_issue_date_mae_improvement_pct": float(improvement.min()),
             "p10_issue_date_mae_improvement_pct": float(improvement.quantile(0.10)),
+            "issue_date_mean_improvement_pct_vs_current_weather_policy": mean_vs_current,
+            "selection_evidence_ready": evidence_ready,
+            "directional_policy_candidate": directional_candidate,
+            "policy_selection_status": (
+                "evaluable_candidate" if evidence_ready and directional_candidate
+                else "evaluable_not_candidate" if evidence_ready
+                else "collecting"
+            ),
+            "issue_dates_remaining": max(0, MIN_ISSUE_DATES - n_issue_dates),
+            "unique_target_hours_remaining": max(0, MIN_UNIQUE_TARGET_HOURS - n_unique_target_hours),
+            "span_days_remaining": max(0.0, MIN_PROSPECTIVE_SPAN_DAYS - prospective_span_days),
         })
     result = pd.DataFrame(rows)
     if result.empty:
         return result
-    # Favor policies that improve the typical issue date, then penalize harmful dates/tail risk.
     return result.sort_values(
         [
+            "directional_policy_candidate",
             "issue_date_mean_mae_improvement_pct",
             "issue_date_win_rate",
             "worst_issue_date_mae_improvement_pct",
             "policy",
         ],
-        ascending=[False, False, False, True],
+        ascending=[False, False, False, False, True],
         ignore_index=True,
     )
 
@@ -145,7 +189,14 @@ def main() -> None:
     by_date = pd.concat(date_frames, ignore_index=True)
     by_date.to_csv(args.output_dir / "weather-policy-grid-by-issue-date.csv", index=False)
 
-    stability = summarize_issue_date_stability(by_date)
+    first_issued = frame["forecast_issued_at"].min()
+    last_issued = frame["forecast_issued_at"].max()
+    span_days = float((last_issued - first_issued).total_seconds() / 86400.0)
+    stability = summarize_issue_date_stability(
+        by_date,
+        n_unique_target_hours=int(frame["ds"].nunique()),
+        prospective_span_days=span_days,
+    )
     if not stability.empty:
         stability["target_name"] = args.target
         stability["horizon_band"] = args.horizon_band
@@ -157,7 +208,7 @@ def main() -> None:
     winners = by_date.sort_values(["forecast_issue_date", "mae", "policy"]).groupby("forecast_issue_date", as_index=False).first()
     print(winners[["forecast_issue_date", "policy", "weather_hours", "mae", "mae_improvement_pct_vs_baseline"]].to_string(index=False))
     if not stability.empty:
-        print("\nIssue-date-balanced policy stability (each date weighted equally):")
+        print("\nIssue-date-balanced policy stability (selection remains collecting until pre-registered evidence thresholds are met):")
         print(stability.to_string(index=False))
 
 
