@@ -16,6 +16,7 @@ on:
       - 'scripts/evaluation/prospective/summarize_shadow_weather_independence.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_unique_hour_sensitivity.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_by_horizon_hour.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_selective_policy.py'
 
 permissions:
   contents: read
@@ -160,6 +161,19 @@ jobs:
               --output-dir validation/prospective-weather/latest-score
           else
             echo 'No matured detail rows yet; exact lead-hour diagnostics skipped.'
+          fi
+
+      - name: Evaluate selective h3-h4 weather counterfactual
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_selective_policy.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score \
+              --target Total_TBS \
+              --horizon-band h01_04 \
+              --weather-hours 3 4
+          else
+            echo 'No matured detail rows yet; selective-policy diagnostic skipped.'
           fi
 
       - name: Summarize high-congestion weather performance
