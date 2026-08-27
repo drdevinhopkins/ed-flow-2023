@@ -1,0 +1,105 @@
+name: Candidate prospective routes CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/candidate-prospective-routes-ci.yml'
+      - 'scripts/evaluation/prospective/candidate_metric_routes.py'
+      - 'scripts/candidate_flow_metrics.py'
+      - 'validation/candidate-metrics-ablation/DECISION.md'
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-prospective-routes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install lightweight dependencies
+        run: pip install pandas
+
+      - name: Validate robustness-aware route policy
+        run: |
+          PYTHONPATH=scripts:scripts/evaluation/prospective python - <<'PY'
+          from candidate_metric_routes import (
+              PROSPECTIVE_CANDIDATE_ROUTES,
+              horizon_band,
+              scenario_for,
+              scenarios_needed,
+          )
+
+          expected = {
+              'Inflow_Total': {
+                  'h01_04': 'calendar_demand',
+                  'h05_08': 'baseline',
+                  'h09_12': 'baseline',
+                  'h13_24': 'baseline',
+              },
+              'INFLOW_STRETCHER': {
+                  'h01_04': 'staffing_current',
+                  'h05_08': 'calendar_demand',
+                  'h09_12': 'staffing_current',
+                  'h13_24': 'baseline',
+              },
+              'INFLOW_AMBULANCES': {
+                  'h01_04': 'staffing_structure_effects',
+                  'h05_08': 'baseline',
+                  'h09_12': 'baseline',
+                  'h13_24': 'baseline',
+              },
+              'AdmissionRequests_New': {
+                  'h01_04': 'baseline',
+                  'h05_08': 'calendar_demand',
+                  'h09_12': 'baseline',
+                  'h13_24': 'staffing_structure_effects',
+              },
+              'Workup_Delay_Burden': {
+                  'h01_04': 'staffing_current',
+                  'h05_08': 'calendar_demand',
+                  'h09_12': 'staffing_current',
+                  'h13_24': 'baseline',
+              },
+          }
+          assert PROSPECTIVE_CANDIDATE_ROUTES == expected
+          assert horizon_band(1) == 'h01_04'
+          assert horizon_band(4) == 'h01_04'
+          assert horizon_band(5) == 'h05_08'
+          assert horizon_band(12) == 'h09_12'
+          assert horizon_band(24) == 'h13_24'
+          assert scenario_for('AdmissionRequests_New', 6) == 'calendar_demand'
+          assert scenario_for('Workup_Delay_Burden', 20) == 'baseline'
+          assert set(scenarios_needed()) == {
+              'baseline', 'calendar_demand', 'staffing_current', 'staffing_structure_effects'
+          }
+
+          try:
+              horizon_band(25)
+          except ValueError:
+              pass
+          else:
+              raise AssertionError('horizon >24 must fail')
+
+          print('Prospective candidate routing policy matches DECISION.md and excludes non-robust nominal winners.')
+          PY
+
+      - name: Verify production routing is not imported or modified
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('scripts/evaluation/prospective/candidate_metric_routes.py').read_text()
+          assert 'PROSPECTIVE_CANDIDATE_ROUTES' in text
+          assert 'hourly_feature_routing import' not in text
+          assert 'CHRONOS_HOURLY_ENABLE' not in text
+          print('Candidate prospective routes remain isolated from production routing.')
+          PY
