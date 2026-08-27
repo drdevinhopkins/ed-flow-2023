@@ -58,10 +58,19 @@ def _summarize(group: pd.DataFrame) -> pd.Series:
     delta = group["baseline_abs_error"] - group["weather_abs_error"]
     baseline_mae = float(group["baseline_abs_error"].mean())
     weather_mae = float(group["weather_abs_error"].mean())
+    # ``groupby.apply(..., include_groups=False)`` removes grouping columns from the
+    # frame passed to this function.  When forecast_issue_date itself is a grouping
+    # key (the per-date summary below), one group necessarily represents one issue
+    # date even though the column is absent from ``group``.
+    n_issue_dates = (
+        int(group["forecast_issue_date"].nunique())
+        if "forecast_issue_date" in group.columns
+        else 1
+    )
     return pd.Series({
         "n": len(group),
         "n_runs": group["forecast_run_id"].nunique() if "forecast_run_id" in group.columns else np.nan,
-        "n_issue_dates": group["forecast_issue_date"].nunique(),
+        "n_issue_dates": n_issue_dates,
         "baseline_mae": baseline_mae,
         "weather_mae": weather_mae,
         "mean_paired_mae_delta": float(delta.mean()),
