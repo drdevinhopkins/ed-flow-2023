@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install pandas numpy
-      - name: Verify policy subset ranking and issue-date stability
+      - name: Verify policy subset ranking, stability, and evidence gate
         run: |
           python - <<'PY'
           import pandas as pd
@@ -60,5 +60,19 @@ jobs:
           assert stable_tied == expected, {'stable_tied': sorted(stable_tied), 'stability': stability.head(4).to_dict('records')}
           assert stability.loc[stability['policy'].isin(expected),'issue_date_win_rate'].eq(1.0).all()
           assert stability.loc[stability['policy'].isin(expected),'harmful_issue_date_rate'].eq(0.0).all()
-          print('Policy grid correctly identifies tied pooled and issue-date-balanced h3-h4 / h2-h4 optima.')
+
+          # Strong-looking early policies must remain non-actionable with only two dates/eight hours.
+          required={
+              'selection_evidence_ready','directional_policy_candidate','policy_selection_status',
+              'issue_dates_remaining','unique_target_hours_remaining','span_days_remaining',
+              'issue_date_mean_improvement_pct_vs_current_weather_policy',
+          }
+          assert required.issubset(stability.columns), sorted(required-set(stability.columns))
+          assert not stability['selection_evidence_ready'].astype(bool).any()
+          assert stability['policy_selection_status'].eq('collecting').all()
+          assert stability['issue_dates_remaining'].min() == 26
+          assert stability['unique_target_hours_remaining'].min() == 92
+          assert stability['span_days_remaining'].min() >= 54.9
+          assert stability.loc[stability['policy'].isin(expected),'directional_policy_candidate'].astype(bool).all()
+          print('Policy grid ranks the synthetic optimum but blocks policy selection until independent prospective evidence is sufficient.')
           PY
