@@ -27,7 +27,7 @@ jobs:
       - name: Install lightweight dependencies
         run: pip install pandas numpy
 
-      - name: Verify exact-hour summary
+      - name: Verify exact-hour summary with real scorer schema
         run: |
           python - <<'PY'
           import sys
@@ -36,8 +36,9 @@ jobs:
           from summarize_shadow_candidate_horizon_hours import summarize
 
           rows = []
-          # h1 candidate is harmful; h3 candidate is helpful. The diagnostic must
-          # preserve that within-band heterogeneity rather than averaging it away.
+          # h1 candidate is harmful; h3 candidate is helpful. Use the canonical
+          # *_absolute_error names emitted by score_shadow_candidate_forecast.py
+          # so CI catches integration schema drift.
           for run in range(4):
               for hour, baseline_error, candidate_error in [
                   (1, 1.0, 2.0),
@@ -54,8 +55,8 @@ jobs:
                       'actual': actual,
                       'baseline_prediction': actual + baseline_error,
                       'candidate_prediction': actual + candidate_error,
-                      'baseline_abs_error': abs(baseline_error),
-                      'candidate_abs_error': abs(candidate_error),
+                      'baseline_absolute_error': abs(baseline_error),
+                      'candidate_absolute_error': abs(candidate_error),
                       'baseline_error': baseline_error,
                       'candidate_error': candidate_error,
                       'baseline_lower': actual - 5,
@@ -72,5 +73,16 @@ jobs:
           assert h1.n_unique_target_hours == 1
           assert h3.n_unique_target_hours == 1
           assert h1.n_runs == 4 and h3.n_runs == 4
+
+          # Backward compatibility remains intentional for older archived/test detail.
+          legacy = pd.DataFrame(rows).rename(columns={
+              'baseline_absolute_error': 'baseline_abs_error',
+              'candidate_absolute_error': 'candidate_abs_error',
+          })
+          legacy_out = summarize(legacy)
+          pd.testing.assert_series_equal(
+              out['mae_improvement_pct'], legacy_out['mae_improvement_pct'],
+              check_names=False,
+          )
           print(out.to_string(index=False))
           PY
