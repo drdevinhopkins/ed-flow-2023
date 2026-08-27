@@ -29,7 +29,10 @@ import backtest_covariate_ablation as base  # noqa: E402
 import backtest_hourly_final_features as final_bt  # noqa: E402
 import backtest_hourly_weather_features as weather_bt  # noqa: E402
 import backtest_staffing_features as staffing_bt  # noqa: E402
-from candidate_flow_metrics import CANDIDATE_TARGETS  # noqa: E402
+from candidate_flow_metrics import (  # noqa: E402
+    CANDIDATE_TARGETS,
+    trailing_complete_history_window,
+)
 from evaluation.backtests import backtest_candidate_metrics_cutoff as candidate_bt  # noqa: E402
 from evaluation.prospective.candidate_metric_routes import (  # noqa: E402
     horizon_band,
@@ -52,49 +55,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--no-dropbox", action="store_true")
     return parser.parse_args()
-
-
-def _trailing_complete_history_days(
-    flow: pd.DataFrame,
-    cutoff: pd.Timestamp,
-) -> tuple[int, pd.Timestamp, int]:
-    """Return a safe trailing history window containing no missing 13-target rows.
-
-    Historical ablations selected only cutoffs with a complete 365-day target window.
-    Live prospective data can contain an older isolated source gap. Rather than fail the
-    current forecast because of a gap months ago, use the longest *trailing* complete
-    hourly segment, capped at the validated 365-day maximum. A minimum of 28 complete
-    days is still required so a severely degraded input stream fails closed.
-    """
-
-    eligible = flow.loc[flow["ds"].le(cutoff), ["ds", *candidate_bt.TARGETS]].copy()
-    if eligible.empty:
-        raise ValueError(f"No candidate history available at cutoff {cutoff}")
-
-    incomplete = eligible[list(candidate_bt.TARGETS)].isna().any(axis=1)
-    last_bad = eligible.loc[incomplete, "ds"].max() if incomplete.any() else pd.NaT
-    if pd.isna(last_bad):
-        complete_start = pd.Timestamp(eligible["ds"].min())
-    else:
-        complete_start = pd.Timestamp(last_bad) + pd.Timedelta(hours=1)
-
-    trailing = eligible.loc[eligible["ds"].between(complete_start, cutoff)]
-    complete_hours = len(trailing)
-    complete_days = complete_hours // 24
-    history_days = min(MAX_HISTORY_DAYS, complete_days)
-    if history_days < MIN_HISTORY_DAYS:
-        missing_rows = int(incomplete.sum())
-        raise ValueError(
-            "Insufficient trailing complete candidate history: "
-            f"{complete_hours}h ({complete_days} full days), minimum={MIN_HISTORY_DAYS}d; "
-            f"last_incomplete={last_bad}, incomplete_rows_before_cutoff={missing_rows}"
-        )
-
-    history_start = cutoff - pd.Timedelta(days=history_days) + pd.Timedelta(hours=1)
-    selected = eligible.loc[eligible["ds"].between(history_start, cutoff)]
-    if len(selected) != history_days * 24 or selected[list(candidate_bt.TARGETS)].isna().any().any():
-        raise RuntimeError("Selected prospective candidate history window is not complete")
-    return history_days, history_start, int(incomplete.sum())
 
 
 def _predict(
@@ -162,7 +122,13 @@ def main() -> None:
     weather = weather_bt.load_weather(base.WEATHER_URL)
     cutoff = pd.Timestamp(flow["ds"].max()).floor("h")
     calendar = final_bt.build_calendar_frame(flow, [cutoff], HORIZON)
-    history_days, history_start, incomplete_rows = _trailing_complete_history_days(flow, cutoff)
+    history_days, history_start, incomplete_rows = trailing_complete_history_window(
+        flow,
+        cutoff,
+        targets=candidate_bt.TARGETS,
+        max_history_days=MAX_HISTORY_DAYS,
+        min_history_days=MIN_HISTORY_DAYS,
+    )
     print(
         "Candidate prospective history: "
         f"{history_days}d complete ({history_start} through {cutoff}); "
