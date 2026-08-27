@@ -1,0 +1,76 @@
+name: Candidate horizon-hour diagnostics CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_horizon_hours.py'
+      - '.github/workflows/candidate-horizon-hour-diagnostics-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-candidate-horizon-hours:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install lightweight dependencies
+        run: pip install pandas numpy
+
+      - name: Verify exact-hour summary
+        run: |
+          python - <<'PY'
+          import sys
+          import pandas as pd
+          sys.path.insert(0, 'scripts/evaluation/prospective')
+          from summarize_shadow_candidate_horizon_hours import summarize
+
+          rows = []
+          # h1 candidate is harmful; h3 candidate is helpful. The diagnostic must
+          # preserve that within-band heterogeneity rather than averaging it away.
+          for run in range(4):
+              for hour, baseline_error, candidate_error in [
+                  (1, 1.0, 2.0),
+                  (3, 3.0, 1.0),
+              ]:
+                  actual = 10.0
+                  rows.append({
+                      'forecast_run_id': f'run-{run}',
+                      'forecast_issue_date': '2026-08-27',
+                      'target_ds': f'2026-08-27 {12+hour:02d}:00:00',
+                      'target_name': 'Inflow_Total',
+                      'horizon_hour': hour,
+                      'candidate_scenario': 'calendar_demand',
+                      'actual': actual,
+                      'baseline_prediction': actual + baseline_error,
+                      'candidate_prediction': actual + candidate_error,
+                      'baseline_abs_error': abs(baseline_error),
+                      'candidate_abs_error': abs(candidate_error),
+                      'baseline_error': baseline_error,
+                      'candidate_error': candidate_error,
+                      'baseline_lower': actual - 5,
+                      'baseline_upper': actual + 5,
+                      'candidate_lower': actual - 5,
+                      'candidate_upper': actual + 5,
+                  })
+          out = summarize(pd.DataFrame(rows))
+          assert list(out['horizon_hour']) == [1, 3], out
+          h1 = out[out.horizon_hour.eq(1)].iloc[0]
+          h3 = out[out.horizon_hour.eq(3)].iloc[0]
+          assert h1.mae_improvement_pct < 0, h1
+          assert h3.mae_improvement_pct > 0, h3
+          assert h1.n_unique_target_hours == 1
+          assert h3.n_unique_target_hours == 1
+          assert h1.n_runs == 4 and h3.n_runs == 4
+          print(out.to_string(index=False))
+          PY
