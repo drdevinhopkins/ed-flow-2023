@@ -4,6 +4,10 @@
 Diagnostic only. For each non-empty subset of candidate lead hours, this script builds a
 counterfactual that uses the weather prediction on those hours and the paired baseline
 prediction on all other hours. It also includes all-baseline and the current weather policy.
+
+In addition to pooled performance, it emits an issue-date-balanced stability table so a
+policy cannot look attractive merely because one date contributes many repeated intraday
+forecasts. Each issue date gets one equal vote in the stability summary.
 """
 
 from __future__ import annotations
@@ -60,6 +64,42 @@ def summarize(frame: pd.DataFrame, candidate_hours: list[int]) -> pd.DataFrame:
     return result.sort_values(["mae", "policy"], ignore_index=True)
 
 
+def summarize_issue_date_stability(by_date: pd.DataFrame) -> pd.DataFrame:
+    """Give each forecast issue date one equal vote for each candidate policy."""
+    rows: list[dict[str, object]] = []
+    for (policy, weather_hours), group in by_date.groupby(["policy", "weather_hours"], dropna=False):
+        improvement = pd.to_numeric(group["mae_improvement_pct_vs_baseline"], errors="coerce").dropna()
+        delta = pd.to_numeric(group["mean_paired_mae_delta_vs_baseline"], errors="coerce").dropna()
+        if improvement.empty:
+            continue
+        rows.append({
+            "policy": policy,
+            "weather_hours": "" if pd.isna(weather_hours) else str(weather_hours),
+            "n_issue_dates": int(group["forecast_issue_date"].nunique()),
+            "issue_date_mean_mae_improvement_pct": float(improvement.mean()),
+            "issue_date_median_mae_improvement_pct": float(improvement.median()),
+            "issue_date_mean_paired_mae_delta": float(delta.mean()) if not delta.empty else np.nan,
+            "issue_date_win_rate": float((improvement > 0).mean()),
+            "harmful_issue_date_rate": float((improvement < 0).mean()),
+            "worst_issue_date_mae_improvement_pct": float(improvement.min()),
+            "p10_issue_date_mae_improvement_pct": float(improvement.quantile(0.10)),
+        })
+    result = pd.DataFrame(rows)
+    if result.empty:
+        return result
+    # Favor policies that improve the typical issue date, then penalize harmful dates/tail risk.
+    return result.sort_values(
+        [
+            "issue_date_mean_mae_improvement_pct",
+            "issue_date_win_rate",
+            "worst_issue_date_mae_improvement_pct",
+            "policy",
+        ],
+        ascending=[False, False, False, True],
+        ignore_index=True,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("detail_csv", type=Path)
@@ -105,11 +145,20 @@ def main() -> None:
     by_date = pd.concat(date_frames, ignore_index=True)
     by_date.to_csv(args.output_dir / "weather-policy-grid-by-issue-date.csv", index=False)
 
-    print("Short-horizon weather policy grid (best MAE first):")
+    stability = summarize_issue_date_stability(by_date)
+    if not stability.empty:
+        stability["target_name"] = args.target
+        stability["horizon_band"] = args.horizon_band
+        stability.to_csv(args.output_dir / "weather-policy-grid-issue-date-stability.csv", index=False)
+
+    print("Short-horizon weather policy grid (best pooled MAE first):")
     print(summary.to_string(index=False))
     print("\nTop policy by issue date:")
-    winners = by_date.sort_values(["forecast_issue_date", "mae"]).groupby("forecast_issue_date", as_index=False).first()
+    winners = by_date.sort_values(["forecast_issue_date", "mae", "policy"]).groupby("forecast_issue_date", as_index=False).first()
     print(winners[["forecast_issue_date", "policy", "weather_hours", "mae", "mae_improvement_pct_vs_baseline"]].to_string(index=False))
+    if not stability.empty:
+        print("\nIssue-date-balanced policy stability (each date weighted equally):")
+        print(stability.to_string(index=False))
 
 
 if __name__ == "__main__":
