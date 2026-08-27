@@ -107,6 +107,77 @@ def _summarize(detail: pd.DataFrame) -> pd.DataFrame:
     return summary.sort_values(group)
 
 
+def _summarize_by_issue_date(detail: pd.DataFrame) -> pd.DataFrame:
+    """Give each forecast issue date its own row so repeated runs cannot masquerade as dates."""
+    group = ["target_name", "horizon_band", "candidate_scenario", "forecast_issue_date"]
+    summary = detail.groupby(group, as_index=False).agg(
+        n=("actual", "size"),
+        n_runs=("forecast_run_id", "nunique"),
+        n_unique_target_hours=("target_ds", "nunique"),
+        baseline_mae=("baseline_absolute_error", "mean"),
+        candidate_mae=("candidate_absolute_error", "mean"),
+        mean_paired_mae_delta=("paired_absolute_error_delta", "mean"),
+        median_paired_mae_delta=("paired_absolute_error_delta", "median"),
+        candidate_win_rate=("candidate_wins", "mean"),
+        baseline_bias=("baseline_error", "mean"),
+        candidate_bias=("candidate_error", "mean"),
+    )
+    summary["mae_improvement_pct"] = (
+        (summary["baseline_mae"] - summary["candidate_mae"])
+        / summary["baseline_mae"].replace(0, np.nan)
+        * 100
+    )
+    summary["candidate_better_on_issue_date"] = summary["mean_paired_mae_delta"] > 0
+    return summary.sort_values(group)
+
+
+def _summarize_issue_date_balanced(issue_date_detail: pd.DataFrame) -> pd.DataFrame:
+    """Equal-weight issue-date summary; diagnostic until enough independent dates accrue."""
+    group = ["target_name", "horizon_band", "candidate_scenario"]
+    summary = issue_date_detail.groupby(group, as_index=False).agg(
+        n_issue_dates=("forecast_issue_date", "nunique"),
+        mean_issue_date_mae_delta=("mean_paired_mae_delta", "mean"),
+        median_issue_date_mae_delta=("mean_paired_mae_delta", "median"),
+        issue_date_win_rate=("candidate_better_on_issue_date", "mean"),
+        worst_issue_date_mae_delta=("mean_paired_mae_delta", "min"),
+    )
+    return summary.sort_values(group)
+
+
+def _summarize_overlap(detail: pd.DataFrame) -> pd.DataFrame:
+    """Describe repeated forecasts aimed at the same realized target hour."""
+    group = ["target_name", "horizon_band", "candidate_scenario"]
+    target_counts = (
+        detail.groupby([*group, "target_ds"], as_index=False)
+        .size()
+        .rename(columns={"size": "forecasts_per_realized_hour"})
+    )
+    issue_counts = (
+        detail.groupby([*group, "forecast_issue_date"], as_index=False)
+        .agg(runs=("forecast_run_id", "nunique"))
+    )
+    base = detail.groupby(group, as_index=False).agg(
+        n_rows=("actual", "size"),
+        n_runs=("forecast_run_id", "nunique"),
+        n_issue_dates=("forecast_issue_date", "nunique"),
+        n_unique_target_hours=("target_ds", "nunique"),
+    )
+    target_stats = target_counts.groupby(group, as_index=False).agg(
+        mean_forecasts_per_realized_hour=("forecasts_per_realized_hour", "mean"),
+        median_forecasts_per_realized_hour=("forecasts_per_realized_hour", "median"),
+        max_forecasts_per_realized_hour=("forecasts_per_realized_hour", "max"),
+    )
+    issue_stats = issue_counts.groupby(group, as_index=False).agg(
+        mean_runs_per_issue_date=("runs", "mean"),
+        max_runs_per_issue_date=("runs", "max"),
+    )
+    out = base.merge(target_stats, on=group, how="left").merge(issue_stats, on=group, how="left")
+    out["row_inflation_vs_unique_target_hours"] = (
+        out["n_rows"] / out["n_unique_target_hours"].replace(0, np.nan)
+    )
+    return out.sort_values(group)
+
+
 def main() -> None:
     args = parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -174,6 +245,16 @@ def main() -> None:
         return
     summary = _summarize(active)
     summary.to_csv(args.output_dir / "summary-candidate-routes.csv", index=False)
+
+    issue_date_detail = _summarize_by_issue_date(active)
+    issue_date_detail.to_csv(args.output_dir / "candidate-by-issue-date.csv", index=False)
+    _summarize_issue_date_balanced(issue_date_detail).to_csv(
+        args.output_dir / "candidate-issue-date-balanced.csv", index=False
+    )
+    _summarize_overlap(active).to_csv(
+        args.output_dir / "candidate-overlap-diagnostics.csv", index=False
+    )
+
     print(
         f"Scored {len(detail)} matured candidate rows from "
         f"{detail['forecast_run_id'].nunique()} run(s); {len(active)} used a candidate route"
