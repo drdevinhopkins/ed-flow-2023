@@ -30,15 +30,31 @@ def _coverage(frame: pd.DataFrame, prefix: str) -> float:
     )
 
 
+def _absolute_error_column(frame: pd.DataFrame, prefix: str) -> str:
+    """Return the canonical scorer column, tolerating the older diagnostic alias."""
+    canonical = f"{prefix}_absolute_error"
+    legacy = f"{prefix}_abs_error"
+    if canonical in frame.columns:
+        return canonical
+    if legacy in frame.columns:
+        return legacy
+    raise ValueError(
+        f"Candidate detail is missing {canonical!r} (and legacy alias {legacy!r})"
+    )
+
+
 def summarize(frame: pd.DataFrame) -> pd.DataFrame:
     required = {
         "target_name", "horizon_hour", "candidate_scenario", "actual",
-        "baseline_prediction", "candidate_prediction", "baseline_abs_error",
-        "candidate_abs_error", "baseline_error", "candidate_error",
+        "baseline_prediction", "candidate_prediction", "baseline_error",
+        "candidate_error",
     }
     missing = required - set(frame.columns)
     if missing:
         raise ValueError(f"Candidate detail is missing columns: {sorted(missing)}")
+
+    baseline_abs = _absolute_error_column(frame, "baseline")
+    candidate_abs = _absolute_error_column(frame, "candidate")
 
     active = frame.loc[
         frame["candidate_scenario"].notna()
@@ -51,9 +67,9 @@ def summarize(frame: pd.DataFrame) -> pd.DataFrame:
     for (target, hour, scenario), group in active.groupby(
         ["target_name", "horizon_hour", "candidate_scenario"], sort=True
     ):
-        baseline_mae = float(group["baseline_abs_error"].mean())
-        candidate_mae = float(group["candidate_abs_error"].mean())
-        delta = group["baseline_abs_error"] - group["candidate_abs_error"]
+        baseline_mae = float(group[baseline_abs].mean())
+        candidate_mae = float(group[candidate_abs].mean())
+        delta = group[baseline_abs] - group[candidate_abs]
         rows.append(
             {
                 "target_name": target,
