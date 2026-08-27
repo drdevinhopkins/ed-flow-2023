@@ -26,6 +26,7 @@ jobs:
           import pandas as pd
           rows=[]
           # Weather is harmful at h1, neutral at h2, and beneficial at h3-h4.
+          # Because h2 is exactly neutral, policies {3,4} and {2,3,4} should tie.
           for day in ['2026-08-25','2026-08-26']:
               for h in [1,2,3,4]:
                   actual=10.0
@@ -45,10 +46,12 @@ jobs:
           python - <<'PY'
           import pandas as pd
           f=pd.read_csv('/tmp/out/weather-policy-grid.csv')
-          best=f.iloc[0]
-          assert best['policy']=='weather_hours_3_4', best.to_dict()
-          assert best['mae_improvement_pct_vs_current_weather_policy'] > 0
+          best_mae=f['mae'].min()
+          tied=set(f.loc[f['mae'].eq(best_mae),'policy'])
+          expected={'weather_hours_3_4','weather_hours_2_3_4'}
+          assert tied == expected, {'tied_best': sorted(tied), 'frame': f.head(4).to_dict('records')}
+          assert f.loc[f['policy'].isin(expected),'mae_improvement_pct_vs_current_weather_policy'].gt(0).all()
           by=pd.read_csv('/tmp/out/weather-policy-grid-by-issue-date.csv')
           assert set(by['forecast_issue_date'].astype(str)) == {'2026-08-25','2026-08-26'}
-          print('Policy grid correctly identifies h3-h4 selective weather when h1 is harmful.')
+          print('Policy grid correctly identifies the tied optimal h3-h4 / h2-h4 policies when h2 is neutral.')
           PY
