@@ -1,11 +1,11 @@
 {
-  "generated_at_local": "2026-08-26T10:21:48-04:00",
-  "forecast_data_time_local": "2026-08-26 10:00:00",
-  "blurb_id": "20260826-1000",
-  "blurb": "Stretcher occupancy is about 206% now with 21 in overflow. Pressure is likely to build into mid-afternoon: occupancy is forecast around 240% by 2–4 PM, while TBS may ease from 76 now toward the mid-40s to low-50s. Overflow is expected to stay in the low 20s. On-call is not indicated right now.",
+  "generated_at_local": "2026-08-26T21:24:09-04:00",
+  "forecast_data_time_local": "2026-08-26 21:00:00",
+  "blurb_id": "20260826-2100",
+  "blurb": "Things are gradually easing: stretcher occupancy is about 198% now and overflow is 13, with very little prepod pressure. We’re on track to leave about 29 TBS for the two night docs at midnight, which is a heavier-than-usual Wednesday-night handoff, but occupancy and overflow should continue to improve. Vertical is not unusually out of balance with POD. On-call is not indicated right now.",
   "oncall_recommendation": "NOT INDICATED",
-  "oncall_rationale": "Maximum calibrated need is 5.7% over the available 4/6/8-hour horizons; modeled activation shows no consistent meaningful flow benefit and is slightly unfavorable across most modeled outcomes.",
+  "oncall_rationale": "Maximum calibrated need is 3.0% over the available 4/6/8-hour horizons; modeled activation shows no consistent meaningful flow benefit and is slightly unfavorable across modeled outcomes.",
   "send_recommended": false,
   "send_reason": "NONE",
-  "source_status": "OK: current=2026-08-26 10:00; forecast_origin=2026-08-26 10:00; oncall=2026-08-26 10:00; forecast generated 2026-08-26 10:21 local"
+  "source_status": "OK: current=2026-08-26 21:00; forecast_origin=2026-08-26 21:00; oncall=2026-08-26 21:00; forecast generated 2026-08-26 21:22 local"
 }
