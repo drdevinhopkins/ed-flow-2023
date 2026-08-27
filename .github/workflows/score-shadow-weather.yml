@@ -15,6 +15,7 @@ on:
       - 'scripts/evaluation/prospective/summarize_shadow_weather_high_congestion.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_independence.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_unique_hour_sensitivity.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_by_horizon_hour.py'
 
 permissions:
   contents: read
@@ -149,6 +150,16 @@ jobs:
               --output-dir validation/prospective-weather/latest-score
           else
             echo 'No matured detail rows yet; scenario summary skipped.'
+          fi
+
+      - name: Summarize exact lead-hour performance
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_by_horizon_hour.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score
+          else
+            echo 'No matured detail rows yet; exact lead-hour diagnostics skipped.'
           fi
 
       - name: Summarize high-congestion weather performance
