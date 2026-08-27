@@ -17,6 +17,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+MIN_ISSUE_DATES_FOR_LOO_CLAIM = 28
+
 
 def summarize_leave_one_date_out(frame: pd.DataFrame) -> pd.DataFrame:
     required = {
@@ -89,10 +91,23 @@ def summarize_leave_one_date_out(frame: pd.DataFrame) -> pd.DataFrame:
 def summarize_selection_stability(loo: pd.DataFrame) -> pd.DataFrame:
     if loo.empty:
         return pd.DataFrame()
+    n_folds = int(len(loo))
+    exploratory_stable = bool(
+        loo["selected_policy"].nunique() == 1
+        and loo["held_out_beats_baseline"].astype(bool).all()
+    )
+    evidence_ready = n_folds >= MIN_ISSUE_DATES_FOR_LOO_CLAIM
+    if not evidence_ready:
+        status = "insufficient_issue_dates"
+    elif exploratory_stable:
+        status = "supports_stability"
+    else:
+        status = "does_not_support_stability"
+
     return pd.DataFrame(
         [
             {
-                "n_leave_one_date_out_folds": int(len(loo)),
+                "n_leave_one_date_out_folds": n_folds,
                 "n_distinct_selected_policies": int(loo["selected_policy"].nunique()),
                 "most_common_selected_policy": str(loo["selected_policy"].mode().iloc[0]),
                 "selected_policy_consistency_rate": float(
@@ -103,10 +118,10 @@ def summarize_selection_stability(loo: pd.DataFrame) -> pd.DataFrame:
                 "mean_held_out_improvement_pct": float(loo["held_out_improvement_pct"].mean()),
                 "median_held_out_improvement_pct": float(loo["held_out_improvement_pct"].median()),
                 "worst_held_out_improvement_pct": float(loo["held_out_improvement_pct"].min()),
-                "selection_stable_across_dates": bool(
-                    loo["selected_policy"].nunique() == 1
-                    and loo["held_out_beats_baseline"].astype(bool).all()
-                ),
+                "exploratory_selection_stable_across_dates": exploratory_stable,
+                "min_issue_dates_for_loo_claim": MIN_ISSUE_DATES_FOR_LOO_CLAIM,
+                "loo_evidence_ready": evidence_ready,
+                "loo_status": status,
             }
         ]
     )
