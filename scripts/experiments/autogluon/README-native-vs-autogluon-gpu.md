@@ -98,7 +98,7 @@ Important files:
 - `predictions_<arm>.csv` — every forecast and matching actual value
 - `<arm>.log` — stdout/stderr for each fresh worker process
 - `flow_snapshot.csv` — frozen input data used for all arms
-- `cutoffs.json` — exact retrospective forecast origins
+- `cutoffs.csv` — exact retrospective forecast origins
 
 ## Interpreting "uses the GPU better"
 
