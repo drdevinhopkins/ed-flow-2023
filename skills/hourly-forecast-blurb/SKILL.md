@@ -141,7 +141,7 @@ Use `blurb_reference_stats.json` to classify midnight Total TBS against the roll
 
 During afternoon/evening, compare canonical `Vertical_TBS` and `POD_TBS` current and near-term forecasts. Vertical is normally substantially busier than POD, so do not recommend redeployment merely because Vertical > POD.
 
-Use `blurb_reference_stats.json` `evening_vertical_vs_pod` to decide whether the imbalance is unusually severe and persistent. If POD itself is under unusual pressure or forecast to worsen substantially, do not strip POD coverage unless another suitable overlap physician is available. When clearly actionable and staffing permits, use A2 on weekdays and Y5 on weekends when naming the orange evening POD shift; L1 overlap can also be suggested when appropriate.
+Use `blurb_reference_stats.json` `evening_vertical_vs_pod` to decide whether the imbalance is unusually severe and persistent. If POD itself is under unusual pressure or forecast to worsen substantially, do not strip POD coverage. When clearly actionable and staffing permits, the orange evening overlap shift (16:00–00:00) may be directed to focus on new patients in Vertical. The L1 shift (13:00–21:00) may be directed to prepod, POD, or Vertical according to where the need is greatest. Here, “overlap” describes shift timing across day/evening coverage, not a zone assignment.
 
 ## On-call
 
@@ -158,6 +158,8 @@ Use `tonight`/`later today` instead when that better matches the clock. Do not m
 ## Explainability and physician team strength
 
 For future rows, `feature_effect = forecast - baseline_forecast` is an associational routed-scenario contrast, not a causal effect. Only surface effects that are operationally meaningful and directionally consistent.
+
+On-call prose must be self-contained: state the recommendation, calibrated need probabilities by horizon when available, and whether modeled activation improves, worsens, or has a mixed effect on flow. Do not tell receiving physicians to review a raw impact-summary file.
 
 If physician/staffing effects are meaningfully large and consistent, the blurb may say the team looks a bit stronger than usual, roughly neutral, or a bit weaker than usual for flow. Do not name or rank individual physicians and do not imply causality. Omit this if small, inconsistent, stale, or uncertain.
 
