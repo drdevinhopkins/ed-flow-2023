@@ -99,6 +99,15 @@ def _append_forecast(path: Path, row: dict[str, object]) -> None:
     new.to_csv(path, index=False)
 
 
+def _append_status(path: Path, status: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    new = pd.DataFrame([status])
+    if path.exists():
+        existing = pd.read_csv(path)
+        new = pd.concat([existing, new], ignore_index=True)
+    new.to_csv(path, index=False)
+
+
 def run_shadow(args: argparse.Namespace) -> dict[str, object]:
     generated_at = pd.Timestamp(args.now) if args.now else pd.Timestamp.now(tz="UTC")
     if generated_at.tzinfo is None:
@@ -228,6 +237,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--weather-csv", required=True)
     parser.add_argument("--output-csv", type=Path, required=True)
     parser.add_argument("--status-json", type=Path, required=True)
+    parser.add_argument("--status-history-csv", type=Path, required=True)
     parser.add_argument("--metadata-json", type=Path, required=True)
     parser.add_argument("--now")
     parser.add_argument("--max-age-minutes", type=int, default=90)
@@ -253,6 +263,7 @@ def main() -> None:
             "model_version": MODEL_VERSION,
         }
     args.status_json.write_text(json.dumps(status, indent=2) + "\n")
+    _append_status(args.status_history_csv, status)
     print(json.dumps(status, indent=2), flush=True)
 
 

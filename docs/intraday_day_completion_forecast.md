@@ -116,6 +116,12 @@ is insufficient. The branch-only manual workflow records the forecast, latest st
 feature membership, and calibration corrections under
 `validation/intraday-day-completion-shadow/`.
 
+`score_shadow_intraday_day_completion.py` keeps a separate immutable score ledger after
+the source marks a forecast day complete. It reports candidate and prior-update MAE,
+bias, P80 coverage, and cutoff-hour slices. Prospective readiness requires at least 28
+distinct completed days, at least 20 scored forecasts at each 11:00–18:00 cutoff, and
+the same accuracy, bias, coverage, and per-hour bias limits used retrospectively.
+
 GitHub schedules execute workflow files from the default branch, so this experiment
 workflow is intentionally manual while it remains isolated on the branch. A scheduler
 must not be enabled on the default branch or server until the shadow runner and its

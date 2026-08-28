@@ -15,6 +15,11 @@ from run_shadow_intraday_day_completion import (
     _append_forecast,
     validate_live_flow,
 )
+from score_shadow_intraday_day_completion import (
+    evaluate_prospective_readiness,
+    score_forecasts,
+    summarize_scores,
+)
 
 
 class ShadowIntradayTests(unittest.TestCase):
@@ -73,6 +78,35 @@ class ShadowIntradayTests(unittest.TestCase):
         saved = pd.read_csv(path)
         self.assertEqual(len(saved), 1)
         self.assertEqual(saved.loc[0, "predicted_total"], 200)
+
+    def test_scoring_waits_for_complete_day_and_calculates_metrics(self):
+        forecasts = pd.DataFrame(
+            {
+                "forecast_day": ["2026-08-27", "2026-08-28"],
+                "cutoff_hour": [15, 15],
+                "model_version": ["v1", "v1"],
+                "predicted_total": [49.0, 100.0],
+                "p10_total": [40.0, 90.0],
+                "p90_total": [60.0, 110.0],
+                "prior_update_baseline": [45.0, 95.0],
+            }
+        )
+        rows = []
+        for hour in range(24):
+            rows.append({"ds": f"2026-08-27 {hour:02d}:00:00", "Inflow_Total": 2.0})
+        rows.append({"ds": "2026-08-28 00:00:00", "Inflow_Total": 2.0})
+        handle = tempfile.NamedTemporaryFile(suffix=".csv", delete=False)
+        pd.DataFrame(rows).to_csv(handle.name, index=False)
+
+        scored = score_forecasts(forecasts, load_hourly_flow(handle.name))
+        summary = summarize_scores(scored)
+        readiness = evaluate_prospective_readiness(summary)
+
+        self.assertEqual(len(scored), 1)
+        self.assertEqual(scored.iloc[0]["actual_total"], 48.0)
+        self.assertEqual(scored.iloc[0]["error"], 1.0)
+        self.assertEqual(summary["prospective_days"], 1)
+        self.assertFalse(readiness["prospective_ready"])
 
 
 if __name__ == "__main__":
