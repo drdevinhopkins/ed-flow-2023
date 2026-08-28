@@ -14,6 +14,7 @@ on:
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_horizon_hours.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_selective_policies.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_unique_hour_sensitivity.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_issue_hour_sensitivity.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_evidence_gaps.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_trajectory.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_policy_leave_one_date_out.py'
@@ -216,6 +217,17 @@ jobs:
               --output validation/prospective-candidates/latest-score/candidate-route-unique-hour-sensitivity.csv
           else
             echo 'No matured candidate detail rows yet; unique-hour sensitivity skipped.'
+          fi
+
+      - name: Summarize candidate equal-weight issue-hour sensitivity
+        run: |
+          detail='validation/prospective-candidates/latest-score/detail.csv'
+          if [ -s "$detail" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_issue_hour_sensitivity.py \
+              "$detail" \
+              --output validation/prospective-candidates/latest-score/candidate-route-issue-hour-sensitivity.csv
+          else
+            echo 'No matured candidate detail rows yet; issue-hour sensitivity skipped.'
           fi
 
       - name: Verify candidate scorer safety
