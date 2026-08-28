@@ -20,12 +20,24 @@ def main() -> None:
     args = parser.parse_args()
 
     frame = pd.read_csv(args.archive)
-    required = {"forecast_run_id", "issued_at", "target_name", "horizon_hour"}
+    required = {"forecast_run_id", "target_name", "horizon_hour"}
     missing = required.difference(frame.columns)
     if missing:
         raise SystemExit(f"Missing required columns: {sorted(missing)}")
 
-    frame["issued_at"] = pd.to_datetime(frame["issued_at"], utc=True, errors="raise")
+    # The prospective archive uses forecast_issued_at. Keep the older issued_at
+    # alias accepted so synthetic/legacy diagnostic inputs remain readable.
+    timestamp_column = (
+        "forecast_issued_at"
+        if "forecast_issued_at" in frame.columns
+        else "issued_at"
+        if "issued_at" in frame.columns
+        else None
+    )
+    if timestamp_column is None:
+        raise SystemExit("Missing required timestamp column: forecast_issued_at")
+    frame["issued_at"] = pd.to_datetime(frame[timestamp_column], utc=True, errors="raise")
+
     per_run = (
         frame.groupby("forecast_run_id", as_index=False)
         .agg(
