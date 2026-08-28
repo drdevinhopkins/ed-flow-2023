@@ -10,6 +10,7 @@ on:
       - 'scripts/evaluation/prospective/score_shadow_candidate_forecast.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_complete_issue_dates.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_horizon_hours.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_selective_policies.py'
       - 'scripts/evaluation/prospective/run_shadow_candidate_forecast.py'
       - 'scripts/evaluation/prospective/candidate_metric_routes.py'
       - 'scripts/evaluation/backtests/backtest_candidate_metrics_cutoff.py'
@@ -135,6 +136,17 @@ jobs:
               --output validation/prospective-candidates/latest-score/horizon-hour-summary.csv
           else
             echo 'No matured candidate detail rows yet; horizon-hour diagnostic skipped.'
+          fi
+
+      - name: Summarize selective candidate-route counterfactuals
+        run: |
+          detail='validation/prospective-candidates/latest-score/detail.csv'
+          if [ -s "$detail" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_selective_policies.py \
+              "$detail" \
+              --output-dir validation/prospective-candidates/latest-score
+          else
+            echo 'No matured candidate detail rows yet; selective-policy diagnostic skipped.'
           fi
 
       - name: Verify candidate scorer safety
