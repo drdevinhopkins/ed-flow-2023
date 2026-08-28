@@ -1,0 +1,32 @@
+{
+  "flow_csv": "https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/allDataWithCalculatedColumns.csv?rlkey=9mm4zwaugxyj2r4ooyd39y4nl&raw=1",
+  "weather_csv": "/home/runner/work/_temp/weather_backfilled.csv",
+  "calendar_context": "rich",
+  "cutoff_hours": [
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22
+  ],
+  "n_folds": 6,
+  "test_days": 28,
+  "min_train_days": 365,
+  "max_iter": 200,
+  "source_days": 2066,
+  "complete_days": 1985,
+  "source_start": "2021-01-01T01:00:00",
+  "source_end": "2026-08-28T09:00:00"
+}
