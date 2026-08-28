@@ -737,8 +737,11 @@ def main() -> None:
 
     complete_days = int(snapshots["day"].nunique())
     source_days = int(flow["day"].nunique())
+    source_start = pd.Timestamp(flow["ds"].min())
+    source_end = pd.Timestamp(flow["ds"].max())
     print(
-        f"Loaded {source_days} source days; {complete_days} complete Montreal days are eligible",
+        f"Loaded {source_days} source days ({source_start} to {source_end}); "
+        f"{complete_days} complete Montreal days are eligible",
         flush=True,
     )
     predictions, summary, features = run_backtest(
@@ -773,6 +776,8 @@ def main() -> None:
         "max_iter": args.max_iter,
         "source_days": source_days,
         "complete_days": complete_days,
+        "source_start": source_start.isoformat(),
+        "source_end": source_end.isoformat(),
     }
     (args.output_dir / "run_config.json").write_text(json.dumps(config, indent=2) + "\n")
 

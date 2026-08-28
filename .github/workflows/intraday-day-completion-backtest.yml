@@ -1,0 +1,133 @@
+name: Intraday daily inflow completion backtest
+
+on:
+  push:
+    branches:
+      - codex/intraday-day-completion
+    paths:
+      - '.github/workflows/intraday-day-completion-backtest.yml'
+      - 'scripts/evaluation/backtests/backtest_intraday_day_completion.py'
+      - 'scripts/build_weather_history.py'
+      - 'scripts/calendar_context_features.py'
+      - 'scripts/holiday_features.py'
+      - 'tests/test_intraday_day_completion.py'
+      - 'data/jgh_ramq_holidays.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: intraday-day-completion-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PYTHONPATH: scripts
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Publish run id
+        shell: bash
+        run: |
+          mkdir -p validation/intraday-day-completion
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/intraday-day-completion/run-id.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/intraday-day-completion/run-id.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Record intraday completion backtest run id [skip ci]"
+            git push
+          fi
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+
+      - name: Install experiment dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy scikit-learn holidays requests
+
+      - name: Compile and test the experiment
+        run: |
+          python -m py_compile scripts/evaluation/backtests/backtest_intraday_day_completion.py
+          python -m py_compile scripts/build_weather_history.py
+          python -m unittest tests.test_intraday_day_completion -v
+
+      - name: Build continuous historical weather
+        shell: bash
+        run: |
+          WEATHER_BACKFILL="$RUNNER_TEMP/weather_backfilled.csv"
+          python scripts/build_weather_history.py \
+            --start-date 2021-01-01 \
+            --output "$WEATHER_BACKFILL"
+          echo "WEATHER_BACKFILL=$WEATHER_BACKFILL" >> "$GITHUB_ENV"
+
+      - name: Run current-data intraday completion backtest
+        shell: bash
+        run: |
+          mkdir -p validation-output-intraday
+          set +e
+          python scripts/evaluation/backtests/backtest_intraday_day_completion.py \
+            --calendar-context rich \
+            --weather-csv "$WEATHER_BACKFILL" \
+            --cutoff-hours 6-22 \
+            --n-folds 6 \
+            --test-days 28 \
+            --min-train-days 365 \
+            --max-iter 200 \
+            --output-dir validation-output-intraday \
+            2>&1 | tee validation-output-intraday/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output-intraday/exit_code.txt
+          exit 0
+
+      - name: Upload current-data results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: intraday-day-completion-backtest
+          path: validation-output-intraday/*
+
+      - name: Record latest branch results
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p validation/intraday-day-completion
+          for file in \
+            predictions.csv \
+            summary.csv \
+            best_by_hour.csv \
+            feature_sets.csv \
+            run_config.json \
+            exit_code.txt; do
+            if [ -f "validation-output-intraday/$file" ]; then
+              cp "validation-output-intraday/$file" "validation/intraday-day-completion/$file"
+            fi
+          done
+          if [ -f validation-output-intraday/run.log ]; then
+            tail -n 1200 validation-output-intraday/run.log \
+              > validation/intraday-day-completion/latest.log
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/intraday-day-completion
+          if ! git diff --cached --quiet; then
+            git commit -m "Record intraday completion backtest results [skip ci]"
+            git push
+          fi
+
+      - name: Fail if the backtest failed
+        if: always()
+        run: |
+          test -f validation-output-intraday/exit_code.txt
+          test "$(cat validation-output-intraday/exit_code.txt)" = "0"
