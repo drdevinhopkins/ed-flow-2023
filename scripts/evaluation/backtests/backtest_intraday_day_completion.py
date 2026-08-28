@@ -341,6 +341,11 @@ def attach_weather(snapshots: pd.DataFrame, weather: pd.DataFrame) -> pd.DataFra
 
     left = snapshots.sort_values("ds").copy()
     right = weather.sort_values("ds").copy()
+    # Pandas 3 may preserve microsecond resolution for one input and nanosecond
+    # resolution for the other. merge_asof requires exact dtype equality even though
+    # both are ordinary datetimes, so normalize the unit explicitly.
+    left["ds"] = pd.to_datetime(left["ds"], errors="coerce").astype("datetime64[ns]")
+    right["ds"] = pd.to_datetime(right["ds"], errors="coerce").astype("datetime64[ns]")
     return pd.merge_asof(left, right, on="ds", direction="backward", tolerance=pd.Timedelta(hours=2))
 
 
