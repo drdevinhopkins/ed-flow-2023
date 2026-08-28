@@ -1,0 +1,43 @@
+name: Candidate collection health CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_collection_health.py'
+      - '.github/workflows/candidate-collection-health-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-collection-health:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install pandas
+      - name: Verify structural and gap diagnostics
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          rows=[]
+          for i,ts in enumerate(['2026-08-27T16:00:00Z','2026-08-27T17:00:00Z','2026-08-27T20:30:00Z']):
+              for target in ['Inflow_Total','INFLOW_STRETCHER','INFLOW_AMBULANCES','AdmissionRequests_New','Workup_Delay_Burden']:
+                  for h in range(1,25):
+                      rows.append({'forecast_run_id':f'run{i}','issued_at':ts,'target_name':target,'horizon_hour':h})
+          pd.DataFrame(rows).to_csv('/tmp/archive.csv',index=False)
+          PY
+          python scripts/evaluation/prospective/summarize_shadow_candidate_collection_health.py /tmp/archive.csv --output /tmp/health.csv
+          python - <<'PY'
+          import pandas as pd
+          row=pd.read_csv('/tmp/health.csv').iloc[0]
+          assert row.n_runs == 3
+          assert row.structurally_complete_runs == 3
+          assert row.incomplete_runs == 0
+          assert row.gaps_over_2h == 1
+          assert abs(row.max_gap_hours - 3.5) < 1e-9
+          print(row.to_dict())
+          PY
