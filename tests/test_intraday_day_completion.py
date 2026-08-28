@@ -19,6 +19,7 @@ from backtest_intraday_day_completion import (
     expected_local_hours,
     fit_completion_curve,
     fit_quantile_corrections,
+    order_interval_around_point,
     load_hourly_flow,
     predict_completion_curve,
     run_backtest,
@@ -185,6 +186,42 @@ class IntradayDayCompletionTests(unittest.TestCase):
             shrinkage_days=0.0,
         )
         self.assertEqual(mean_bias_correction.loc[11, "q50_correction"], 2.0)
+
+    def test_point_forecast_is_not_replaced_by_interval_ordering(self):
+        unordered = np.array(
+            [
+                [5.0, 10.0, 8.0],
+                [12.0, 10.0, 15.0],
+            ]
+        )
+
+        ordered = order_interval_around_point(unordered)
+
+        np.testing.assert_allclose(ordered[:, 1], [10.0, 10.0])
+        self.assertTrue((ordered[:, 0] <= ordered[:, 1]).all())
+        self.assertTrue((ordered[:, 1] <= ordered[:, 2]).all())
+
+    def test_point_calibration_uses_pooled_forward_bias(self):
+        actual = np.array([10.0, 10.0, 20.0, 20.0])
+        predicted = np.array(
+            [
+                [8.0, 9.0, 12.0],
+                [8.0, 9.0, 12.0],
+                [12.0, 15.0, 22.0],
+                [12.0, 15.0, 22.0],
+            ]
+        )
+        hours = np.array([11, 11, 12, 12])
+
+        corrections = fit_quantile_corrections(
+            actual,
+            predicted,
+            hours,
+            shrinkage_days=0.0,
+        )
+
+        self.assertEqual(corrections.loc[11, "q50_correction"], 3.0)
+        self.assertEqual(corrections.loc[12, "q50_correction"], 3.0)
 
 
 if __name__ == "__main__":

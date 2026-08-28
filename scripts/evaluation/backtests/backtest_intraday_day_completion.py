@@ -665,6 +665,10 @@ def fit_quantile_corrections(
             ]
         )
         correction = weight * local + (1.0 - weight) * pooled
+        # Keep the expected-value point forecast stable: a pooled forward mean
+        # residual corrects systematic bias without adding noisy hour-specific
+        # offsets. The interval tails retain hour-specific calibration.
+        correction[1] = pooled[1]
         rows.append(
             {
                 "cutoff_hour": int(hour),
@@ -691,7 +695,21 @@ def apply_quantile_corrections(
             for quantile in QUANTILES
         ]
     )
-    return np.sort(np.maximum(0.0, predicted + adjustment), axis=1)
+    corrected = np.maximum(0.0, predicted + adjustment)
+    point = corrected[:, 1]
+    lower = np.minimum(corrected[:, 0], point)
+    upper = np.maximum(corrected[:, 2], point)
+    return np.column_stack([lower, point, upper])
+
+
+def order_interval_around_point(predicted_remaining: np.ndarray) -> np.ndarray:
+    """Preserve the expected-value point while enforcing non-crossing bounds."""
+
+    predicted = np.maximum(0.0, np.asarray(predicted_remaining, dtype=float))
+    point = predicted[:, 1]
+    lower = np.minimum(predicted[:, 0], point)
+    upper = np.maximum(predicted[:, 2], point)
+    return np.column_stack([lower, point, upper])
 
 
 def predict_boosted(
@@ -747,7 +765,7 @@ def predict_boosted(
         random_state=random_state,
     )
     raw_unordered = _predict_remaining_quantiles(models, test, features=features)
-    raw_remaining = np.sort(raw_unordered, axis=1)
+    raw_remaining = order_interval_around_point(raw_unordered)
     calibrated_remaining = apply_quantile_corrections(
         raw_unordered,
         test["cutoff_hour"].to_numpy(dtype=int),

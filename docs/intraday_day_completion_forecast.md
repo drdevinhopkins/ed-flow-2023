@@ -50,9 +50,12 @@ remaining-arrival point forecast. The point model uses squared-error loss to tar
 expected final count and mean-bias gate; the bounds use quantile loss. Each outer backtest
 fold also reserves the most recent 56 training days as an inner calibration window.
 Models fit on the earlier inner block generate genuine forward residuals for that
-window. Hour-specific tail residual quantiles and the mean point residual are then
-shrunk toward their pooled corrections. The mean point correction directly targets the
-release bias gate; the tail corrections target interval coverage.
+window. Hour-specific tail residual quantiles are shrunk toward their pooled corrections,
+while one pooled forward mean residual corrects the expected-value point forecast. This
+separation targets systematic bias without adding noisy hour-specific movement to the
+point estimate; the tail corrections target interval coverage. Bounds are expanded
+around the point when necessary, so interval ordering never substitutes a tail estimate
+for the expected-value forecast.
 The corrected variants have a `_calibrated` suffix. The outer test block remains unseen
 by model fitting, feature-curve fitting, and calibration.
 
