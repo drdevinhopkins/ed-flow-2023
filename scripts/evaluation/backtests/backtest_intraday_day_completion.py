@@ -472,8 +472,10 @@ def _prediction_rows(
     upper_total: np.ndarray,
 ) -> pd.DataFrame:
     observed = frame["cumulative_arrivals"].to_numpy(dtype=float)
-    ordered = np.sort(np.column_stack([lower_total, predicted_total, upper_total]), axis=1)
-    ordered = np.maximum(ordered, observed[:, None])
+    point = np.maximum(np.asarray(predicted_total, dtype=float), observed)
+    lower = np.maximum(observed, np.minimum(np.asarray(lower_total, dtype=float), point))
+    upper = np.maximum(point, np.asarray(upper_total, dtype=float))
+    ordered = np.column_stack([lower, point, upper])
     return pd.DataFrame(
         {
             "fold": fold_id,
@@ -816,10 +818,48 @@ def summarize_predictions(predictions: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([overall, by_hour], ignore_index=True)
 
 
+def build_fixed_ensemble(
+    predictions: pd.DataFrame,
+    *,
+    point_model: str = "boosted_calendar_weather",
+    interval_model: str = "boosted_state_calibrated",
+    output_model: str = "ensemble_calendar_weather_state",
+) -> pd.DataFrame:
+    """Blend two prespecified point forecasts and retain calibrated state bounds."""
+
+    keys = ["fold", "day", "ds", "cutoff_hour"]
+    point_source = predictions.loc[
+        predictions["model"].eq(point_model), [*keys, "predicted_total"]
+    ].rename(columns={"predicted_total": "point_source_total"})
+    interval_source = predictions.loc[predictions["model"].eq(interval_model)].copy()
+    if point_source.empty or interval_source.empty:
+        return pd.DataFrame(columns=predictions.columns)
+    ensemble = interval_source.merge(point_source, on=keys, how="inner", validate="one_to_one")
+    if len(ensemble) != len(interval_source):
+        raise ValueError("Fixed ensemble sources are not aligned")
+
+    point = 0.5 * (
+        ensemble["predicted_total"].to_numpy(dtype=float)
+        + ensemble["point_source_total"].to_numpy(dtype=float)
+    )
+    observed = ensemble["observed_so_far"].to_numpy(dtype=float)
+    point = np.maximum(point, observed)
+    ensemble["model"] = output_model
+    ensemble["predicted_total"] = point
+    ensemble["p10_total"] = np.maximum(
+        observed, np.minimum(ensemble["p10_total"].to_numpy(dtype=float), point)
+    )
+    ensemble["p90_total"] = np.maximum(
+        point, ensemble["p90_total"].to_numpy(dtype=float)
+    )
+    ensemble["predicted_remaining"] = np.maximum(0.0, point - observed)
+    return ensemble.loc[:, predictions.columns]
+
+
 def evaluate_readiness(
     predictions: pd.DataFrame,
     *,
-    candidate_model: str = "boosted_progress_calibrated",
+    candidate_model: str | None = None,
     baseline_model: str = "prior_update",
     operational_hours: tuple[int, int] = (11, 18),
 ) -> dict[str, object]:
@@ -836,6 +876,12 @@ def evaluate_readiness(
             ),
         }
 
+    if candidate_model is None:
+        candidate_model = (
+            "ensemble_calendar_weather_state"
+            if predictions["model"].eq("ensemble_calendar_weather_state").any()
+            else "boosted_progress_calibrated"
+        )
     candidate = predictions.loc[predictions["model"].eq(candidate_model)].copy()
     baseline = predictions.loc[predictions["model"].eq(baseline_model)].copy()
     if candidate.empty or baseline.empty:
@@ -957,6 +1003,9 @@ def run_backtest(
             )
 
     predictions = pd.concat(outputs, ignore_index=True)
+    ensemble = build_fixed_ensemble(predictions)
+    if not ensemble.empty:
+        predictions = pd.concat([predictions, ensemble], ignore_index=True)
     summary = summarize_predictions(predictions)
     features = pd.DataFrame(feature_records).drop_duplicates().sort_values(["model", "feature", "fold"])
     return predictions, summary, features

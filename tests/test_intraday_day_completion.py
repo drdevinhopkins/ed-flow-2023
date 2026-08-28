@@ -13,6 +13,7 @@ from backtest_intraday_day_completion import (
     apply_quantile_corrections,
     attach_weather,
     build_expanding_folds,
+    build_fixed_ensemble,
     build_snapshots,
     build_weather_features,
     evaluate_readiness,
@@ -23,6 +24,7 @@ from backtest_intraday_day_completion import (
     load_hourly_flow,
     predict_completion_curve,
     run_backtest,
+    _prediction_rows,
 )
 
 
@@ -200,6 +202,53 @@ class IntradayDayCompletionTests(unittest.TestCase):
         np.testing.assert_allclose(ordered[:, 1], [10.0, 10.0])
         self.assertTrue((ordered[:, 0] <= ordered[:, 1]).all())
         self.assertTrue((ordered[:, 1] <= ordered[:, 2]).all())
+
+        frame = pd.DataFrame(
+            {
+                "day": [pd.Timestamp("2026-01-01")],
+                "ds": [pd.Timestamp("2026-01-01 11:00")],
+                "cutoff_hour": [11],
+                "cumulative_arrivals": [5.0],
+                "final_total": [20.0],
+                "remaining_arrivals": [15.0],
+            }
+        )
+        rows = _prediction_rows(
+            frame,
+            fold_id=0,
+            model="test",
+            predicted_total=np.array([10.0]),
+            lower_total=np.array([12.0]),
+            upper_total=np.array([8.0]),
+        )
+        self.assertEqual(rows.loc[0, "predicted_total"], 10.0)
+        self.assertEqual(rows.loc[0, "p10_total"], 10.0)
+        self.assertEqual(rows.loc[0, "p90_total"], 10.0)
+
+    def test_fixed_ensemble_uses_equal_point_blend_and_calibrated_bounds(self):
+        common = {
+            "fold": [0],
+            "day": [pd.Timestamp("2026-01-01")],
+            "ds": [pd.Timestamp("2026-01-01 11:00")],
+            "cutoff_hour": [11],
+            "observed_so_far": [8.0],
+            "actual_total": [20.0],
+            "actual_remaining": [12.0],
+        }
+        weather = pd.DataFrame(
+            {**common, "model": ["boosted_calendar_weather"], "predicted_total": [14.0],
+             "p10_total": [10.0], "p90_total": [18.0], "predicted_remaining": [6.0]}
+        )
+        state = pd.DataFrame(
+            {**common, "model": ["boosted_state_calibrated"], "predicted_total": [16.0],
+             "p10_total": [11.0], "p90_total": [19.0], "predicted_remaining": [8.0]}
+        )
+
+        ensemble = build_fixed_ensemble(pd.concat([weather, state], ignore_index=True))
+
+        self.assertEqual(ensemble.loc[0, "predicted_total"], 15.0)
+        self.assertEqual(ensemble.loc[0, "p10_total"], 11.0)
+        self.assertEqual(ensemble.loc[0, "p90_total"], 19.0)
 
     def test_point_calibration_uses_pooled_forward_bias(self):
         actual = np.array([10.0, 10.0, 20.0, 20.0])

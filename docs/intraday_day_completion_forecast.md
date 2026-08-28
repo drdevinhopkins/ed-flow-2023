@@ -44,6 +44,9 @@ forecast weather. Realized future weather must not be substituted in retrospecti
 4. Progress plus calendar.
 5. Progress plus ED state.
 6. Full available feature set, with a calendar-plus-weather ablation when weather exists.
+7. One fixed 50/50 point ensemble: the raw calendar/weather expected-value forecast and
+   the calibrated ED-state expected-value forecast, using the calibrated ED-state P80
+   bounds expanded around the blended point when necessary.
 
 The boosted models predict P10 and P90 remaining-arrival bounds plus an expected
 remaining-arrival point forecast. The point model uses squared-error loss to target the
@@ -56,7 +59,9 @@ separation targets systematic bias without adding noisy hour-specific movement t
 point estimate; the tail corrections target interval coverage. Bounds are expanded
 around the point when necessary, so interval ordering never substitutes a tail estimate
 for the expected-value forecast.
-The corrected variants have a `_calibrated` suffix. The outer test block remains unseen
+The corrected variants have a `_calibrated` suffix. The fixed ensemble is named
+`ensemble_calendar_weather_state`. Its 50/50 weight is not tuned across the outer test
+folds. The outer test block remains unseen
 by model fitting, feature-curve fitting, and calibration.
 
 All predictions are clipped at zero remaining before being added to the observed count.
@@ -73,8 +78,9 @@ Validation uses expanding, time-ordered folds. Outputs include:
 - `best_by_hour.csv`: lowest-MAE candidate at each cutoff hour;
 - `feature_sets.csv`: exact feature membership for each boosted scenario; and
 - `run_config.json`: input and backtest configuration; and
-- `readiness.json`: deterministic gate results for the fixed
-  `boosted_progress_calibrated` candidate versus `prior_update`.
+- `readiness.json`: deterministic gate results for the fixed ensemble candidate versus
+  `prior_update` (falling back to `boosted_progress_calibrated` only in weather-free test
+  fixtures where the ensemble cannot be constructed).
 
 Model selection should be made by cutoff hour. A simple completion curve may remain best
 very late in the day even if the pooled boosted model is superior earlier.
