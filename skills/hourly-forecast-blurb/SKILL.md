@@ -14,7 +14,7 @@ Use this skill when the user asks for a short operational interpretation of the 
 
 The goal is a concise, clinically useful situational-awareness summary, not a technical model report.
 
-## Repository and input
+## Repository and inputs
 
 Work from the repository root, normally:
 
@@ -22,25 +22,37 @@ Work from the repository root, normally:
 /home/dhopkins/apps/ed-flow-2023
 ```
 
-Preferred forecast input:
+Inspect the newest operational inputs, especially:
 
 ```text
+current.csv
 forecast-v2.1.csv
+oncall_need_probability.csv
+oncall_impact_summary.csv
+forecast_variable_effects_hourly.csv
+blurb_reference_stats.json
+hourly_forecast_blurbs.csv
 ```
 
-The current generator is:
+The current forecast generator is `scripts/hourly_forecast_v2_1.py`.
 
-```text
-scripts/hourly_forecast_v2_1.py
-```
+## Readiness gate
 
-If multiple forecast files exist, use the newest successfully generated valid `forecast-v2.1.csv` and report/retain its `forecast_origin` and `generated_at_utc` internally.
+Determine the expected data hour from the current `America/Montreal` clock hour. Before composing anything, require all inputs needed for the blurb to be consistently refreshed for that hour.
 
-Do not silently use an older forecast if the latest one is missing, stale, or incomplete.
+At minimum:
 
-## Targets
+- `current.csv` contains the expected hour;
+- `forecast-v2.1.csv` has `forecast_origin` equal to that hour;
+- on-call need and impact files are refreshed for that same hour when expected;
+- explainability/staffing inputs used in prose are not stale relative to that hour;
+- the hour's `blurb_id` is not already present in `hourly_forecast_blurbs.csv`.
 
-Interpret the following targets:
+Do not mix hours. Do not fall back to the previous hour merely to produce a message. If readiness fails, do not generate/publish a blurb.
+
+## Canonical targets — critical
+
+For metrics already represented as targets in `forecast-v2.1.csv`, the target rows are the source of truth for both observed/current values and forecasts:
 
 | Target | Operational meaning |
 |---|---|
@@ -53,351 +65,138 @@ Interpret the following targets:
 | `TRG_HALLWAY1` | Triage hallway occupancy |
 | `TRG_HALLWAY_TBS` | Patients to be seen in the triage hallway |
 
-Use human-readable names in the final prose.
+**Never manually reconstruct `Total_TBS`, `POD_TBS`, `Vertical_TBS`, or `Overflow` from the wide `current.csv` row.** Do not sum raw zone columns to reproduce a metric that the pipeline already supplies. Do not add occupancy fields such as `QTRACK1`, `RESUS`, `POD_T`, `VERTSTRET`, `AMBVERT1`, or similarly named fields into TBS totals.
+
+This rule exists because the raw report contains many adjacent, similarly named columns and manual parsing can silently shift columns or mix occupancy with TBS. If a canonical target looks surprising, verify the target row; do not replace it with an ad-hoc calculation.
+
+Use `current.csv` for the readiness gate and for operational facts that are not already canonical forecast targets.
 
 ## Validate before interpreting
 
-The selected file should include at least:
+Before writing a blurb, confirm future forecast rows exist, expected targets are represented, required values are present, timestamps are current, and there are no duplicate future `ds + target_name` rows. Present all times in `America/Montreal`.
 
-```text
-ds
-target_name
-actual
-forecast
-forecast_lower
-forecast_upper
-row_type
-horizon_hour
-forecast_origin
-generated_at_utc
-forecast_anomaly
-scenario
-baseline_forecast
-feature_effect
-explanation_family
-explanation_direction
-explanation_text
-weather_routing_enabled
-```
-
-Before writing a blurb, confirm:
-
-- future `row_type == "forecast"` rows exist;
-- all expected targets are represented;
-- the 24-hour horizon is sufficiently complete for the requested interpretation;
-- there are no duplicate future `ds` + `target_name` rows;
-- required forecast values are present;
-- timestamps are plausibly current.
-
-Present times in `America/Montreal` local time.
-
-If validation fails, do not fabricate a summary. State clearly why a current blurb cannot be produced.
+If validation fails, do not fabricate a summary.
 
 ## Compute first
 
-Do not give the raw CSV directly to the prose LLM and ask it to discover trends.
+Do not give the raw CSV directly to a prose LLM and ask it to discover trends. Calculate the facts deterministically first.
 
-Use Python/pandas or equivalent deterministic code to calculate the facts first.
+For each canonical target, use the observed row at `forecast_origin` as the current value. Calculate the relevant near-term direction, maxima/minima, peak time, and change from current over useful windows (normally 1–4, 5–8, 9–12, and 13–24 hours).
 
-### Current state
+Do not turn tiny movements into meaningful trends. Changes under about one patient are usually operationally stable unless context makes them important.
 
-For each target, use the latest observed value at or before `forecast_origin`.
+## Current crowding
 
-Record:
-
-- latest observed value;
-- timestamp;
-- approximate change over the previous 2–4 hours when enough history exists.
-
-### Forecast windows
-
-Calculate these windows:
+Express `TTStr` as stretcher occupancy percentage using nominal capacity 53:
 
 ```text
-1–4 hours
-5–8 hours
-9–12 hours
-13–24 hours
+stretcher occupancy % = TTStr / 53 * 100
 ```
 
-For each target/window calculate:
+Round sensibly for prose.
 
-- first forecast;
-- final forecast;
-- minimum;
-- maximum;
-- time of maximum;
-- change from the latest observed value;
-- broad direction: rising, falling, or stable.
+Interpret `Overflow` operationally rather than as an abstract count:
 
-Do not turn tiny numerical movements into meaningful trends. As a practical default, changes under about one patient are usually operationally stable unless context makes them important.
+- about 0–16: generally within the comfortably usable first two overflow rooms;
+- around the mid-teens: roughly two overflow rooms in use;
+- just above 16: roughly the first two overflow rooms plus minor spillover into prepod/additional overflow space;
+- above ~16: increasingly dependent on staffing/opening rooms 3–5, with greater risk of prepod accumulation;
+- ~30–40: most/all nominal overflow-room capacity is being used;
+- >40: beyond practical overflow capacity.
 
-For high-valued metrics such as stretcher burden, consider relative as well as absolute change before using strong wording.
+When useful, translate the forecast into that physical meaning. For example, prefer:
 
-### Important peaks
+> Overflow in the mid-teens would mean roughly two overflow rooms in use, with possibly a small spillover into prepod.
 
-Prioritize narrative attention approximately in this order:
+rather than simply:
 
-1. `Total_TBS`
-2. `TTStr`
-3. `WAITINGADM`
-4. `POD_TBS`
-5. `Vertical_TBS`
-6. `TRG_HALLWAY_TBS`
-7. `TRG_HALLWAY1`
-8. `Overflow`
+> Overflow stays in the mid-teens.
 
-This is not a rigid ranking. A large or anomalous movement in a lower-ranked metric may be more important.
+Avoid the phrase `overcapacity rooms`; call them `overflow rooms`.
 
-Identify the most relevant peaks over the next 12 and 24 hours, including local clock time.
+## Boarders / WAITINGADM
 
-### Forecast anomalies
+Boarders contribute to stretcher occupancy and overflow but are primarily the responsibility of admitting services rather than the ED flow team. Do not make boarder count a routine focus or ED action item. Mention it mainly when needed to explain persistent occupancy/overflow despite improving ED workload, or when exceptionally important.
 
-Inspect `forecast_anomaly`.
+## Midnight handoff
 
-When future rows are flagged, identify:
+When midnight is within the forecast horizon, especially in afternoon/evening blurbs, include forecast `Total_TBS` at midnight when it helps the two night physicians anticipate workload.
 
-- target;
-- time/window;
-- approximate magnitude and direction when determinable.
+Use `blurb_reference_stats.json` to classify midnight Total TBS against the rolling two-year actual midnight distribution. Prefer `by_prior_evening_day` matching the current evening's weekday; fall back to weekday/weekend, then overall. Translate this to `light`, `typical`, `heavier-than-usual`, or `very heavy`. Never expose percentile jargon in the routine blurb.
 
-Describe these carefully, for example:
+## Vertical versus POD
 
-> unusually high for the model's historical expectation
+During afternoon/evening, compare canonical `Vertical_TBS` and `POD_TBS` current and near-term forecasts. Vertical is normally substantially busier than POD, so do not recommend redeployment merely because Vertical > POD.
 
-Do not equate a model anomaly with a guaranteed crisis.
+Use `blurb_reference_stats.json` `evening_vertical_vs_pod` to decide whether the imbalance is unusually severe and persistent. If POD itself is under unusual pressure or forecast to worsen substantially, do not strip POD coverage unless another suitable overlap physician is available. When clearly actionable and staffing permits, use A2 on weekdays and Y5 on weekends when naming the orange evening POD shift; L1 overlap can also be suggested when appropriate.
 
-### Uncertainty
+## On-call
 
-`forecast_lower` and `forecast_upper` are the model's 0.2 and 0.8 quantiles.
+Assess on-call internally using both calibrated need probability and modeled impact. The outward conclusion should remain simple: `USE`, `CONSIDER`, `NOT INDICATED`, or `NO CLEAR RECOMMENDATION`.
 
-Do not call them a 95% confidence interval.
+Do not recommend on-call simply because the ED is crowded.
 
-Normally omit uncertainty from the routine blurb unless it changes the operational interpretation. When useful, phrase it as a model percentile range, e.g.:
+When on-call is not indicated now **and** the available 4/6/8-hour calibrated need remains low with no meaningful modeled benefit from activation, explicitly give the useful forward-looking reassurance:
 
-> The central forecast is about 18, with a model 20th–80th percentile range of roughly 14–22.
+> On-call is not currently needed and, based on how the day is shaping up, is unlikely to be required this evening.
 
-## Explainability
+Use `tonight`/`later today` instead when that better matches the clock. Do not make this forward-looking claim if longer-horizon need is meaningfully elevated, mixed, stale, unavailable, or the impact model suggests possible benefit. In those cases, stop at `On-call is not currently needed` or use the appropriate stronger recommendation.
 
-For future rows:
+## Explainability and physician team strength
+
+For future rows, `feature_effect = forecast - baseline_forecast` is an associational routed-scenario contrast, not a causal effect. Only surface effects that are operationally meaningful and directionally consistent.
+
+If physician/staffing effects are meaningfully large and consistent, the blurb may say the team looks a bit stronger than usual, roughly neutral, or a bit weaker than usual for flow. Do not name or rank individual physicians and do not imply causality. Omit this if small, inconsistent, stale, or uncertain.
+
+If weather routing is disabled, do not describe weather as a model driver.
+
+## Core narrative
+
+Prefer a quick handoff between ED flow physicians. Use:
 
 ```text
-feature_effect = forecast - baseline_forecast
+NOW → WHERE WE ARE HEADING / PEAK → MIDNIGHT HANDOFF WHEN RELEVANT → ACTION
 ```
 
-This is an **associational routed-scenario contrast versus the history-only baseline, not a causal effect**.
+Lead with direction: worsening, stable, improving, or likely past the peak. Use only the few numbers that tell the operational story. Usually write 2–4 sentences and stay under roughly 90 words.
 
-Inspect:
+Prefer familiar terms: TBS, POD, vertical, prepod, overflow, stretcher occupancy, night docs, on-call. Avoid forecasting/data-science jargon.
 
-```text
-scenario
-explanation_family
-feature_effect
-feature_effect_pct
-explanation_direction
-explanation_text
-```
+Do not dump metrics. If multiple metrics tell the same story, choose the most operationally useful ones.
 
-Only surface feature effects that are large enough to matter operationally.
+## Teams delivery metadata
 
-Prefer absolute patient differences to percentages when the baseline is small.
+Every successful hourly blurb is retained, but only selected rows should be sent to Teams.
 
-Good examples:
+Routine data hours are 07:00, 11:00, 15:00, and 19:00 America/Montreal. These always get `send_recommended=true` and `send_reason=ROUTINE`, unless they also contain a newly active/escalated on-call recommendation, in which case use `ROUTINE_ONCALL`.
 
-> Staffing context is pulling the 9–12 hour POD forecast about 2 patients lower than the history-only baseline.
+Outside routine hours, recommend sending only when on-call newly becomes `CONSIDER` or `USE`, or escalates from `CONSIDER` to `USE`. Do not repeat an unchanged active recommendation every hour. Such event-driven sends use `ONCALL_ALERT`; otherwise use `NONE` and `send_recommended=false`.
 
-> Calendar context adds roughly 3 patients to Total TBS over the next few hours versus the history-only baseline.
+`blurb_id` identifies the data hour as `YYYYMMDD-HH00` in America/Montreal.
 
-Bad examples:
+## Publication
 
-> Staffing causes two fewer POD patients.
+Do not write `hourly_forecast_blurbs.csv` directly. Publication should go through the repository append worker/request mechanism. The request payload must preserve the verified data hour, exact blurb, on-call recommendation/rationale, send metadata, and source/readiness status. If the append workflow fails, report the failure rather than claiming the row was appended.
 
-> Dr. X is making the department faster.
+## Verify the prose
 
-Do not name individual physicians in the routine blurb even if physician-specific engineered features contribute to `staffing_structure_effects`. Use `staffing context` or `staffing-structure context` unless the user explicitly requests physician-level analysis.
+Before publishing, verify every patient count, percentage, local time, direction, peak, operational translation, on-call statement, and staffing/explainability claim against the deterministic inputs.
 
-If `weather_routing_enabled` is false, do not describe weather as a model driver.
+Reject or correct prose that:
 
-Aggregate repeated adjacent feature effects into one statement instead of listing each hour.
-
-## Cross-metric interpretation
-
-Prefer coherent operational interpretation over a metric dump.
-
-Useful patterns:
-
-- Total TBS falling + `WAITINGADM` rising → front-end pressure is easing but boarding pressure is building.
-- Stable Total TBS + rising `TTStr` → overall demand is stable but the ED is becoming more stretcher-heavy.
-- Falling POD + rising Vertical → burden is shifting from POD toward Vertical.
-- Rising triage hallway metrics + stable overall TBS → front-end congestion is worsening despite stable overall demand.
-- Falling Total TBS + persistently high `WAITINGADM` → demand is easing but downstream congestion remains.
-
-If signals disagree, preserve the nuance rather than forcing one overall direction.
-
-## Create a compact payload
-
-After deterministic calculation, create a compact structured object for the prose model rather than sending the full CSV.
-
-Example shape only:
-
-```json
-{
-  "forecast_origin_local": "2026-08-26 19:00",
-  "current": {
-    "Total TBS": 18,
-    "POD TBS": 5,
-    "Vertical TBS": 4,
-    "stretcher burden": 41,
-    "waiting admission": 12,
-    "triage hallway TBS": 2
-  },
-  "next_4h": {
-    "Total TBS": {
-      "start": 18,
-      "end": 23,
-      "peak": 25,
-      "peak_time": "22:00",
-      "trend": "rising"
-    }
-  },
-  "next_8h": {},
-  "next_12h": {},
-  "next_24h": {},
-  "anomalies": [],
-  "important_feature_effects": []
-}
-```
-
-All numbers above are illustrative only. Never reuse example values in a real blurb.
-
-## Local LLM
-
-Use the locally hosted OpenAI-compatible LLM for prose when available.
-
-Prefer an explicitly configured endpoint:
-
-```bash
-ED_FLOW_LLM_BASE_URL
-```
-
-If unset, a common local endpoint on `jgh000533svaps` is:
-
-```text
-http://127.0.0.1:8082/v1
-```
-
-Discover the served model instead of hard-coding the model name:
-
-```bash
-curl -s "${ED_FLOW_LLM_BASE_URL:-http://127.0.0.1:8082/v1}/models"
-```
-
-Use a low temperature, approximately `0.2`, for reproducible operational prose.
-
-Do not send patient-identifiable information. This workflow should contain aggregate operational data only.
-
-If the local LLM is unavailable but deterministic analysis succeeded, write the blurb directly from the structured summary.
-
-## Prose-model system prompt
-
-Use the following or an equivalent system prompt:
-
-```text
-You are writing a concise hourly operational forecast for the Jewish General Hospital Emergency Department.
-
-You will receive a structured summary generated deterministically from an hourly forecasting model. Do not recalculate or invent numbers. Use only the supplied facts.
-
-Explain:
-- the current ED flow state;
-- whether pressure is likely to rise, fall, or remain stable over the next 4–12 hours;
-- the timing and magnitude of the most important expected peaks;
-- which operational areas are driving the pattern;
-- any genuinely important forecast anomalies;
-- one or two meaningful model-context effects, if supplied.
-
-Prioritize Total TBS, stretcher burden, waiting-for-admission burden, POD/Vertical distribution, and triage hallway pressure.
-
-Write for an emergency physician or ED command-centre reader, not a data scientist.
-
-Style:
-- 2 short paragraphs maximum;
-- usually 70–130 words;
-- lead with the operational takeaway;
-- use Montreal local clock times;
-- round patient counts sensibly, usually to whole patients;
-- use about, roughly, or around when appropriate;
-- avoid alarmist language;
-- avoid generic filler;
-- do not list every metric;
-- do not make staffing recommendations unless explicitly requested;
-- do not make causal claims from feature effects;
-- never invent thresholds;
-- never say confidence interval for the supplied 20th–80th percentile bounds;
-- do not mention Chronos, CSV columns, routing versions, Python, or implementation details unless asked.
-
-Feature effects compare a routed contextual forecast with a history-only model baseline. They are associational scenario contrasts, not causal effects.
-
-Return only the final blurb. No heading, bullets, preamble, or explanation.
-```
-
-Send the compact deterministic JSON summary as the user message.
-
-## Verify the generated prose
-
-The deterministic summary is the source of truth.
-
-Before returning or publishing the blurb, verify every:
-
-- patient count;
-- local clock time;
-- direction of change;
-- peak;
-- anomaly claim;
-- baseline comparison.
-
-Correct or regenerate the prose if it:
-
-- invents a number;
+- reconstructs a canonical metric from raw columns;
+- invents or misreads a number;
 - swaps POD and Vertical;
-- makes a causal claim from a feature effect;
-- attributes effects to weather when weather routing is disabled;
-- names an individual physician without being asked;
-- calls the 20th–80th percentile bounds a 95% confidence interval;
-- recommends calling in staff or changing assignments without being asked;
-- exaggerates a small movement into a surge or crisis.
-
-## Preferred output structure
-
-A routine blurb should usually follow:
-
-```text
-[Overall direction + key near-term pressure.] [Most important peak and timing.] [Where the burden is concentrated.]
-
-[What happens later / whether pressure eases or persists.] [Optional important anomaly or model-context effect.]
-```
-
-If the forecast is stable, say so plainly. Do not manufacture drama.
-
-Example style only:
-
-```text
-ED pressure is forecast to build through the evening, with Total TBS rising from the high teens to the mid-20s and peaking around 22:00. The increase is expected to be concentrated mainly in POD and Vertical, while stretcher burden remains elevated and the number waiting for admission changes relatively little.
-
-Pressure should begin easing overnight, although the triage hallway remains busier than its current level for several hours. Staffing context is modestly lowering the POD forecast versus the history-only baseline; this is a model association rather than a causal staffing effect.
-```
-
-Never reuse these example values in a real forecast.
-
-## Output
-
-Unless the user asks for technical detail, return only the final blurb.
-
-Do not include raw CSV, JSON, code, or a 24-hour table in the routine response.
-
-If the user asks why the forecast looks this way, then provide the supporting feature effects, uncertainty, routing, and relevant numeric comparisons separately.
+- mixes occupancy fields with TBS fields;
+- makes a causal claim from feature effects;
+- attributes effects to disabled/stale inputs;
+- names an individual physician;
+- recommends staffing changes without adequate operational evidence;
+- exaggerates a small movement;
+- makes an evening on-call reassurance without supporting longer-horizon data.
 
 ## Core rule
 
-**Compute first, narrate second.**
+**Compute first, narrate second. Canonical metrics stay canonical.**
 
-LLM prose is only a presentation layer. Every factual statement must be grounded in deterministic analysis of the current forecast output.
+LLM prose is only a presentation layer. Every factual statement must be grounded in deterministic analysis of the verified current-hour inputs.
