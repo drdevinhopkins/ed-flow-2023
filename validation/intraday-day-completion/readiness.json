@@ -1,5 +1,5 @@
 {
-  "candidate_model": "boosted_progress_calibrated",
+  "candidate_model": "ensemble_calendar_weather_state",
   "baseline_model": "prior_update",
   "operational_hours": [
     11,
@@ -7,9 +7,9 @@
   ],
   "candidate_overall": {
     "n": 2856,
-    "mae": 10.041980113657054,
-    "bias": -2.1827358336169156,
-    "p80_coverage": 0.77906162464986
+    "mae": 9.868899005894002,
+    "bias": -1.8691632542613228,
+    "p80_coverage": 0.7734593837535014
   },
   "baseline_overall": {
     "n": 2856,
@@ -19,9 +19,9 @@
   },
   "candidate_operational": {
     "n": 1344,
-    "mae": 9.782993679552238,
-    "bias": -1.980102843808097,
-    "p80_coverage": 0.7745535714285714
+    "mae": 9.654849135229934,
+    "bias": -1.7720191820734932,
+    "p80_coverage": 0.7715773809523809
   },
   "baseline_operational": {
     "n": 1344,
@@ -29,19 +29,19 @@
     "bias": -0.9461003974270474,
     "p80_coverage": 0.7686011904761905
   },
-  "overall_mae_improvement_fraction": 0.06539672435866095,
-  "operational_mae_improvement_fraction": 0.047867706288139855,
-  "max_absolute_operational_hour_bias": 3.4273184577976625,
+  "overall_mae_improvement_fraction": 0.08150531732898403,
+  "operational_mae_improvement_fraction": 0.06033940594458287,
+  "max_absolute_operational_hour_bias": 2.978528401857397,
   "retrospective_gates": {
     "overall_mae_improvement_at_least_5pct": true,
-    "operational_mae_improvement_at_least_5pct": false,
-    "absolute_overall_bias_at_most_2": false,
-    "max_operational_hour_bias_at_most_3": false,
+    "operational_mae_improvement_at_least_5pct": true,
+    "absolute_overall_bias_at_most_2": true,
+    "max_operational_hour_bias_at_most_3": true,
     "overall_p80_coverage_between_75_and_85pct": true,
     "operational_p80_coverage_between_75_and_85pct": true,
     "forecast_and_interval_invariants": true
   },
-  "retrospective_ready": false,
+  "retrospective_ready": true,
   "production_ready": false,
   "production_blockers": [
     "At least 28 complete prospective shadow days are required (56 preferred).",

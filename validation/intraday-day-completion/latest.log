@@ -1,4 +1,4 @@
-Loaded 2066 source days (2021-01-01 01:00:00 to 2026-08-28 13:00:00); 1985 complete Montreal days are eligible
+Loaded 2066 source days (2021-01-01 01:00:00 to 2026-08-28 14:00:00); 1985 complete Montreal days are eligible
 
 Overall results across selected cutoff hours:
                               model   scope  cutoff_hour      n       mae      rmse      bias  p80_coverage  mean_interval_width
@@ -7,6 +7,7 @@ Overall results across selected cutoff hours:
            boosted_calendar_weather overall           -1 2856.0  9.762293 13.166025 -1.977299      0.721289            27.568395
                        boosted_full overall           -1 2856.0  9.781094 13.191290 -2.199820      0.717087            27.645338
                       boosted_state overall           -1 2856.0  9.806166 13.497028 -2.436703      0.731443            28.694498
+    ensemble_calendar_weather_state overall           -1 2856.0  9.868899 13.359755 -1.869163      0.773459            31.871798
         boosted_progress_calibrated overall           -1 2856.0 10.041980 13.829756 -2.182736      0.779062            31.998270
            boosted_state_calibrated overall           -1 2856.0 10.455239 14.255230 -1.761027      0.773459            31.871798
         boosted_calendar_calibrated overall           -1 2856.0 10.531321 14.049687 -2.189369      0.733543            29.187829
