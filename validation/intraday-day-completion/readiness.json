@@ -7,8 +7,8 @@
   ],
   "candidate_overall": {
     "n": 2856,
-    "mae": 10.086330495134337,
-    "bias": -2.182735833616916,
+    "mae": 10.041980113657054,
+    "bias": -2.1827358336169156,
     "p80_coverage": 0.77906162464986
   },
   "baseline_overall": {
@@ -19,8 +19,8 @@
   },
   "candidate_operational": {
     "n": 1344,
-    "mae": 9.785709335764256,
-    "bias": -1.7241143486920758,
+    "mae": 9.782993679552238,
+    "bias": -1.980102843808097,
     "p80_coverage": 0.7745535714285714
   },
   "baseline_operational": {
@@ -29,14 +29,14 @@
     "bias": -0.9461003974270474,
     "p80_coverage": 0.7686011904761905
   },
-  "overall_mae_improvement_fraction": 0.061269051197046176,
-  "operational_mae_improvement_fraction": 0.04760340437169408,
-  "max_absolute_operational_hour_bias": 2.6223801306422923,
+  "overall_mae_improvement_fraction": 0.06539672435866095,
+  "operational_mae_improvement_fraction": 0.047867706288139855,
+  "max_absolute_operational_hour_bias": 3.4273184577976625,
   "retrospective_gates": {
     "overall_mae_improvement_at_least_5pct": true,
     "operational_mae_improvement_at_least_5pct": false,
     "absolute_overall_bias_at_most_2": false,
-    "max_operational_hour_bias_at_most_3": true,
+    "max_operational_hour_bias_at_most_3": false,
     "overall_p80_coverage_between_75_and_85pct": true,
     "operational_p80_coverage_between_75_and_85pct": true,
     "forecast_and_interval_invariants": true
