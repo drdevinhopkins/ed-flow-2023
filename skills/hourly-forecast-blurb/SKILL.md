@@ -1,3 +1,16 @@
+---
+name: hourly-forecast-blurb
+description: Use when asked for a JGH ED flow blurb or operational interpretation of the current hourly forecast. Validate current-hour inputs, compute deterministic operational facts, assess on-call need, and produce a concise clinically useful handoff without reconstructing canonical metrics.
+version: 1.0.0
+author: ed-flow-2023
+platforms: [linux]
+metadata:
+  hermes:
+    tags: [ed-flow, forecasting, operations, jgh]
+    category: ed-flow
+    requires_toolsets: [terminal]
+---
+
 # Hourly ED Flow Forecast Blurb
 
 ## When to use this skill
