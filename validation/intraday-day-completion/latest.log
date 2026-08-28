@@ -1,13 +1,18 @@
-Loaded 2066 source days (2021-01-01 01:00:00 to 2026-08-28 09:00:00); 1985 complete Montreal days are eligible
+Loaded 2066 source days (2021-01-01 01:00:00 to 2026-08-28 11:00:00); 1985 complete Montreal days are eligible
 
 Overall results across selected cutoff hours:
-                   model   scope  cutoff_hour      n       mae      rmse      bias  p80_coverage  mean_interval_width
-            boosted_full overall           -1 2856.0  9.641979 13.191181 -2.355587      0.717087            27.645047
-        boosted_progress overall           -1 2856.0  9.669386 13.317230 -3.224970      0.731443            28.139852
-           boosted_state overall           -1 2856.0  9.737288 13.407702 -2.798262      0.731443            28.696517
-        boosted_calendar overall           -1 2856.0  9.811889 13.410005 -2.563393      0.706933            26.729115
-boosted_calendar_weather overall           -1 2856.0  9.822883 13.313529 -2.406132      0.721289            27.563662
-            prior_update overall           -1 2856.0 10.744645 14.523767 -1.530496      0.779762            34.786713
-        completion_curve overall           -1 2856.0 17.669773 27.835345  5.234256      0.809524            64.455331
+                              model   scope  cutoff_hour      n       mae      rmse      bias  p80_coverage  mean_interval_width
+                   boosted_progress overall           -1 2856.0  9.622461 13.304959 -3.047003      0.731443            28.139638
+                   boosted_calendar overall           -1 2856.0  9.749649 13.296265 -2.550119      0.706933            26.726416
+           boosted_calendar_weather overall           -1 2856.0  9.758091 13.164084 -1.981488      0.721289            27.568395
+                       boosted_full overall           -1 2856.0  9.779818 13.190975 -2.201095      0.717087            27.645338
+                      boosted_state overall           -1 2856.0  9.805707 13.496942 -2.436842      0.731443            28.694498
+        boosted_progress_calibrated overall           -1 2856.0 10.086330 14.006501 -2.182736      0.779062            31.988769
+           boosted_state_calibrated overall           -1 2856.0 10.528922 14.483260 -1.760492      0.773459            31.863731
+        boosted_calendar_calibrated overall           -1 2856.0 10.594393 14.362302 -2.172453      0.732143            29.103448
+                       prior_update overall           -1 2856.0 10.744645 14.523767 -1.530496      0.779762            34.786713
+boosted_calendar_weather_calibrated overall           -1 2856.0 10.869118 14.522306 -2.298117      0.757003            30.500645
+            boosted_full_calibrated overall           -1 2856.0 10.931900 14.637341 -2.613577      0.743697            30.009299
+                   completion_curve overall           -1 2856.0 17.669773 27.835345  5.234256      0.809524            64.455331
 
 Wrote validation artifacts to validation-output-intraday

@@ -1,0 +1,51 @@
+{
+  "candidate_model": "boosted_progress_calibrated",
+  "baseline_model": "prior_update",
+  "operational_hours": [
+    11,
+    18
+  ],
+  "candidate_overall": {
+    "n": 2856,
+    "mae": 10.086330495134337,
+    "bias": -2.182735833616916,
+    "p80_coverage": 0.77906162464986
+  },
+  "baseline_overall": {
+    "n": 2856,
+    "mae": 10.744644680135638,
+    "bias": -1.5304955005830616,
+    "p80_coverage": 0.7797619047619048
+  },
+  "candidate_operational": {
+    "n": 1344,
+    "mae": 9.785709335764256,
+    "bias": -1.7241143486920758,
+    "p80_coverage": 0.7745535714285714
+  },
+  "baseline_operational": {
+    "n": 1344,
+    "mae": 10.274826034325041,
+    "bias": -0.9461003974270474,
+    "p80_coverage": 0.7686011904761905
+  },
+  "overall_mae_improvement_fraction": 0.061269051197046176,
+  "operational_mae_improvement_fraction": 0.04760340437169408,
+  "max_absolute_operational_hour_bias": 2.6223801306422923,
+  "retrospective_gates": {
+    "overall_mae_improvement_at_least_5pct": true,
+    "operational_mae_improvement_at_least_5pct": false,
+    "absolute_overall_bias_at_most_2": false,
+    "max_operational_hour_bias_at_most_3": true,
+    "overall_p80_coverage_between_75_and_85pct": true,
+    "operational_p80_coverage_between_75_and_85pct": true,
+    "forecast_and_interval_invariants": true
+  },
+  "retrospective_ready": false,
+  "production_ready": false,
+  "production_blockers": [
+    "At least 28 complete prospective shadow days are required (56 preferred).",
+    "Versioned fit/predict artifacts, freshness monitoring, fallback, and runbook are required.",
+    "An explicit go/no-go review is required before publishing forecasts."
+  ]
+}
