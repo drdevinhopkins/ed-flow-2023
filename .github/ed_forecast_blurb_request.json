@@ -1,11 +1,11 @@
 {
-  "generated_at_local": "2026-08-27T22:31:00-04:00",
-  "forecast_data_time_local": "2026-08-27 22:00:00",
-  "blurb_id": "20260827-2200",
-  "blurb": "Improving: stretcher occupancy is about 160% now, overflow is 11, and there is no prepod buildup. Pressure should ease a little further by midnight, with about 21 TBS expected for the two night docs — a typical Thursday-night handoff. Vertical is not unusually out of balance with POD. On-call is not indicated.",
+  "generated_at_local": "2026-08-27T23:30:16-04:00",
+  "forecast_data_time_local": "2026-08-27 23:00:00",
+  "blurb_id": "20260827-2300",
+  "blurb": "Improving: stretcher occupancy is down to about 155%, overflow is 11, and there is no prepod buildup. We’re on track to leave about 25 TBS for the two night docs at midnight, a typical Thursday-night handoff. Vertical is not unusually out of balance with POD. On-call is not indicated.",
   "oncall_recommendation": "NOT INDICATED",
-  "oncall_rationale": "Calibrated need is 0% at 4, 6, and 8 hours; modeled activation shows no consistent meaningful flow benefit and is slightly unfavorable across most modeled outcomes.",
+  "oncall_rationale": "Calibrated need is 0% at 4, 6, and 8 hours; modeled activation shows no consistent meaningful flow benefit and is slightly unfavorable across modeled outcomes.",
   "send_recommended": false,
   "send_reason": "NONE",
-  "source_status": "OK: current=2026-08-27 22:00; forecast_origin=2026-08-27 22:00; oncall=2026-08-27 22:00; forecast generated 2026-08-27 22:21 local"
+  "source_status": "OK: current=2026-08-27 23:00; forecast_origin=2026-08-27 23:00; oncall=2026-08-27 23:00; forecast generated 2026-08-27 23:24 local"
 }
