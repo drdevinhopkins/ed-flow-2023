@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 
 EXPECTED_ROWS_PER_RUN = 120
+BURST_GAP_MINUTES = 10.0
 
 
 def main() -> None:
@@ -51,6 +52,7 @@ def main() -> None:
         .reset_index(drop=True)
     )
     per_run["gap_hours_from_prior_run"] = per_run["issued_at"].diff().dt.total_seconds() / 3600.0
+    per_run["issue_hour_utc"] = per_run["issued_at"].dt.floor("h")
     per_run["structurally_complete"] = (
         per_run["n_rows"].eq(EXPECTED_ROWS_PER_RUN)
         & per_run["n_targets"].eq(5)
@@ -59,6 +61,9 @@ def main() -> None:
     )
 
     gaps = per_run["gap_hours_from_prior_run"].dropna()
+    issue_hour_counts = per_run.groupby("issue_hour_utc").size()
+    short_gap_threshold_hours = BURST_GAP_MINUTES / 60.0
+    short_gaps = gaps < short_gap_threshold_hours
     summary = pd.DataFrame([
         {
             "n_runs": len(per_run),
@@ -67,6 +72,11 @@ def main() -> None:
             "span_hours": (per_run["issued_at"].max() - per_run["issued_at"].min()).total_seconds() / 3600.0 if len(per_run) > 1 else 0.0,
             "structurally_complete_runs": int(per_run["structurally_complete"].sum()),
             "incomplete_runs": int((~per_run["structurally_complete"]).sum()),
+            "n_unique_issue_hours": int(per_run["issue_hour_utc"].nunique()),
+            "max_runs_per_issue_hour": int(issue_hour_counts.max()) if not issue_hour_counts.empty else 0,
+            "mean_runs_per_issue_hour": float(issue_hour_counts.mean()) if not issue_hour_counts.empty else float("nan"),
+            "gaps_under_10m": int(short_gaps.sum()),
+            "fraction_interrun_gaps_under_10m": float(short_gaps.mean()) if not gaps.empty else float("nan"),
             "median_gap_hours": gaps.median() if not gaps.empty else float("nan"),
             "max_gap_hours": gaps.max() if not gaps.empty else float("nan"),
             "gaps_over_2h": int((gaps > 2.0).sum()),
