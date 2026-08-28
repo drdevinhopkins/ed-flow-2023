@@ -14,6 +14,8 @@ on:
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_selective_policies.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_unique_hour_sensitivity.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_evidence_gaps.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_trajectory.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_policy_leave_one_date_out.py'
       - 'scripts/evaluation/prospective/run_shadow_candidate_forecast.py'
       - 'scripts/evaluation/prospective/candidate_metric_routes.py'
       - 'scripts/evaluation/backtests/backtest_candidate_metrics_cutoff.py'
@@ -140,6 +142,17 @@ jobs:
             echo 'No matured candidate detail rows yet; complete-date diagnostic skipped.'
           fi
 
+      - name: Summarize candidate complete-date trajectory
+        run: |
+          by_date='validation/prospective-candidates/latest-score/candidate-by-issue-date-completeness.csv'
+          if [ -s "$by_date" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_trajectory.py \
+              "$by_date" \
+              --output validation/prospective-candidates/latest-score/candidate-complete-date-trajectory.csv
+          else
+            echo 'No candidate issue-date completeness rows yet; trajectory diagnostic skipped.'
+          fi
+
       - name: Summarize candidate confidence
         run: |
           detail='validation/prospective-candidates/latest-score/detail.csv'
@@ -170,6 +183,17 @@ jobs:
               --output-dir validation/prospective-candidates/latest-score
           else
             echo 'No matured candidate detail rows yet; selective-policy diagnostic skipped.'
+          fi
+
+      - name: Summarize candidate policy leave-one-complete-date-out stability
+        run: |
+          by_date='validation/prospective-candidates/latest-score/selective-policy-by-issue-date.csv'
+          if [ -s "$by_date" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_policy_leave_one_date_out.py \
+              "$by_date" \
+              --output-dir validation/prospective-candidates/latest-score
+          else
+            echo 'No selective-policy issue-date rows yet; leave-one-date-out diagnostic skipped.'
           fi
 
       - name: Summarize candidate unique-realized-hour sensitivity
