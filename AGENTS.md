@@ -59,6 +59,14 @@ The forecast contains recent observed history and the next 24 hours for these ta
 
 Prefer human-readable names in routine prose.
 
+### Canonical metric rule for operational blurbs
+
+For any metric that already exists as a forecast target, use that target directly for both the current observed value and future forecast. In particular, `Total_TBS`, `POD_TBS`, `Vertical_TBS`, `TTStr`, and `Overflow` in `forecast-v2.1.csv` are canonical for blurb generation.
+
+**Never reconstruct `Total_TBS`, `POD_TBS`, `Vertical_TBS`, or `Overflow` by summing similarly named columns from `current.csv`.** The raw hourly report is wide and contains multiple occupancy/TBS fields that are easy to misread or column-shift. Do not add fields such as `QTRACK1`, `RESUS`, `POD_T`, `VERTSTRET`, or other occupancy fields to create a TBS total.
+
+Use `current.csv` for freshness/readiness checks and for operational fields that do not already have a canonical forecast target. If a canonical target and a manually derived value appear to disagree, stop and investigate rather than substituting the derived value.
+
 ## Explainability semantics
 
 `forecast-v2.1.csv` contains a routed forecast and a history-only Chronos baseline.
@@ -93,6 +101,10 @@ Examples:
 - Triage hallway pressure rises despite stable Total TBS → front-end congestion is worsening despite stable overall demand.
 
 Do not force a dramatic narrative when the forecast is stable.
+
+For `Overflow`, translate counts into ED operations when useful rather than reporting a number without context. Roughly 0–16 usually fits within the comfortably usable first two overflow rooms. Values just above 16 can be described as the first two overflow rooms plus minor spillover into prepod/additional overflow space. Higher values increasingly depend on staffing/opening rooms 3–5. Avoid wording such as "overcapacity rooms" when "overflow rooms" is clearer.
+
+For on-call conclusions, distinguish current need from likely later need. When the 4/6/8-hour calibrated need remains low and modeled activation shows no meaningful benefit, prefer wording such as: "On-call is not currently needed and, based on how the day is shaping up, is unlikely to be required this evening." If longer-horizon evidence is not reassuring, say only that on-call is not currently needed.
 
 ## Skills
 
