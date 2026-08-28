@@ -8,6 +8,7 @@ on:
     paths:
       - '.github/workflows/score-shadow-candidates.yml'
       - 'scripts/evaluation/prospective/score_shadow_candidate_forecast.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_collection_health.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_complete_issue_dates.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_confidence.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_horizon_hours.py'
@@ -111,6 +112,16 @@ jobs:
               f'{len(archive)} unique rows ({before - len(archive)} duplicates removed)'
           )
           PY
+
+      - name: Summarize candidate collection health
+        run: |
+          if [ -s all-shadow-candidate-forecasts.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_collection_health.py \
+              all-shadow-candidate-forecasts.csv \
+              --output validation/prospective-candidates/latest-score/candidate-collection-health.csv
+          else
+            echo 'No archived candidate forecast available yet; collection-health diagnostic skipped.'
+          fi
 
       - name: Score matured candidate rows
         run: |
