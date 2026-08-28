@@ -15,6 +15,7 @@ from backtest_intraday_day_completion import (
     build_expanding_folds,
     build_snapshots,
     build_weather_features,
+    evaluate_readiness,
     expected_local_hours,
     fit_completion_curve,
     fit_quantile_corrections,
@@ -140,6 +141,9 @@ class IntradayDayCompletionTests(unittest.TestCase):
         self.assertIn("boosted_full_calibrated", set(predictions["model"]))
         self.assertFalse(summary.empty)
         self.assertIn("state_Total_TBS", set(features.loc[features["model"].eq("boosted_full"), "feature"]))
+        readiness = evaluate_readiness(predictions)
+        self.assertTrue(readiness["retrospective_gates"]["forecast_and_interval_invariants"])
+        self.assertFalse(readiness["production_ready"])
 
     def test_completion_curve_is_fit_from_training_rows(self):
         flow = load_hourly_flow(self._write_csv(self._flow_rows("2026-01-01", 30)))
@@ -171,6 +175,16 @@ class IntradayDayCompletionTests(unittest.TestCase):
 
         np.testing.assert_allclose(calibrated, np.column_stack([actual, actual, actual]))
         self.assertTrue((np.diff(calibrated, axis=1) >= 0).all())
+
+        skewed_actual = np.array([0.0, 0.0, 0.0, 8.0])
+        skewed_prediction = np.zeros((4, 3))
+        mean_bias_correction = fit_quantile_corrections(
+            skewed_actual,
+            skewed_prediction,
+            np.repeat(11, 4),
+            shrinkage_days=0.0,
+        )
+        self.assertEqual(mean_bias_correction.loc[11, "q50_correction"], 2.0)
 
 
 if __name__ == "__main__":

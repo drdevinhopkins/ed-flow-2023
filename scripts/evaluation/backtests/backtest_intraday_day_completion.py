@@ -640,9 +640,14 @@ def fit_quantile_corrections(
     if shrinkage_days < 0:
         raise ValueError("shrinkage_days must be non-negative")
 
+    def residual_stat(values: np.ndarray, quantile: float) -> float:
+        # The point forecast has an explicit mean-bias gate, so correct it with
+        # the mean residual. Tail forecasts retain quantile/conformal correction.
+        return float(values.mean()) if quantile == 0.5 else float(np.quantile(values, quantile))
+
     residuals = actual[:, None] - predicted
     pooled = np.array(
-        [np.quantile(residuals[:, index], quantile) for index, quantile in enumerate(QUANTILES)]
+        [residual_stat(residuals[:, index], quantile) for index, quantile in enumerate(QUANTILES)]
     )
     rows: list[dict[str, float]] = []
     for hour in sorted(np.unique(hours)):
@@ -651,7 +656,7 @@ def fit_quantile_corrections(
         weight = n / (n + shrinkage_days) if n + shrinkage_days else 1.0
         local = np.array(
             [
-                np.quantile(residuals[mask, index], quantile)
+                residual_stat(residuals[mask, index], quantile)
                 for index, quantile in enumerate(QUANTILES)
             ]
         )
@@ -789,6 +794,91 @@ def summarize_predictions(predictions: pd.DataFrame) -> pd.DataFrame:
     return pd.concat([overall, by_hour], ignore_index=True)
 
 
+def evaluate_readiness(
+    predictions: pd.DataFrame,
+    *,
+    candidate_model: str = "boosted_progress_calibrated",
+    baseline_model: str = "prior_update",
+    operational_hours: tuple[int, int] = (11, 18),
+) -> dict[str, object]:
+    """Evaluate fixed retrospective gates without claiming production readiness."""
+
+    def metrics(frame: pd.DataFrame) -> dict[str, float]:
+        error = frame["predicted_total"] - frame["actual_total"]
+        return {
+            "n": int(len(frame)),
+            "mae": float(mean_absolute_error(frame["actual_total"], frame["predicted_total"])),
+            "bias": float(error.mean()),
+            "p80_coverage": float(
+                frame["actual_total"].between(frame["p10_total"], frame["p90_total"]).mean()
+            ),
+        }
+
+    candidate = predictions.loc[predictions["model"].eq(candidate_model)].copy()
+    baseline = predictions.loc[predictions["model"].eq(baseline_model)].copy()
+    if candidate.empty or baseline.empty:
+        raise ValueError(f"Readiness models not found: {candidate_model}, {baseline_model}")
+    start_hour, end_hour = operational_hours
+    candidate_window = candidate.loc[candidate["cutoff_hour"].between(start_hour, end_hour)]
+    baseline_window = baseline.loc[baseline["cutoff_hour"].between(start_hour, end_hour)]
+    candidate_overall_metrics = metrics(candidate)
+    baseline_overall_metrics = metrics(baseline)
+    candidate_window_metrics = metrics(candidate_window)
+    baseline_window_metrics = metrics(baseline_window)
+    hour_bias = (
+        candidate_window.assign(
+            error=candidate_window["predicted_total"] - candidate_window["actual_total"]
+        )
+        .groupby("cutoff_hour")["error"]
+        .mean()
+    )
+    max_abs_hour_bias = float(hour_bias.abs().max())
+    overall_improvement = 1.0 - (
+        candidate_overall_metrics["mae"] / baseline_overall_metrics["mae"]
+    )
+    window_improvement = 1.0 - (
+        candidate_window_metrics["mae"] / baseline_window_metrics["mae"]
+    )
+    invariant_pass = bool(
+        candidate["predicted_total"].ge(candidate["observed_so_far"]).all()
+        and candidate["p10_total"].le(candidate["predicted_total"]).all()
+        and candidate["predicted_total"].le(candidate["p90_total"]).all()
+    )
+    gates = {
+        "overall_mae_improvement_at_least_5pct": bool(overall_improvement >= 0.05),
+        "operational_mae_improvement_at_least_5pct": bool(window_improvement >= 0.05),
+        "absolute_overall_bias_at_most_2": bool(abs(candidate_overall_metrics["bias"]) <= 2.0),
+        "max_operational_hour_bias_at_most_3": bool(max_abs_hour_bias <= 3.0),
+        "overall_p80_coverage_between_75_and_85pct": bool(
+            0.75 <= candidate_overall_metrics["p80_coverage"] <= 0.85
+        ),
+        "operational_p80_coverage_between_75_and_85pct": bool(
+            0.75 <= candidate_window_metrics["p80_coverage"] <= 0.85
+        ),
+        "forecast_and_interval_invariants": invariant_pass,
+    }
+    return {
+        "candidate_model": candidate_model,
+        "baseline_model": baseline_model,
+        "operational_hours": [start_hour, end_hour],
+        "candidate_overall": candidate_overall_metrics,
+        "baseline_overall": baseline_overall_metrics,
+        "candidate_operational": candidate_window_metrics,
+        "baseline_operational": baseline_window_metrics,
+        "overall_mae_improvement_fraction": float(overall_improvement),
+        "operational_mae_improvement_fraction": float(window_improvement),
+        "max_absolute_operational_hour_bias": max_abs_hour_bias,
+        "retrospective_gates": gates,
+        "retrospective_ready": bool(all(gates.values())),
+        "production_ready": False,
+        "production_blockers": [
+            "At least 28 complete prospective shadow days are required (56 preferred).",
+            "Versioned fit/predict artifacts, freshness monitoring, fallback, and runbook are required.",
+            "An explicit go/no-go review is required before publishing forecasts.",
+        ],
+    }
+
+
 def run_backtest(
     snapshots: pd.DataFrame,
     *,
@@ -907,6 +997,8 @@ def main() -> None:
     predictions.to_csv(args.output_dir / "predictions.csv", index=False)
     summary.to_csv(args.output_dir / "summary.csv", index=False)
     features.to_csv(args.output_dir / "feature_sets.csv", index=False)
+    readiness = evaluate_readiness(predictions)
+    (args.output_dir / "readiness.json").write_text(json.dumps(readiness, indent=2) + "\n")
     best_by_hour = (
         summary.loc[summary["scope"].eq("cutoff_hour")]
         .sort_values(["cutoff_hour", "mae", "model"])

@@ -48,7 +48,9 @@ forecast weather. Realized future weather must not be substituted in retrospecti
 The boosted models predict P10, P50, and P90 remaining arrivals. Each outer backtest
 fold also reserves the most recent 56 training days as an inner calibration window.
 Models fit on the earlier inner block generate genuine forward residuals for that
-window; hour-specific residual quantiles are then shrunk toward the pooled correction.
+window. Hour-specific tail residual quantiles and the mean point residual are then
+shrunk toward their pooled corrections. The mean point correction directly targets the
+release bias gate; the tail corrections target interval coverage.
 The corrected variants have a `_calibrated` suffix. The outer test block remains unseen
 by model fitting, feature-curve fitting, and calibration.
 
@@ -65,7 +67,9 @@ Validation uses expanding, time-ordered folds. Outputs include:
   cutoff hour;
 - `best_by_hour.csv`: lowest-MAE candidate at each cutoff hour;
 - `feature_sets.csv`: exact feature membership for each boosted scenario; and
-- `run_config.json`: input and backtest configuration.
+- `run_config.json`: input and backtest configuration; and
+- `readiness.json`: deterministic gate results for the fixed
+  `boosted_progress_calibrated` candidate versus `prior_update`.
 
 Model selection should be made by cutoff hour. A simple completion curve may remain best
 very late in the day even if the pooled boosted model is superior earlier.

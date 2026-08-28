@@ -111,6 +111,7 @@ jobs:
             best_by_hour.csv \
             feature_sets.csv \
             run_config.json \
+            readiness.json \
             exit_code.txt; do
             if [ -f "validation-output-intraday/$file" ]; then
               cp "validation-output-intraday/$file" "validation/intraday-day-completion/$file"
