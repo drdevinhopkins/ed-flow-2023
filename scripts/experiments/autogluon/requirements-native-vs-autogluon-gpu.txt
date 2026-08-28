@@ -1,0 +1,3 @@
+# Manual single-GPU Chronos-2 native vs AutoGluon benchmark
+# AutoGluon 1.6.1 supports Python 3.12 and provides the Chronos2 TimeSeries model.
+autogluon.timeseries==1.6.1
