@@ -1,0 +1,13 @@
+{
+  "model_version": "intraday-ensemble-v1-2026-08-28",
+  "source_hash": "88a34786f417ea62",
+  "artifact_sha256": "3bfc301b90ccc190d07a899e4e231553aa5bd66f87746d8bbf18b1ff4589c740",
+  "artifact_bytes": 2027120,
+  "python_version": "3.12.14",
+  "pandas_version": "3.0.5",
+  "scikit_learn_version": "1.9.0",
+  "serialization": "joblib",
+  "training_start": "2021-01-02",
+  "training_end": "2026-08-27",
+  "training_days": 1985
+}
