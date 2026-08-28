@@ -4,8 +4,10 @@ on:
   push:
     branches:
       - chronos2-weather-features
+      - daily-inflow-source
     paths:
       - 'scripts/forecast_daily_visits.py'
+      - 'scripts/forecast_daily_visits_from_daily.py'
       - 'scripts/daily_weather_feature_set.py'
       - 'scripts/live_weather_forecast.py'
       - 'scripts/weather_features.py'
@@ -81,6 +83,7 @@ jobs:
           python -m py_compile scripts/daily_weather_feature_set.py
           python -m py_compile scripts/live_weather_forecast.py
           python -m py_compile scripts/forecast_daily_visits.py
+          python -m py_compile scripts/forecast_daily_visits_from_daily.py
           python -m py_compile tests/test_daily_visit_forecast.py
 
       - name: Test promoted feature contract
@@ -98,7 +101,7 @@ jobs:
           if [ "${GITHUB_REF_NAME}" != "main" ]; then
             extra_args+=(--no-dropbox)
           fi
-          python scripts/forecast_daily_visits.py \
+          python scripts/forecast_daily_visits_from_daily.py \
             --horizon-days 7 \
             --context-days 1095 \
             --min-history-days 28 \
@@ -118,7 +121,8 @@ jobs:
           assert forecast['daily_visits_prediction'].notna().all()
           assert (forecast['weather_feature_set'] == 'raw_plus_snow').all()
           assert forecast['horizon_day'].tolist() == list(range(1, 8))
-          assert forecast['history_days'].min() >= 28
+          assert forecast['history_days'].min() >= 120
+          assert not forecast['short_context_warning'].astype(bool).any()
           assert forecast['temp_mean'].notna().all()
           assert forecast['wind_max'].notna().all()
           assert forecast['snowfall_sum'].notna().all()
