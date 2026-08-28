@@ -1,18 +1,18 @@
 {
   "status": "shadow_only",
-  "generated_at_utc": "2026-08-28T22:06:14.418578+00:00",
+  "generated_at_utc": "2026-08-28T23:03:04.645446+00:00",
   "forecast_day": "2026-08-28",
-  "cutoff_ds_local": "2026-08-28T17:00:00",
-  "cutoff_hour": 17,
+  "cutoff_ds_local": "2026-08-28T18:00:00",
+  "cutoff_hour": 18,
   "model_version": "intraday-ensemble-v1-2026-08-28",
-  "source_hash": "88a34786f417ea62",
-  "artifact_sha256": "3bfc301b90ccc190d07a899e4e231553aa5bd66f87746d8bbf18b1ff4589c740",
+  "source_hash": "2b6b7eb132abaa5a",
+  "artifact_sha256": "96ab60541d7a654eeebe87c0b6eb9735898ed9d5e297a1505a5b1f2506e2d9f3",
   "training_start": "2021-01-02",
   "training_end": "2026-08-27",
   "training_days": 1985,
-  "observed_arrivals": 207.0,
-  "predicted_total": 278.1903621889961,
-  "p10_total": 270.10559770934714,
-  "p90_total": 294.55887122233327,
-  "prior_update_baseline": 278.7031259888872
+  "observed_arrivals": 222.0,
+  "predicted_total": 280.29046503347166,
+  "p10_total": 271.262288057071,
+  "p90_total": 294.8997075504694,
+  "prior_update_baseline": 280.04965680902677
 }
