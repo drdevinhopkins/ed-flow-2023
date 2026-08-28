@@ -45,7 +45,9 @@ forecast weather. Realized future weather must not be substituted in retrospecti
 5. Progress plus ED state.
 6. Full available feature set, with a calendar-plus-weather ablation when weather exists.
 
-The boosted models predict P10, P50, and P90 remaining arrivals. Each outer backtest
+The boosted models predict P10 and P90 remaining-arrival bounds plus an expected
+remaining-arrival point forecast. The point model uses squared-error loss to target the
+expected final count and mean-bias gate; the bounds use quantile loss. Each outer backtest
 fold also reserves the most recent 56 training days as an inner calibration window.
 Models fit on the earlier inner block generate genuine forward residuals for that
 window. Hour-specific tail residual quantiles and the mean point residual are then

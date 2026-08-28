@@ -596,9 +596,13 @@ def _fit_quantile_models(
     y_train = train["remaining_arrivals"].to_numpy(dtype=float)
     models: list[HistGradientBoostingRegressor] = []
     for quantile in QUANTILES:
+        objective = (
+            {"loss": "squared_error"}
+            if quantile == 0.5
+            else {"loss": "quantile", "quantile": quantile}
+        )
         model = HistGradientBoostingRegressor(
-            loss="quantile",
-            quantile=quantile,
+            **objective,
             learning_rate=0.05,
             max_iter=max_iter,
             max_leaf_nodes=31,
