@@ -9,6 +9,7 @@ on:
       - '.github/workflows/score-shadow-candidates.yml'
       - 'scripts/evaluation/prospective/score_shadow_candidate_forecast.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_complete_issue_dates.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_confidence.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_horizon_hours.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_selective_policies.py'
       - 'scripts/evaluation/prospective/summarize_shadow_candidate_unique_hour_sensitivity.py'
@@ -137,6 +138,16 @@ jobs:
               "$detail" --output-dir validation/prospective-candidates/latest-score
           else
             echo 'No matured candidate detail rows yet; complete-date diagnostic skipped.'
+          fi
+
+      - name: Summarize candidate confidence
+        run: |
+          detail='validation/prospective-candidates/latest-score/detail.csv'
+          if [ -s "$detail" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_confidence.py \
+              "$detail" --output-dir validation/prospective-candidates/latest-score
+          else
+            echo 'No matured candidate detail rows yet; confidence diagnostic skipped.'
           fi
 
       - name: Summarize candidate performance by exact horizon hour
