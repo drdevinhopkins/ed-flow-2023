@@ -85,17 +85,17 @@ def summarize_scores(scored: pd.DataFrame) -> dict[str, object]:
 def evaluate_prospective_readiness(summary: dict[str, object]) -> dict[str, object]:
     metrics = summary["metrics"]
     by_hour = pd.DataFrame(summary["by_hour"])
-    operational = (
-        by_hour.loc[by_hour.get("cutoff_hour", pd.Series(dtype=int)).isin(OPERATIONAL_HOURS)]
-        if not by_hour.empty
-        else by_hour
-    )
-    hour_counts = {
-        str(hour): int(
-            operational.loc[operational["cutoff_hour"].eq(hour), "n"].sum()
-        )
-        for hour in OPERATIONAL_HOURS
-    }
+    if by_hour.empty:
+        operational = by_hour
+        hour_counts = {str(hour): 0 for hour in OPERATIONAL_HOURS}
+    else:
+        operational = by_hour.loc[by_hour["cutoff_hour"].isin(OPERATIONAL_HOURS)]
+        hour_counts = {
+            str(hour): int(
+                operational.loc[operational["cutoff_hour"].eq(hour), "n"].sum()
+            )
+            for hour in OPERATIONAL_HOURS
+        }
     enough_hours = all(count >= MIN_SAMPLES_PER_OPERATIONAL_HOUR for count in hour_counts.values())
     max_hour_bias = (
         float(operational["bias"].abs().max()) if enough_hours and not operational.empty else None

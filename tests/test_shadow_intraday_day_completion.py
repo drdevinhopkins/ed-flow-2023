@@ -108,6 +108,14 @@ class ShadowIntradayTests(unittest.TestCase):
         self.assertEqual(summary["prospective_days"], 1)
         self.assertFalse(readiness["prospective_ready"])
 
+    def test_empty_score_ledger_reports_zero_progress(self):
+        summary = summarize_scores(pd.DataFrame())
+        readiness = evaluate_prospective_readiness(summary)
+
+        self.assertEqual(readiness["prospective_days"], 0)
+        self.assertTrue(all(count == 0 for count in readiness["operational_hour_counts"].values()))
+        self.assertFalse(readiness["prospective_ready"])
+
 
 if __name__ == "__main__":
     unittest.main()
