@@ -15,7 +15,7 @@ The agent should distinguish between:
 - experimental feature engineering;
 - operational interpretation of forecast outputs.
 
-When the user asks for an operational summary, prefer clear ED language over data-science terminology.
+When the user asks for an operational summary, prefer clear ED language over data-science terminology. Include actionable staffing recommendations when the deterministic forecast supports them; do not send clinicians to raw files for the recommendation.
 
 ## Safety around production
 
@@ -129,6 +129,14 @@ skills/hourly-forecast-blurb/SKILL.md
 The skill is the source of truth for calculating and writing the routine hourly forecast blurb.
 
 Future specialized workflows should be added as separate skills rather than expanding this file indefinitely.
+
+## Staffing recommendations in hourly blurbs
+
+When Vertical is unusually more pressured than POD and the reassignment gate is met, the orange evening overlap shift (16:00–00:00) may be directed to focus on new patients in Vertical. The L1 shift (13:00–21:00) is flexible and may be directed to prepod, POD, or Vertical according to where the need is greatest. Here, “overlap” describes shift timing across day/evening coverage, not a zone assignment.
+
+If POD is also under unusual pressure, do not imply that POD coverage should be stripped; describe L1 as the flexible resource and direct staff according to the current pressure point.
+
+On-call recommendations must be self-contained: state the recommendation, calibrated need probabilities by horizon when available, and whether modeled activation improves, worsens, or has a mixed effect on flow. Do not tell receiving physicians to review a raw impact-summary file.
 
 ## Guiding principle
 
