@@ -1,6 +1,6 @@
 {
   "model_version": "intraday-ensemble-v1-2026-08-28",
-  "source_hash": "1a388603016b218c",
+  "source_hash": "39e2b7cf991eec4f",
   "candidate": "50% raw calendar/weather point + 50% calibrated ED-state point",
   "interval": "calibrated ED-state P80 bounds expanded around ensemble point",
   "training_days": 1985,
