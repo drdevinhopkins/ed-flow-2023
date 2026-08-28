@@ -85,6 +85,8 @@ jobs:
             --test-days 28 \
             --min-train-days 365 \
             --max-iter 200 \
+            --calibration-days 56 \
+            --calibration-shrinkage-days 28 \
             --output-dir validation-output-intraday \
             2>&1 | tee validation-output-intraday/run.log
           status=${PIPESTATUS[0]}

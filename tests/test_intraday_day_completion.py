@@ -10,12 +10,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "evalua
 
 from backtest_intraday_day_completion import (
     add_curve_features,
+    apply_quantile_corrections,
     attach_weather,
     build_expanding_folds,
     build_snapshots,
     build_weather_features,
     expected_local_hours,
     fit_completion_curve,
+    fit_quantile_corrections,
     load_hourly_flow,
     predict_completion_curve,
     run_backtest,
@@ -135,6 +137,7 @@ class IntradayDayCompletionTests(unittest.TestCase):
         )
         self.assertTrue((predictions["predicted_total"] >= predictions["observed_so_far"]).all())
         self.assertTrue({"completion_curve", "prior_update", "boosted_full"}.issubset(predictions["model"]))
+        self.assertIn("boosted_full_calibrated", set(predictions["model"]))
         self.assertFalse(summary.empty)
         self.assertIn("state_Total_TBS", set(features.loc[features["model"].eq("boosted_full"), "feature"]))
 
@@ -152,6 +155,22 @@ class IntradayDayCompletionTests(unittest.TestCase):
 
         self.assertGreater(featured.iloc[0]["expected_fraction"], 0)
         self.assertGreaterEqual(prediction.iloc[0]["predicted_total"], prediction.iloc[0]["observed_so_far"])
+
+    def test_quantile_calibration_learns_only_residual_adjustments(self):
+        actual = np.array([30.0, 32.0, 34.0, 36.0])
+        predicted = np.column_stack([actual - 7.0, actual - 5.0, actual - 3.0])
+        hours = np.array([11, 11, 12, 12])
+
+        corrections = fit_quantile_corrections(
+            actual,
+            predicted,
+            hours,
+            shrinkage_days=0.0,
+        )
+        calibrated = apply_quantile_corrections(predicted, hours, corrections)
+
+        np.testing.assert_allclose(calibrated, np.column_stack([actual, actual, actual]))
+        self.assertTrue((np.diff(calibrated, axis=1) >= 0).all())
 
 
 if __name__ == "__main__":

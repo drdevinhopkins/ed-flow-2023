@@ -45,8 +45,16 @@ forecast weather. Realized future weather must not be substituted in retrospecti
 5. Progress plus ED state.
 6. Full available feature set, with a calendar-plus-weather ablation when weather exists.
 
-The boosted models predict P10, P50, and P90 remaining arrivals. All predictions are
-clipped at zero remaining before being added to the observed count.
+The boosted models predict P10, P50, and P90 remaining arrivals. Each outer backtest
+fold also reserves the most recent 56 training days as an inner calibration window.
+Models fit on the earlier inner block generate genuine forward residuals for that
+window; hour-specific residual quantiles are then shrunk toward the pooled correction.
+The corrected variants have a `_calibrated` suffix. The outer test block remains unseen
+by model fitting, feature-curve fitting, and calibration.
+
+All predictions are clipped at zero remaining before being added to the observed count.
+Quantiles are sorted after correction, so the interval cannot cross and the final point
+forecast cannot be lower than arrivals already observed.
 
 ## Validation
 
@@ -62,6 +70,26 @@ Validation uses expanding, time-ordered folds. Outputs include:
 Model selection should be made by cutoff hour. A simple completion curve may remain best
 very late in the day even if the pooled boosted model is superior earlier.
 
+## Production-readiness gates
+
+The experiment remains shadow-only until all gates pass. The initial retrospective gates
+are deliberately operational rather than based on a single headline metric:
+
+- at least 5% lower MAE than `prior_update`, both overall and across the 11:00–18:00
+  operational window;
+- absolute bias no greater than 2 patients overall and 3 patients at every operational
+  cutoff hour;
+- empirical coverage for the nominal P80 interval between 75% and 85%, overall and in
+  the operational window;
+- every forecast is at least the observed count, intervals never cross, and stale or
+  incomplete input suppresses output rather than fabricating a forecast; and
+- results hold in a prospective shadow run for at least 28 complete days (56 preferred),
+  with versioned model/calibration artifacts and no unresolved data-quality failures.
+
+Passing a retrospective gate does not authorize production publishing. Production also
+requires a deterministic fallback, freshness monitoring, a scoring/runbook path, and an
+explicit go/no-go review after prospective evidence is available.
+
 ## Example server run
 
 ```bash
@@ -71,6 +99,8 @@ python scripts/evaluation/backtests/backtest_intraday_day_completion.py \
   --n-folds 6 \
   --test-days 28 \
   --min-train-days 365 \
+  --calibration-days 56 \
+  --calibration-shrinkage-days 28 \
   --output-dir validation/intraday-day-completion
 ```
 

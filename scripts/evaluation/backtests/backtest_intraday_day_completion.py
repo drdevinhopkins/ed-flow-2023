@@ -585,23 +585,16 @@ def feature_sets(frame: pd.DataFrame) -> dict[str, list[str]]:
     return sets
 
 
-def predict_boosted(
+def _fit_quantile_models(
     train: pd.DataFrame,
-    test: pd.DataFrame,
     *,
     features: Sequence[str],
-    model_name: str,
-    fold_id: int,
     max_iter: int,
     random_state: int,
-) -> pd.DataFrame:
-    if not features:
-        raise ValueError(f"No features available for {model_name}")
+) -> list[HistGradientBoostingRegressor]:
     x_train = train.loc[:, features].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan)
-    x_test = test.loc[:, features].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan)
     y_train = train["remaining_arrivals"].to_numpy(dtype=float)
-
-    predictions: list[np.ndarray] = []
+    models: list[HistGradientBoostingRegressor] = []
     for quantile in QUANTILES:
         model = HistGradientBoostingRegressor(
             loss="quantile",
@@ -614,19 +607,161 @@ def predict_boosted(
             random_state=random_state,
         )
         model.fit(x_train, y_train)
-        predictions.append(np.maximum(0.0, model.predict(x_test)))
+        models.append(model)
+    return models
 
-    remaining = np.sort(np.column_stack(predictions), axis=1)
-    observed = test["cumulative_arrivals"].to_numpy(dtype=float)
-    totals = observed[:, None] + remaining
-    return _prediction_rows(
-        test,
-        fold_id=fold_id,
-        model=model_name,
-        predicted_total=totals[:, 1],
-        lower_total=totals[:, 0],
-        upper_total=totals[:, 2],
+
+def _predict_remaining_quantiles(
+    models: Sequence[HistGradientBoostingRegressor],
+    frame: pd.DataFrame,
+    *,
+    features: Sequence[str],
+) -> np.ndarray:
+    x = frame.loc[:, features].apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan)
+    return np.column_stack([np.maximum(0.0, model.predict(x)) for model in models])
+
+
+def fit_quantile_corrections(
+    actual_remaining: np.ndarray,
+    predicted_remaining: np.ndarray,
+    cutoff_hours: np.ndarray,
+    *,
+    shrinkage_days: float,
+) -> pd.DataFrame:
+    """Estimate hour-specific residual quantiles with shrinkage to a pooled correction."""
+
+    actual = np.asarray(actual_remaining, dtype=float)
+    predicted = np.asarray(predicted_remaining, dtype=float)
+    hours = np.asarray(cutoff_hours, dtype=int)
+    if predicted.ndim != 2 or predicted.shape[1] != len(QUANTILES):
+        raise ValueError(f"predicted_remaining must have shape (n, {len(QUANTILES)})")
+    if len(actual) != len(predicted) or len(hours) != len(predicted):
+        raise ValueError("calibration arrays must have the same number of rows")
+    if shrinkage_days < 0:
+        raise ValueError("shrinkage_days must be non-negative")
+
+    residuals = actual[:, None] - predicted
+    pooled = np.array(
+        [np.quantile(residuals[:, index], quantile) for index, quantile in enumerate(QUANTILES)]
     )
+    rows: list[dict[str, float]] = []
+    for hour in sorted(np.unique(hours)):
+        mask = hours == hour
+        n = int(mask.sum())
+        weight = n / (n + shrinkage_days) if n + shrinkage_days else 1.0
+        local = np.array(
+            [
+                np.quantile(residuals[mask, index], quantile)
+                for index, quantile in enumerate(QUANTILES)
+            ]
+        )
+        correction = weight * local + (1.0 - weight) * pooled
+        rows.append(
+            {
+                "cutoff_hour": int(hour),
+                "n": n,
+                **{
+                    f"q{int(quantile * 100):02d}_correction": float(correction[index])
+                    for index, quantile in enumerate(QUANTILES)
+                },
+            }
+        )
+    return pd.DataFrame(rows).set_index("cutoff_hour")
+
+
+def apply_quantile_corrections(
+    predicted_remaining: np.ndarray,
+    cutoff_hours: np.ndarray,
+    corrections: pd.DataFrame,
+) -> np.ndarray:
+    predicted = np.asarray(predicted_remaining, dtype=float)
+    hours = pd.Series(np.asarray(cutoff_hours, dtype=int))
+    adjustment = np.column_stack(
+        [
+            hours.map(corrections[f"q{int(quantile * 100):02d}_correction"]).fillna(0.0)
+            for quantile in QUANTILES
+        ]
+    )
+    return np.sort(np.maximum(0.0, predicted + adjustment), axis=1)
+
+
+def predict_boosted(
+    train: pd.DataFrame,
+    test: pd.DataFrame,
+    *,
+    features: Sequence[str],
+    model_name: str,
+    fold_id: int,
+    max_iter: int,
+    random_state: int,
+    calibration_days: int,
+    calibration_shrinkage_days: float,
+) -> list[pd.DataFrame]:
+    if not features:
+        raise ValueError(f"No features available for {model_name}")
+    if calibration_days < 7:
+        raise ValueError("calibration_days must be at least 7")
+
+    train_days = np.array(sorted(pd.to_datetime(train["day"].unique())))
+    effective_calibration_days = min(calibration_days, len(train_days) - 28)
+    if effective_calibration_days < 7:
+        raise ValueError("Need at least 35 training days for nested calibration")
+    calibration_start = train_days[-effective_calibration_days]
+    core = train.loc[train["day"].lt(calibration_start)].copy()
+    calibration = train.loc[train["day"].ge(calibration_start)].copy()
+
+    # Refit completion-curve features using only the inner training block so the
+    # calibration residuals reproduce a genuine future prediction.
+    inner_curve = fit_completion_curve(core)
+    core = add_curve_features(core, inner_curve)
+    calibration = add_curve_features(calibration, inner_curve)
+    calibration_models = _fit_quantile_models(
+        core,
+        features=features,
+        max_iter=max_iter,
+        random_state=random_state,
+    )
+    calibration_prediction = _predict_remaining_quantiles(
+        calibration_models, calibration, features=features
+    )
+    corrections = fit_quantile_corrections(
+        calibration["remaining_arrivals"].to_numpy(dtype=float),
+        calibration_prediction,
+        calibration["cutoff_hour"].to_numpy(dtype=int),
+        shrinkage_days=calibration_shrinkage_days,
+    )
+
+    models = _fit_quantile_models(
+        train,
+        features=features,
+        max_iter=max_iter,
+        random_state=random_state,
+    )
+    raw_unordered = _predict_remaining_quantiles(models, test, features=features)
+    raw_remaining = np.sort(raw_unordered, axis=1)
+    calibrated_remaining = apply_quantile_corrections(
+        raw_unordered,
+        test["cutoff_hour"].to_numpy(dtype=int),
+        corrections,
+    )
+    observed = test["cumulative_arrivals"].to_numpy(dtype=float)
+    outputs: list[pd.DataFrame] = []
+    for name, remaining in (
+        (model_name, raw_remaining),
+        (f"{model_name}_calibrated", calibrated_remaining),
+    ):
+        totals = observed[:, None] + remaining
+        outputs.append(
+            _prediction_rows(
+                test,
+                fold_id=fold_id,
+                model=name,
+                predicted_total=totals[:, 1],
+                lower_total=totals[:, 0],
+                upper_total=totals[:, 2],
+            )
+        )
+    return outputs
 
 
 def summarize_predictions(predictions: pd.DataFrame) -> pd.DataFrame:
@@ -663,6 +798,8 @@ def run_backtest(
     min_train_days: int,
     max_iter: int,
     random_state: int,
+    calibration_days: int = 56,
+    calibration_shrinkage_days: float = 28.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     cutoff_hours = sorted(set(int(hour) for hour in cutoff_hours))
     invalid = [hour for hour in cutoff_hours if not 0 <= hour <= 23]
@@ -689,8 +826,7 @@ def run_backtest(
         outputs.append(predict_prior_update(test, update, curve_prediction, fold_id=fold_id))
 
         for model_name, features in feature_sets(train).items():
-            outputs.append(
-                predict_boosted(
+            model_outputs = predict_boosted(
                     train,
                     test,
                     features=features,
@@ -698,10 +834,14 @@ def run_backtest(
                     fold_id=fold_id,
                     max_iter=max_iter,
                     random_state=random_state + fold_id,
+                    calibration_days=calibration_days,
+                    calibration_shrinkage_days=calibration_shrinkage_days,
                 )
-            )
+            outputs.extend(model_outputs)
             feature_records.extend(
-                {"model": model_name, "feature": feature, "fold": fold_id} for feature in features
+                {"model": output["model"].iat[0], "feature": feature, "fold": fold_id}
+                for output in model_outputs
+                for feature in features
             )
 
     predictions = pd.concat(outputs, ignore_index=True)
@@ -728,6 +868,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-train-days", type=int, default=365)
     parser.add_argument("--max-iter", type=int, default=200)
     parser.add_argument("--random-state", type=int, default=42)
+    parser.add_argument("--calibration-days", type=int, default=56)
+    parser.add_argument("--calibration-shrinkage-days", type=float, default=28.0)
     parser.add_argument(
         "--output-dir", type=Path, default=Path("validation/intraday-day-completion")
     )
@@ -757,6 +899,8 @@ def main() -> None:
         min_train_days=args.min_train_days,
         max_iter=args.max_iter,
         random_state=args.random_state,
+        calibration_days=args.calibration_days,
+        calibration_shrinkage_days=args.calibration_shrinkage_days,
     )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -779,6 +923,8 @@ def main() -> None:
         "test_days": args.test_days,
         "min_train_days": args.min_train_days,
         "max_iter": args.max_iter,
+        "calibration_days": args.calibration_days,
+        "calibration_shrinkage_days": args.calibration_shrinkage_days,
         "source_days": source_days,
         "complete_days": complete_days,
         "source_start": source_start.isoformat(),
