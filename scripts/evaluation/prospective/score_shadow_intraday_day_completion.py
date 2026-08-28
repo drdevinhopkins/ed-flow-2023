@@ -23,6 +23,8 @@ OPERATIONAL_HOURS = tuple(range(11, 19))
 
 def score_forecasts(forecasts: pd.DataFrame, flow: pd.DataFrame) -> pd.DataFrame:
     forecasts = forecasts.copy()
+    if "status" in forecasts:
+        forecasts = forecasts.loc[forecasts["status"].eq("shadow_only")].copy()
     forecasts["forecast_day"] = pd.to_datetime(forecasts["forecast_day"]).dt.normalize()
     complete = flow.loc[flow["is_complete_day"]].copy()
     totals = complete.groupby("day", as_index=False)["Inflow_Total"].sum().rename(

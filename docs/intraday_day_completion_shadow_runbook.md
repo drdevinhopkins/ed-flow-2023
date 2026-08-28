@@ -23,6 +23,7 @@ Do not install or enable this timer in the production checkout. Do not add opera
 
 - Alert if `latest-status.json` is missing or older than 90 minutes during the shadow window.
 - Treat `suppressed_data_quality` as a data incident to investigate, not a forecast.
+- Treat `shadow_fallback` as a model incident. It records the deterministic prior-update baseline without an interval and is excluded from candidate readiness evidence.
 - Confirm `prospective-readiness.json` advances only after a complete day is available.
 - Preserve `forecasts.csv` and `scores.csv`; their model/day/hour keys are immutable and idempotent.
 - A serialization or SHA mismatch is a hard failure. Rebuild from the frozen branch commit; do not load an unverified artifact.

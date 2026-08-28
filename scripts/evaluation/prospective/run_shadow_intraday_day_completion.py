@@ -39,6 +39,7 @@ from backtest_intraday_day_completion import (  # noqa: E402
 )
 
 MODEL_VERSION = "intraday-ensemble-v1-2026-08-28"
+FALLBACK_VERSION = "intraday-prior-update-fallback-v1"
 OPERATIONAL_HOURS = range(6, 23)
 
 
@@ -135,6 +136,60 @@ def write_model_artifact(
     }
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
     return verified, manifest
+
+
+def run_prior_update_fallback(
+    args: argparse.Namespace, model_error: Exception
+) -> dict[str, object]:
+    """Record a clearly labeled deterministic fallback without candidate intervals."""
+    generated_at = pd.Timestamp(args.now) if args.now else pd.Timestamp.now(tz="UTC")
+    if generated_at.tzinfo is None:
+        generated_at = generated_at.tz_localize("UTC")
+    flow = load_hourly_flow(args.flow_csv)
+    latest_ds, _ = validate_live_flow(
+        flow, now=generated_at, max_age_minutes=args.max_age_minutes
+    )
+    live_day = latest_ds.normalize()
+    prepared_flow = flow.copy()
+    prepared_flow.loc[prepared_flow["day"].eq(live_day), "is_complete_day"] = True
+    snapshots = build_snapshots(prepared_flow, calendar_mode="rich", weather=None)
+    train = snapshots.loc[snapshots["day"].lt(live_day)].copy()
+    live = snapshots.loc[
+        snapshots["day"].eq(live_day) & snapshots["ds"].eq(latest_ds)
+    ].copy()
+    if len(live) != 1:
+        raise DataQualityError(f"fallback expected one live snapshot at {latest_ds}; found {len(live)}")
+    if int(train["day"].nunique()) < args.min_train_days:
+        raise DataQualityError("fallback has insufficient complete training history")
+
+    hour = int(live["cutoff_hour"].iat[0])
+    prior_params = fit_prior_update(train)
+    baseline_total = float(
+        live["prior_total"].iat[0]
+        + prior_params.loc[hour, "beta"] * live["pace_residual"].iat[0]
+    )
+    row = {
+        "generated_at_utc": generated_at.tz_convert("UTC").isoformat(),
+        "forecast_day": live_day.date().isoformat(),
+        "cutoff_ds_local": latest_ds.isoformat(),
+        "cutoff_hour": hour,
+        "model_version": FALLBACK_VERSION,
+        "candidate_model_version": MODEL_VERSION,
+        "source_hash": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16],
+        "artifact_sha256": None,
+        "training_start": pd.Timestamp(train["day"].min()).date().isoformat(),
+        "training_end": pd.Timestamp(train["day"].max()).date().isoformat(),
+        "training_days": int(train["day"].nunique()),
+        "observed_arrivals": float(live["cumulative_arrivals"].iat[0]),
+        "predicted_total": baseline_total,
+        "p10_total": None,
+        "p90_total": None,
+        "prior_update_baseline": baseline_total,
+        "status": "shadow_fallback",
+        "fallback_reason": f"{type(model_error).__name__}: {model_error}",
+    }
+    _append_forecast(args.output_csv, row)
+    return row
 
 
 def run_shadow(args: argparse.Namespace) -> dict[str, object]:
@@ -312,6 +367,8 @@ def main() -> None:
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "model_version": MODEL_VERSION,
         }
+    except Exception as exc:
+        status = run_prior_update_fallback(args, exc)
     args.status_json.write_text(json.dumps(status, indent=2) + "\n")
     _append_status(args.status_history_csv, status)
     print(json.dumps(status, indent=2), flush=True)

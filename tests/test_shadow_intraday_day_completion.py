@@ -1,8 +1,10 @@
+import argparse
 import json
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -14,6 +16,7 @@ from backtest_intraday_day_completion import load_hourly_flow
 from run_shadow_intraday_day_completion import (
     DataQualityError,
     _append_forecast,
+    run_prior_update_fallback,
     validate_live_flow,
     write_model_artifact,
 )
@@ -126,6 +129,75 @@ class ShadowIntradayTests(unittest.TestCase):
         self.assertEqual(scored.iloc[0]["error"], 1.0)
         self.assertEqual(summary["prospective_days"], 1)
         self.assertFalse(readiness["prospective_ready"])
+
+    def test_fallback_rows_are_excluded_from_candidate_evidence(self):
+        forecasts = pd.DataFrame(
+            {
+                "forecast_day": ["2026-08-27", "2026-08-27"],
+                "cutoff_hour": [15, 15],
+                "model_version": ["candidate", "fallback"],
+                "predicted_total": [49.0, 48.0],
+                "p10_total": [40.0, None],
+                "p90_total": [60.0, None],
+                "prior_update_baseline": [45.0, 48.0],
+                "status": ["shadow_only", "shadow_fallback"],
+            }
+        )
+        rows = [
+            {"ds": f"2026-08-27 {hour:02d}:00:00", "Inflow_Total": 2.0}
+            for hour in range(24)
+        ]
+        handle = tempfile.NamedTemporaryFile(suffix=".csv", delete=False)
+        pd.DataFrame(rows).to_csv(handle.name, index=False)
+        scored = score_forecasts(forecasts, load_hourly_flow(handle.name))
+        self.assertEqual(len(scored), 1)
+        self.assertEqual(scored.iloc[0]["model_version"], "candidate")
+
+    def test_model_error_records_labeled_prior_update_fallback(self):
+        directory = Path(tempfile.mkdtemp())
+        args = argparse.Namespace(
+            now="2026-08-28T18:30:00-04:00",
+            flow_csv="unused.csv",
+            max_age_minutes=90,
+            min_train_days=1,
+            output_csv=directory / "forecasts.csv",
+        )
+        flow = pd.DataFrame(
+            {"day": [pd.Timestamp("2026-08-27")], "is_complete_day": [True]}
+        )
+        snapshots = pd.DataFrame(
+            {
+                "day": [pd.Timestamp("2026-08-27"), pd.Timestamp("2026-08-28")],
+                "ds": [pd.Timestamp("2026-08-27 18:00"), pd.Timestamp("2026-08-28 18:00")],
+                "cutoff_hour": [18, 18],
+                "prior_total": [250.0, 260.0],
+                "pace_residual": [0.0, 5.0],
+                "cumulative_arrivals": [200.0, 210.0],
+            }
+        )
+        prior_params = pd.DataFrame({"beta": [0.5]}, index=[18])
+        with (
+            patch("run_shadow_intraday_day_completion.load_hourly_flow", return_value=flow),
+            patch(
+                "run_shadow_intraday_day_completion.validate_live_flow",
+                return_value=(pd.Timestamp("2026-08-28 18:00"), pd.DataFrame()),
+            ),
+            patch(
+                "run_shadow_intraday_day_completion.build_snapshots",
+                return_value=snapshots,
+            ),
+            patch(
+                "run_shadow_intraday_day_completion.fit_prior_update",
+                return_value=prior_params,
+            ),
+        ):
+            row = run_prior_update_fallback(args, RuntimeError("candidate failed"))
+
+        self.assertEqual(row["status"], "shadow_fallback")
+        self.assertEqual(row["predicted_total"], 262.5)
+        self.assertIsNone(row["p10_total"])
+        saved = pd.read_csv(args.output_csv)
+        self.assertEqual(saved.iloc[0]["model_version"], "intraday-prior-update-fallback-v1")
 
     def test_empty_score_ledger_reports_zero_progress(self):
         summary = summarize_scores(pd.DataFrame())
