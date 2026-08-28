@@ -105,6 +105,22 @@ Passing a retrospective gate does not authorize production publishing. Productio
 requires a deterministic fallback, freshness monitoring, a scoring/runbook path, and an
 explicit go/no-go review after prospective evidence is available.
 
+## Prospective shadow operation
+
+`scripts/evaluation/prospective/run_shadow_intraday_day_completion.py` fits the frozen
+ensemble and appends one versioned record per day/cutoff to a shadow-only CSV. It never
+publishes to the operational forecast or blurb. Output is suppressed when flow is stale,
+current-day hours are missing or out of order, Total TBS components are invalid, weather
+is unavailable within two hours, the cutoff is outside 06:00–22:00, or training history
+is insufficient. The branch-only manual workflow records the forecast, latest status,
+feature membership, and calibration corrections under
+`validation/intraday-day-completion-shadow/`.
+
+GitHub schedules execute workflow files from the default branch, so this experiment
+workflow is intentionally manual while it remains isolated on the branch. A scheduler
+must not be enabled on the default branch or server until the shadow runner and its
+suppression behaviour have been reviewed.
+
 ## Example server run
 
 ```bash
