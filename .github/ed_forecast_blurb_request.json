@@ -1,11 +1,11 @@
 {
-  "generated_at_local": "2026-08-28T09:27:25-04:00",
-  "forecast_data_time_local": "2026-08-28 09:00:00",
-  "blurb_id": "20260828-0900",
-  "blurb": "Worsening: stretcher occupancy is about 187% now, with 19 TBS and overflow still contained at 10. Pressure is expected to build through the afternoon, with occupancy around 217% and TBS in the low 40s by about 4 PM, while overflow edges into the high teens. On-call is not indicated.",
+  "generated_at_local": "2026-08-28T10:28:53-04:00",
+  "forecast_data_time_local": "2026-08-28 10:00:00",
+  "blurb_id": "20260828-1000",
+  "blurb": "Worsening: stretcher occupancy is about 189% now, with 21 TBS and overflow still contained at 9. Pressure should build into mid-afternoon, with TBS reaching the low 40s and stretcher occupancy around 210%, while overflow stays around the mid-teens. On-call is not currently needed and, based on how the day is shaping up, is unlikely to be required this evening.",
   "oncall_recommendation": "NOT INDICATED",
-  "oncall_rationale": "Maximum calibrated need is about 12% over the available 4/6/8-hour horizons; modeled activation shows no meaningful flow benefit and is slightly unfavorable across most modeled outcomes.",
+  "oncall_rationale": "Maximum calibrated need is about 10.5% over the available 4/6/8-hour horizons; modeled activation shows no meaningful flow benefit and is slightly unfavorable across most modeled outcomes, making on-call unlikely to be required this evening given current data.",
   "send_recommended": false,
   "send_reason": "NONE",
-  "source_status": "OK: current=2026-08-28 09:00; forecast_origin=2026-08-28 09:00; oncall=2026-08-28 09:00; forecast generated 2026-08-28 09:25 local"
+  "source_status": "OK: current=2026-08-28 10:00; forecast_origin=2026-08-28 10:00; oncall=2026-08-28 10:00; forecast generated 2026-08-28 10:25 local"
 }
