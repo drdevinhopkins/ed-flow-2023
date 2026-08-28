@@ -33,6 +33,30 @@ PYTHONPATH=scripts python scripts/evaluation/backtests/backtest_daily_weather_fe
 
 The corresponding GitHub Actions workflows set `PYTHONPATH=scripts` explicitly.
 
+### Intraday daily-arrival completion forecast
+
+`evaluation/backtests/backtest_intraday_day_completion.py` evaluates an hourly-updated
+forecast of the final Montreal-calendar-day ED arrival total. It predicts arrivals still
+to come and adds them to the observed cumulative count, so the forecast cannot fall below
+the number already seen. The runner compares completion-curve and prior-update baselines
+with pooled quantile gradient-boosting models using expanding time-ordered folds.
+
+For a quick repository-data run:
+
+```bash
+python scripts/evaluation/backtests/backtest_intraday_day_completion.py \
+  --flow-csv data/historical/allData.csv \
+  --calendar-context basic \
+  --n-folds 2 \
+  --max-iter 50 \
+  --output-dir validation/intraday-day-completion-smoke
+```
+
+Use `--calendar-context rich` with the installed repository requirements to add the
+existing JGH holiday, closure, construction-vacation, and school-calendar features. An
+optional hourly weather CSV can be supplied with `--weather-csv`; only observations at or
+before each historical cutoff are merged.
+
 ## Migration target
 
 The next cleanup phase should introduce a package such as:
