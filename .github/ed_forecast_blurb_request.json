@@ -1,11 +1,11 @@
 {
-  "generated_at_local": "2026-08-28T08:31:18-04:00",
-  "forecast_data_time_local": "2026-08-28 08:00:00",
-  "blurb_id": "20260828-0800",
-  "blurb": "Front-end workload remains heavy: stretcher occupancy is about 181% with roughly 76 TBS, while overflow is still contained at 10 with no prepod buildup. TBS should ease markedly through the morning, but stretcher occupancy is expected to climb above 220% by around noon and stay elevated into the afternoon, with overflow reaching the high teens. On-call is not indicated.",
+  "generated_at_local": "2026-08-28T09:27:25-04:00",
+  "forecast_data_time_local": "2026-08-28 09:00:00",
+  "blurb_id": "20260828-0900",
+  "blurb": "Worsening: stretcher occupancy is about 187% now, with 19 TBS and overflow still contained at 10. Pressure is expected to build through the afternoon, with occupancy around 217% and TBS in the low 40s by about 4 PM, while overflow edges into the high teens. On-call is not indicated.",
   "oncall_recommendation": "NOT INDICATED",
   "oncall_rationale": "Maximum calibrated need is about 12% over the available 4/6/8-hour horizons; modeled activation shows no meaningful flow benefit and is slightly unfavorable across most modeled outcomes.",
   "send_recommended": false,
   "send_reason": "NONE",
-  "source_status": "OK: current=2026-08-28 08:00; forecast_origin=2026-08-28 08:00; oncall=2026-08-28 08:00; forecast generated 2026-08-28 08:23 local"
+  "source_status": "OK: current=2026-08-28 09:00; forecast_origin=2026-08-28 09:00; oncall=2026-08-28 09:00; forecast generated 2026-08-28 09:25 local"
 }
