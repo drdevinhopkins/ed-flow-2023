@@ -10,6 +10,7 @@ on:
       - 'scripts/evaluation/prospective/run_shadow_intraday_day_completion.py'
       - 'scripts/evaluation/prospective/score_shadow_intraday_day_completion.py'
       - 'tests/test_shadow_intraday_day_completion.py'
+      - 'scripts/evaluation/prospective/run_intraday_shadow_cycle.sh'
 
 permissions:
   contents: write
@@ -53,7 +54,9 @@ jobs:
             --output-csv validation/intraday-day-completion-shadow/forecasts.csv \
             --status-json validation/intraday-day-completion-shadow/latest-status.json \
             --status-history-csv validation/intraday-day-completion-shadow/status-history.csv \
-            --metadata-json validation/intraday-day-completion-shadow/model-metadata.json
+            --metadata-json validation/intraday-day-completion-shadow/model-metadata.json \
+            --artifact-joblib "$RUNNER_TEMP/intraday-ensemble-v1.joblib" \
+            --artifact-manifest-json validation/intraday-day-completion-shadow/artifact-manifest.json
       - name: Score completed shadow days
         run: |
           python scripts/evaluation/prospective/score_shadow_intraday_day_completion.py \
@@ -66,7 +69,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: intraday-day-completion-shadow
-          path: validation/intraday-day-completion-shadow/*
+          path: |
+            validation/intraday-day-completion-shadow/*
+            ${{ runner.temp }}/intraday-ensemble-v1.joblib
       - name: Append branch shadow record
         if: always()
         run: |

@@ -1,0 +1,17 @@
+[Unit]
+Description=ED flow intraday day-completion shadow forecast
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=dhopkins
+WorkingDirectory=/home/dhopkins/apps/ed-flow-intraday-shadow
+Environment=INTRADAY_SHADOW_OUTPUT_DIR=/var/lib/ed-flow/intraday-shadow
+Environment=PATH=/home/dhopkins/apps/ed-flow-intraday-shadow/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+ExecStart=/usr/bin/bash scripts/evaluation/prospective/run_intraday_shadow_cycle.sh
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

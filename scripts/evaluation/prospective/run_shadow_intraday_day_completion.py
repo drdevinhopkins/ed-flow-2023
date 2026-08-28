@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import platform
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +14,8 @@ from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
+import joblib
+import sklearn
 
 BACKTEST_DIR = Path(__file__).resolve().parents[1] / "backtests"
 sys.path.insert(0, str(BACKTEST_DIR))
@@ -108,6 +111,32 @@ def _append_status(path: Path, status: dict[str, object]) -> None:
     new.to_csv(path, index=False)
 
 
+def write_model_artifact(
+    bundle: dict[str, object], artifact_path: Path, manifest_path: Path
+) -> tuple[dict[str, object], dict[str, object]]:
+    """Persist and reload the frozen bundle, returning the verified copy and manifest."""
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(bundle, artifact_path, compress=3)
+    digest = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+    verified = joblib.load(artifact_path)
+    manifest = {
+        "model_version": bundle["model_version"],
+        "source_hash": bundle["source_hash"],
+        "artifact_sha256": digest,
+        "artifact_bytes": artifact_path.stat().st_size,
+        "python_version": platform.python_version(),
+        "pandas_version": pd.__version__,
+        "scikit_learn_version": sklearn.__version__,
+        "serialization": "joblib",
+        "training_start": bundle["training_start"],
+        "training_end": bundle["training_end"],
+        "training_days": bundle["training_days"],
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    return verified, manifest
+
+
 def run_shadow(args: argparse.Namespace) -> dict[str, object]:
     generated_at = pd.Timestamp(args.now) if args.now else pd.Timestamp.now(tz="UTC")
     if generated_at.tzinfo is None:
@@ -176,12 +205,30 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
     weather_models = _fit_quantile_models(
         train, features=calendar_weather_features, max_iter=args.max_iter, random_state=args.random_state
     )
-    state_raw = _predict_remaining_quantiles(state_models, live, features=sets["boosted_state"])
+    source_hash = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16]
+    bundle = {
+        "model_version": MODEL_VERSION,
+        "source_hash": source_hash,
+        "training_start": pd.Timestamp(train["day"].min()).date().isoformat(),
+        "training_end": pd.Timestamp(train["day"].max()).date().isoformat(),
+        "training_days": int(train["day"].nunique()),
+        "state_features": sets["boosted_state"],
+        "calendar_weather_features": calendar_weather_features,
+        "state_models": state_models,
+        "weather_models": weather_models,
+        "corrections": corrections,
+    }
+    bundle, artifact_manifest = write_model_artifact(
+        bundle, args.artifact_joblib, args.artifact_manifest_json
+    )
+    state_raw = _predict_remaining_quantiles(
+        bundle["state_models"], live, features=bundle["state_features"]
+    )
     state_calibrated = apply_quantile_corrections(
-        state_raw, live["cutoff_hour"].to_numpy(dtype=int), corrections
+        state_raw, live["cutoff_hour"].to_numpy(dtype=int), bundle["corrections"]
     )[0]
     weather_raw = _predict_remaining_quantiles(
-        weather_models, live, features=calendar_weather_features
+        bundle["weather_models"], live, features=bundle["calendar_weather_features"]
     )[0]
     observed = float(live["cumulative_arrivals"].iat[0])
     predicted_total = observed + 0.5 * (state_calibrated[1] + weather_raw[1])
@@ -194,7 +241,6 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
         live["prior_total"].iat[0]
         + prior_params.loc[hour, "beta"] * live["pace_residual"].iat[0]
     )
-    source_hash = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16]
     row = {
         "generated_at_utc": generated_at.tz_convert("UTC").isoformat(),
         "forecast_day": live_day.date().isoformat(),
@@ -202,6 +248,7 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
         "cutoff_hour": hour,
         "model_version": MODEL_VERSION,
         "source_hash": source_hash,
+        "artifact_sha256": artifact_manifest["artifact_sha256"],
         "training_start": pd.Timestamp(train["day"].min()).date().isoformat(),
         "training_end": pd.Timestamp(train["day"].max()).date().isoformat(),
         "training_days": int(train["day"].nunique()),
@@ -226,6 +273,7 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
         "state_features": sets["boosted_state"],
         "calendar_weather_features": calendar_weather_features,
         "corrections": corrections.reset_index().to_dict(orient="records"),
+        "artifact_manifest": artifact_manifest,
     }
     args.metadata_json.write_text(json.dumps(metadata, indent=2) + "\n")
     return {"status": "forecast_written", **row}
@@ -239,6 +287,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--status-json", type=Path, required=True)
     parser.add_argument("--status-history-csv", type=Path, required=True)
     parser.add_argument("--metadata-json", type=Path, required=True)
+    parser.add_argument("--artifact-joblib", type=Path, required=True)
+    parser.add_argument("--artifact-manifest-json", type=Path, required=True)
     parser.add_argument("--now")
     parser.add_argument("--max-age-minutes", type=int, default=90)
     parser.add_argument("--min-train-days", type=int, default=365)

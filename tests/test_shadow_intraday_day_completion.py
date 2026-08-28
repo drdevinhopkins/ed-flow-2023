@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -14,6 +15,7 @@ from run_shadow_intraday_day_completion import (
     DataQualityError,
     _append_forecast,
     validate_live_flow,
+    write_model_artifact,
 )
 from score_shadow_intraday_day_completion import (
     evaluate_prospective_readiness,
@@ -78,6 +80,23 @@ class ShadowIntradayTests(unittest.TestCase):
         saved = pd.read_csv(path)
         self.assertEqual(len(saved), 1)
         self.assertEqual(saved.loc[0, "predicted_total"], 200)
+
+    def test_serialized_artifact_is_reloaded_and_hashed(self):
+        directory = Path(tempfile.mkdtemp())
+        artifact = directory / "model.joblib"
+        manifest_path = directory / "manifest.json"
+        bundle = {
+            "model_version": "v1",
+            "source_hash": "abc",
+            "training_start": "2025-01-01",
+            "training_end": "2025-12-31",
+            "training_days": 365,
+            "payload": [1, 2, 3],
+        }
+        loaded, manifest = write_model_artifact(bundle, artifact, manifest_path)
+        self.assertEqual(loaded["payload"], [1, 2, 3])
+        self.assertEqual(len(manifest["artifact_sha256"]), 64)
+        self.assertEqual(json.loads(manifest_path.read_text()), manifest)
 
     def test_scoring_waits_for_complete_day_and_calculates_metrics(self):
         forecasts = pd.DataFrame(

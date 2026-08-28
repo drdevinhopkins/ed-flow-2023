@@ -1,0 +1,11 @@
+[Unit]
+Description=Run ED day-completion shadow forecast hourly
+
+[Timer]
+OnCalendar=*-*-* 11..18:10:00 America/Montreal
+Persistent=false
+RandomizedDelaySec=60
+Unit=ed-flow-intraday-shadow.service
+
+[Install]
+WantedBy=timers.target
