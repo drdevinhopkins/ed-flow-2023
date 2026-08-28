@@ -11,7 +11,7 @@ INTRADAY_SHADOW_OUTPUT_DIR=/var/lib/ed-flow/intraday-shadow \
   scripts/evaluation/prospective/run_intraday_shadow_cycle.sh
 ```
 
-Confirm that `latest-status.json` is either `forecast_written` or an explicit `suppressed_data_quality`. Never bypass a suppression. Verify the artifact SHA-256 in `artifact-manifest.json` against the runtime `.joblib` file before deployment or recovery.
+Confirm that `latest-status.json` is either `shadow_only` or an explicit `suppressed_data_quality`. Never bypass a suppression. Verify the artifact SHA-256 in `artifact-manifest.json` against the runtime `.joblib` file before deployment or recovery.
 
 ## Isolated scheduler installation
 
