@@ -1,0 +1,30 @@
+{
+  "prospective_days": 0,
+  "scored_forecasts": 0,
+  "operational_hour_counts": {
+    "11": 0,
+    "12": 0,
+    "13": 0,
+    "14": 0,
+    "15": 0,
+    "16": 0,
+    "17": 0,
+    "18": 0
+  },
+  "max_absolute_operational_hour_bias": null,
+  "gates": {
+    "prospective_days_at_least_28": false,
+    "at_least_20_samples_per_operational_hour": false,
+    "mae_improvement_at_least_5pct": false,
+    "absolute_bias_at_most_2": false,
+    "p80_coverage_between_75_and_85pct": false,
+    "max_operational_hour_bias_at_most_3": false
+  },
+  "prospective_ready": false,
+  "production_ready": false,
+  "remaining_requirements": [
+    "Prospective gates must all pass.",
+    "A reviewed scheduler, serialized model artifacts, fallback, and runbook are required.",
+    "An explicit go/no-go review is required before operational publishing."
+  ]
+}
