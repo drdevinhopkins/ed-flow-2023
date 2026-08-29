@@ -18,6 +18,7 @@ from run_shadow_intraday_day_completion import (
     _append_forecast,
     run_prior_update_fallback,
     validate_live_flow,
+    validate_fingerprint_against_ledger,
     write_model_artifact,
 )
 from score_shadow_intraday_day_completion import (
@@ -101,6 +102,59 @@ class ShadowIntradayTests(unittest.TestCase):
         self.assertEqual(loaded["payload"], [1, 2, 3])
         self.assertEqual(len(manifest["artifact_sha256"]), 64)
         self.assertEqual(json.loads(manifest_path.read_text()), manifest)
+
+    def test_functional_drift_is_suppressed_before_append(self):
+        path = Path(tempfile.NamedTemporaryFile(suffix=".csv", delete=False).name)
+        pd.DataFrame(
+            {
+                "model_version": ["v1"],
+                "source_hash": ["source"],
+                "training_end": ["2026-08-28"],
+                "model_fingerprint": ["stable"],
+            }
+        ).to_csv(path, index=False)
+        validate_fingerprint_against_ledger(
+            path,
+            model_version="v1",
+            source_hash="source",
+            training_end="2026-08-28",
+            fingerprint="stable",
+        )
+        with self.assertRaises(DataQualityError):
+            validate_fingerprint_against_ledger(
+                path,
+                model_version="v1",
+                source_hash="source",
+                training_end="2026-08-28",
+                fingerprint="drifted",
+            )
+
+    def test_scoring_excludes_functionally_drifted_forecast(self):
+        forecasts = pd.DataFrame(
+            {
+                "forecast_day": ["2026-08-27", "2026-08-27"],
+                "cutoff_hour": [17, 18],
+                "model_version": ["v1", "v1"],
+                "source_hash": ["source", "source"],
+                "training_end": ["2026-08-26", "2026-08-26"],
+                "generated_at_utc": ["2026-08-27T21:00:00Z", "2026-08-27T22:00:00Z"],
+                "model_fingerprint": ["stable", "drifted"],
+                "predicted_total": [49.0, 999.0],
+                "p10_total": [40.0, 900.0],
+                "p90_total": [60.0, 1000.0],
+                "prior_update_baseline": [45.0, 45.0],
+                "status": ["shadow_only", "shadow_only"],
+            }
+        )
+        rows = [
+            {"ds": f"2026-08-27 {hour:02d}:00:00", "Inflow_Total": 2.0}
+            for hour in range(24)
+        ]
+        handle = tempfile.NamedTemporaryFile(suffix=".csv", delete=False)
+        pd.DataFrame(rows).to_csv(handle.name, index=False)
+        scored = score_forecasts(forecasts, load_hourly_flow(handle.name))
+        self.assertEqual(len(scored), 1)
+        self.assertEqual(scored.iloc[0]["model_fingerprint"], "stable")
 
     def test_scoring_waits_for_complete_day_and_calculates_metrics(self):
         forecasts = pd.DataFrame(

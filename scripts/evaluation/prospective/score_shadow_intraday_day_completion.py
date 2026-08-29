@@ -25,6 +25,22 @@ def score_forecasts(forecasts: pd.DataFrame, flow: pd.DataFrame) -> pd.DataFrame
     forecasts = forecasts.copy()
     if "status" in forecasts:
         forecasts = forecasts.loc[forecasts["status"].eq("shadow_only")].copy()
+    if "model_fingerprint" in forecasts:
+        order = forecasts.sort_values("generated_at_utc").copy()
+        group = ["model_version", "source_hash", "training_end"]
+        reference = (
+            order.loc[order["model_fingerprint"].notna()]
+            .groupby(group, dropna=False)["model_fingerprint"]
+            .first()
+            .rename("reference_fingerprint")
+        )
+        order = order.merge(reference, on=group, how="left")
+        consistent = (
+            order["model_fingerprint"].isna()
+            | order["reference_fingerprint"].isna()
+            | order["model_fingerprint"].eq(order["reference_fingerprint"])
+        )
+        forecasts = order.loc[consistent].drop(columns="reference_fingerprint")
     forecasts["forecast_day"] = pd.to_datetime(forecasts["forecast_day"]).dt.normalize()
     complete = flow.loc[flow["is_complete_day"]].copy()
     totals = complete.groupby("day", as_index=False)["Inflow_Total"].sum().rename(

@@ -170,6 +170,29 @@ def functional_model_fingerprint(bundle: dict[str, object], probe: pd.DataFrame)
     return hashlib.sha256(encoded).hexdigest()
 
 
+def validate_fingerprint_against_ledger(
+    path: Path, *, model_version: str, source_hash: str, training_end: str, fingerprint: str
+) -> None:
+    """Suppress a refit that changes functionally within a frozen training window."""
+    if not path.exists():
+        return
+    existing = pd.read_csv(path)
+    required = {"model_version", "source_hash", "training_end", "model_fingerprint"}
+    if not required.issubset(existing.columns):
+        return
+    reference = existing.loc[
+        existing["model_version"].eq(model_version)
+        & existing["source_hash"].eq(source_hash)
+        & existing["training_end"].astype(str).eq(training_end)
+        & existing["model_fingerprint"].notna(),
+        "model_fingerprint",
+    ].astype(str)
+    if not reference.empty and not reference.eq(fingerprint).all():
+        raise DataQualityError(
+            "functional model fingerprint drift for unchanged version, source, and training window"
+        )
+
+
 def run_prior_update_fallback(
     args: argparse.Namespace, model_error: Exception
 ) -> dict[str, object]:
@@ -309,6 +332,13 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
         bundle, args.artifact_joblib, args.artifact_manifest_json
     )
     model_fingerprint = functional_model_fingerprint(bundle, train)
+    validate_fingerprint_against_ledger(
+        args.output_csv,
+        model_version=MODEL_VERSION,
+        source_hash=bundle["source_hash"],
+        training_end=bundle["training_end"],
+        fingerprint=model_fingerprint,
+    )
     artifact_manifest["model_fingerprint"] = model_fingerprint
     args.artifact_manifest_json.write_text(json.dumps(artifact_manifest, indent=2) + "\n")
     state_raw = _predict_remaining_quantiles(
