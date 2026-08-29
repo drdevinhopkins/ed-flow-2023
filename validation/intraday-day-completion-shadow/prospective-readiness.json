@@ -1,15 +1,15 @@
 {
-  "prospective_days": 0,
-  "scored_forecasts": 0,
+  "prospective_days": 1,
+  "scored_forecasts": 4,
   "operational_hour_counts": {
     "11": 0,
     "12": 0,
     "13": 0,
     "14": 0,
-    "15": 0,
-    "16": 0,
-    "17": 0,
-    "18": 0
+    "15": 1,
+    "16": 1,
+    "17": 1,
+    "18": 1
   },
   "max_absolute_operational_hour_bias": null,
   "gates": {

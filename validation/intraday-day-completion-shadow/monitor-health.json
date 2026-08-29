@@ -1,12 +1,12 @@
 {
-  "generated_at_utc": "2026-08-29T01:01:53.996511+00:00",
+  "generated_at_utc": "2026-08-29T04:04:23.452419+00:00",
   "health": "healthy_idle",
   "latest_status": "suppressed_data_quality",
   "status_age_minutes": 0.1,
   "candidate_forecasts": 4,
   "duplicate_forecast_keys": 0,
   "invalid_candidate_forecasts": 0,
-  "prospective_days": 0,
+  "prospective_days": 1,
   "required_prospective_days": 28,
   "production_ready": false,
   "alerts": []
