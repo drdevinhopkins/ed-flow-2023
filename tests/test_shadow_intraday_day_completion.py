@@ -357,8 +357,12 @@ class ShadowIntradayTests(unittest.TestCase):
             {"prospective_days": 1},
             now=pd.Timestamp("2026-08-29T18:01:00Z"),
         )
-        self.assertEqual(result["health"], "critical")
-        self.assertIn("model_fingerprint_drift", {item["code"] for item in result["alerts"]})
+        self.assertEqual(result["health"], "warning")
+        self.assertEqual(result["quarantined_model_drift_forecasts"], 1)
+        self.assertIn(
+            "quarantined_model_fingerprint_drift",
+            {item["code"] for item in result["alerts"]},
+        )
 
 
 if __name__ == "__main__":

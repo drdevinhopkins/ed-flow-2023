@@ -63,6 +63,26 @@ def evaluate_shadow_health(
     candidate = forecasts.copy()
     if not candidate.empty and "status" in candidate:
         candidate = candidate.loc[candidate["status"].eq("shadow_only")].copy()
+    quarantined_drift_count = 0
+    if not candidate.empty and "model_fingerprint" in candidate:
+        ordered = candidate.sort_values("generated_at_utc").copy()
+        group = ["model_version", "source_hash", "training_end"]
+        reference = (
+            ordered.loc[ordered["model_fingerprint"].notna()]
+            .groupby(group, dropna=False)["model_fingerprint"]
+            .first()
+            .rename("reference_fingerprint")
+        )
+        ordered = ordered.merge(reference, on=group, how="left")
+        drifted = (
+            ordered["model_fingerprint"].notna()
+            & ordered["reference_fingerprint"].notna()
+            & ordered["model_fingerprint"].ne(ordered["reference_fingerprint"])
+        )
+        quarantined_drift_count = int(drifted.sum())
+        candidate = ordered.loc[~drifted].drop(columns="reference_fingerprint")
+        if quarantined_drift_count:
+            alerts.append({"severity": "warning", "code": "quarantined_model_fingerprint_drift"})
     duplicate_count = 0
     invalid_count = 0
     if not candidate.empty:
@@ -93,15 +113,6 @@ def evaluate_shadow_health(
         manifest_fingerprint = manifest.get("model_fingerprint")
         if pd.notna(fingerprint) and fingerprint != manifest_fingerprint:
             alerts.append({"severity": "critical", "code": "model_fingerprint_mismatch"})
-        if "model_fingerprint" in candidate and pd.notna(fingerprint):
-            same_training = candidate.loc[
-                candidate["model_version"].eq(latest["model_version"])
-                & candidate["training_end"].eq(latest["training_end"])
-                & candidate["source_hash"].eq(latest["source_hash"])
-                & candidate["model_fingerprint"].notna()
-            ]
-            if same_training["model_fingerprint"].nunique() > 1:
-                alerts.append({"severity": "critical", "code": "model_fingerprint_drift"})
 
     severities = {item["severity"] for item in alerts}
     health = "critical" if "critical" in severities else "warning" if "warning" in severities else "healthy"
@@ -115,6 +126,7 @@ def evaluate_shadow_health(
         "candidate_forecasts": int(len(candidate)),
         "duplicate_forecast_keys": duplicate_count,
         "invalid_candidate_forecasts": invalid_count,
+        "quarantined_model_drift_forecasts": quarantined_drift_count,
         "prospective_days": int(readiness.get("prospective_days", 0)),
         "required_prospective_days": 28,
         "production_ready": bool(readiness.get("production_ready", False)),
