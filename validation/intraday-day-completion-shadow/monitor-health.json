@@ -1,13 +1,18 @@
 {
-  "generated_at_utc": "2026-08-29T21:11:26.333326+00:00",
-  "health": "healthy",
+  "generated_at_utc": "2026-08-29T22:11:58.626515+00:00",
+  "health": "critical",
   "latest_status": "shadow_only",
   "status_age_minutes": 0.9,
-  "candidate_forecasts": 11,
+  "candidate_forecasts": 12,
   "duplicate_forecast_keys": 0,
   "invalid_candidate_forecasts": 0,
   "prospective_days": 1,
   "required_prospective_days": 28,
   "production_ready": false,
-  "alerts": []
+  "alerts": [
+    {
+      "severity": "critical",
+      "code": "model_fingerprint_drift"
+    }
+  ]
 }

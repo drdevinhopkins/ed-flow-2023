@@ -368,8 +368,8 @@
   "artifact_manifest": {
     "model_version": "intraday-ensemble-v1-2026-08-28",
     "source_hash": "42d7b288cb143790",
-    "artifact_sha256": "64d0661c09c0b67e151a23e42637b4306d9627c39c182776bea74d09d2f96362",
-    "artifact_bytes": 2030328,
+    "artifact_sha256": "096fe790decdbcc9df35e324af72d5fdf102fb1ea4ffb9c914229af958a406bd",
+    "artifact_bytes": 2030094,
     "python_version": "3.12.14",
     "pandas_version": "3.0.5",
     "scikit_learn_version": "1.9.0",
@@ -377,6 +377,6 @@
     "training_start": "2021-01-02",
     "training_end": "2026-08-28",
     "training_days": 1986,
-    "model_fingerprint": "849a8fedcec3d904f7cf67bf635ba58e3c456d0796a7f9bf3095f2a2524f8abb"
+    "model_fingerprint": "e63ed0cee187830c03f0dec0a286de0ce736da6ae3ecb6ff815b0d52c0d4da22"
   }
 }
