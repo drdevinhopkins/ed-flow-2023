@@ -1,6 +1,6 @@
 {
   "status": "suppressed_data_quality",
-  "reason": "cutoff hour 23:00 is outside the shadow window",
-  "generated_at_utc": "2026-08-29T04:04:16.095076+00:00",
+  "reason": "cutoff hour 10:00 is outside the shadow window",
+  "generated_at_utc": "2026-08-29T15:03:18.750897+00:00",
   "model_version": "intraday-ensemble-v1-2026-08-28"
 }

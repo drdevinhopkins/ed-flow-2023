@@ -6,3 +6,4 @@ shadow_only,2026-08-28T23:03:04.645446+00:00,2026-08-28,2026-08-28T18:00:00,18.0
 suppressed_data_quality,2026-08-29T00:05:03.799121+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,cutoff hour 19:00 is outside the shadow window
 suppressed_data_quality,2026-08-29T01:01:49.407458+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,cutoff hour 20:00 is outside the shadow window
 suppressed_data_quality,2026-08-29T04:04:16.095076+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,cutoff hour 23:00 is outside the shadow window
+suppressed_data_quality,2026-08-29T15:03:18.750897+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,cutoff hour 10:00 is outside the shadow window

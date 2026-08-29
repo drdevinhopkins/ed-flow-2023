@@ -1,6 +1,6 @@
 {
-  "generated_at_utc": "2026-08-29T04:04:23.452419+00:00",
-  "health": "healthy_idle",
+  "generated_at_utc": "2026-08-29T15:03:24.779104+00:00",
+  "health": "critical",
   "latest_status": "suppressed_data_quality",
   "status_age_minutes": 0.1,
   "candidate_forecasts": 4,
@@ -9,5 +9,14 @@
   "prospective_days": 1,
   "required_prospective_days": 28,
   "production_ready": false,
-  "alerts": []
+  "alerts": [
+    {
+      "severity": "warning",
+      "code": "data_quality_suppression"
+    },
+    {
+      "severity": "critical",
+      "code": "consecutive_abnormal_runs"
+    }
+  ]
 }
