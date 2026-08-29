@@ -1,13 +1,13 @@
 {
   "model_version": "intraday-ensemble-v1-2026-08-28",
-  "source_hash": "2b6b7eb132abaa5a",
-  "artifact_sha256": "96ab60541d7a654eeebe87c0b6eb9735898ed9d5e297a1505a5b1f2506e2d9f3",
-  "artifact_bytes": 2026892,
+  "source_hash": "7e6eb6d07b3452a8",
+  "artifact_sha256": "2325959d960bc5474063b0af02d18a2cf1cbbf469368a1d55da4e96b39319cf7",
+  "artifact_bytes": 2030343,
   "python_version": "3.12.14",
   "pandas_version": "3.0.5",
   "scikit_learn_version": "1.9.0",
   "serialization": "joblib",
   "training_start": "2021-01-02",
-  "training_end": "2026-08-27",
-  "training_days": 1985
+  "training_end": "2026-08-28",
+  "training_days": 1986
 }

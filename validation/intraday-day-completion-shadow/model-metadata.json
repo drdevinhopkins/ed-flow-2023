@@ -1,11 +1,11 @@
 {
   "model_version": "intraday-ensemble-v1-2026-08-28",
-  "source_hash": "2b6b7eb132abaa5a",
+  "source_hash": "7e6eb6d07b3452a8",
   "candidate": "50% raw calendar/weather point + 50% calibrated ED-state point",
   "interval": "calibrated ED-state P80 bounds expanded around ensemble point",
-  "training_days": 1985,
+  "training_days": 1986,
   "training_start": "2021-01-02",
-  "training_end": "2026-08-27",
+  "training_end": "2026-08-28",
   "calibration_days": 56,
   "calibration_shrinkage_days": 28.0,
   "state_features": [
@@ -199,183 +199,183 @@
     {
       "cutoff_hour": 0,
       "n": 56,
-      "q10_correction": 15.601952088930437,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 12.005111849473352
+      "q10_correction": 15.537270476380405,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 11.488967225515882
     },
     {
       "cutoff_hour": 1,
       "n": 56,
-      "q10_correction": 11.045968891504483,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 12.641651887149479
+      "q10_correction": 11.76284021060191,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 10.116598300054086
     },
     {
       "cutoff_hour": 2,
       "n": 56,
-      "q10_correction": 10.707317548781699,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 11.747752480958482
+      "q10_correction": 10.555004377315154,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 10.579312035408915
     },
     {
       "cutoff_hour": 3,
       "n": 56,
-      "q10_correction": 10.01815089726659,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 13.61695757545146
+      "q10_correction": 10.477018009743096,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 12.972079131581058
     },
     {
       "cutoff_hour": 4,
       "n": 56,
-      "q10_correction": 9.760286317955837,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 11.374479417360508
+      "q10_correction": 9.938964480016045,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 12.022717202449577
     },
     {
       "cutoff_hour": 5,
       "n": 56,
-      "q10_correction": 8.990346477326224,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 11.186488502071763
+      "q10_correction": 8.430017945180904,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 9.414362125829369
     },
     {
       "cutoff_hour": 6,
       "n": 56,
-      "q10_correction": 8.739922055953786,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 10.57280805664953
+      "q10_correction": 10.465597862656216,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 8.845111180536206
     },
     {
       "cutoff_hour": 7,
       "n": 56,
-      "q10_correction": 7.736528287981075,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 7.855511015929338
+      "q10_correction": 7.133058115287381,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 6.527430270639075
     },
     {
       "cutoff_hour": 8,
       "n": 56,
-      "q10_correction": 9.714492838576799,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 6.475168282714392
+      "q10_correction": 11.026680754568897,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 4.495318130499118
     },
     {
       "cutoff_hour": 9,
       "n": 56,
-      "q10_correction": 7.076730647777089,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 4.051036618941504
+      "q10_correction": 7.231431461869683,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 3.5473314155558153
     },
     {
       "cutoff_hour": 10,
       "n": 56,
-      "q10_correction": 7.953075778617476,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 3.2646107084176252
+      "q10_correction": 7.662303082568369,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 1.9671760752821574
     },
     {
       "cutoff_hour": 11,
       "n": 56,
-      "q10_correction": 7.517892320208192,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 4.277168785604292
+      "q10_correction": 6.466463440168011,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 2.9835053357025063
     },
     {
       "cutoff_hour": 12,
       "n": 56,
-      "q10_correction": 6.164940418868621,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 3.420670755372095
+      "q10_correction": 6.405091913486324,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 4.261816300474956
     },
     {
       "cutoff_hour": 13,
       "n": 56,
-      "q10_correction": 5.710226417611306,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 2.599192746633155
+      "q10_correction": 6.983694623412643,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 1.8707843258500139
     },
     {
       "cutoff_hour": 14,
       "n": 56,
-      "q10_correction": 5.412226990704692,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 3.114929042126282
+      "q10_correction": 5.76626025009075,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 3.0329874429822974
     },
     {
       "cutoff_hour": 15,
       "n": 56,
-      "q10_correction": 3.9034717572345956,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 4.032874250009124
+      "q10_correction": 4.005526032564009,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 4.4095655438172265
     },
     {
       "cutoff_hour": 16,
       "n": 56,
-      "q10_correction": 3.3360519852644495,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 3.505753365686492
+      "q10_correction": 3.9995573596215315,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 3.8135469710937886
     },
     {
       "cutoff_hour": 17,
       "n": 56,
-      "q10_correction": 2.016711587882445,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 2.985840740537151
+      "q10_correction": 3.026845809323703,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 2.2236338176913444
     },
     {
       "cutoff_hour": 18,
       "n": 56,
-      "q10_correction": 2.0740063193695635,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 3.8542589687450475
+      "q10_correction": 2.449799122969812,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 3.4909149454829826
     },
     {
       "cutoff_hour": 19,
       "n": 56,
-      "q10_correction": 0.4958751652090804,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 3.2379504156926675
+      "q10_correction": 1.3839219845877295,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 2.6866940442180303
     },
     {
       "cutoff_hour": 20,
       "n": 56,
-      "q10_correction": 0.9538694864283241,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 3.3189515490151127
+      "q10_correction": 1.0157416007737963,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 2.8920882379553996
     },
     {
       "cutoff_hour": 21,
       "n": 56,
-      "q10_correction": 0.6937319986684547,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 3.452991008690581
+      "q10_correction": 0.4717560918133622,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 3.0254137939836165
     },
     {
       "cutoff_hour": 22,
       "n": 56,
-      "q10_correction": -0.3197053680807784,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 2.4800321226706368
+      "q10_correction": -0.17760179247775087,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": 2.1431002469654827
     },
     {
       "cutoff_hour": 23,
       "n": 56,
-      "q10_correction": 0.29629704370496857,
-      "q50_correction": 4.689238047057823,
-      "q90_correction": 0.3544268685587628
+      "q10_correction": 0.417673648394087,
+      "q50_correction": 4.975637476601677,
+      "q90_correction": -0.08948773091062034
     }
   ],
   "artifact_manifest": {
     "model_version": "intraday-ensemble-v1-2026-08-28",
-    "source_hash": "2b6b7eb132abaa5a",
-    "artifact_sha256": "96ab60541d7a654eeebe87c0b6eb9735898ed9d5e297a1505a5b1f2506e2d9f3",
-    "artifact_bytes": 2026892,
+    "source_hash": "7e6eb6d07b3452a8",
+    "artifact_sha256": "2325959d960bc5474063b0af02d18a2cf1cbbf469368a1d55da4e96b39319cf7",
+    "artifact_bytes": 2030343,
     "python_version": "3.12.14",
     "pandas_version": "3.0.5",
     "scikit_learn_version": "1.9.0",
     "serialization": "joblib",
     "training_start": "2021-01-02",
-    "training_end": "2026-08-27",
-    "training_days": 1985
+    "training_end": "2026-08-28",
+    "training_days": 1986
   }
 }
