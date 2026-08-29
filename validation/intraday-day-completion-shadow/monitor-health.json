@@ -1,18 +1,19 @@
 {
-  "generated_at_utc": "2026-08-29T22:15:40.753135+00:00",
-  "health": "critical",
+  "generated_at_utc": "2026-08-29T22:18:44.663134+00:00",
+  "health": "warning",
   "latest_status": "shadow_only",
-  "status_age_minutes": 0.7,
-  "candidate_forecasts": 12,
+  "status_age_minutes": 0.9,
+  "candidate_forecasts": 11,
   "duplicate_forecast_keys": 0,
   "invalid_candidate_forecasts": 0,
+  "quarantined_model_drift_forecasts": 1,
   "prospective_days": 1,
   "required_prospective_days": 28,
   "production_ready": false,
   "alerts": [
     {
-      "severity": "critical",
-      "code": "model_fingerprint_drift"
+      "severity": "warning",
+      "code": "quarantined_model_fingerprint_drift"
     }
   ]
 }
