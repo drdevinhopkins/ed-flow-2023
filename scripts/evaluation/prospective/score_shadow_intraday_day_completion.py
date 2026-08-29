@@ -27,7 +27,9 @@ def score_forecasts(forecasts: pd.DataFrame, flow: pd.DataFrame) -> pd.DataFrame
         forecasts = forecasts.loc[forecasts["status"].eq("shadow_only")].copy()
     if "model_fingerprint" in forecasts:
         order = forecasts.sort_values("generated_at_utc").copy()
-        group = ["model_version", "source_hash", "training_end"]
+        group = ["model_version", "training_end"]
+        if "model_fingerprint_version" in order:
+            group.append("model_fingerprint_version")
         reference = (
             order.loc[order["model_fingerprint"].notna()]
             .groupby(group, dropna=False)["model_fingerprint"]

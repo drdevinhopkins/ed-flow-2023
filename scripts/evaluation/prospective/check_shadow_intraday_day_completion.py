@@ -66,7 +66,9 @@ def evaluate_shadow_health(
     quarantined_drift_count = 0
     if not candidate.empty and "model_fingerprint" in candidate:
         ordered = candidate.sort_values("generated_at_utc").copy()
-        group = ["model_version", "source_hash", "training_end"]
+        group = ["model_version", "training_end"]
+        if "model_fingerprint_version" in ordered:
+            group.append("model_fingerprint_version")
         reference = (
             ordered.loc[ordered["model_fingerprint"].notna()]
             .groupby(group, dropna=False)["model_fingerprint"]

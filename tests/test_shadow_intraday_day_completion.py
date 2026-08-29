@@ -108,7 +108,7 @@ class ShadowIntradayTests(unittest.TestCase):
         pd.DataFrame(
             {
                 "model_version": ["v1"],
-                "source_hash": ["source"],
+                "model_fingerprint_version": ["functional-probe-v2"],
                 "training_end": ["2026-08-28"],
                 "model_fingerprint": ["stable"],
             }
@@ -116,7 +116,7 @@ class ShadowIntradayTests(unittest.TestCase):
         validate_fingerprint_against_ledger(
             path,
             model_version="v1",
-            source_hash="source",
+            fingerprint_version="functional-probe-v2",
             training_end="2026-08-28",
             fingerprint="stable",
         )
@@ -124,7 +124,7 @@ class ShadowIntradayTests(unittest.TestCase):
             validate_fingerprint_against_ledger(
                 path,
                 model_version="v1",
-                source_hash="source",
+                fingerprint_version="functional-probe-v2",
                 training_end="2026-08-28",
                 fingerprint="drifted",
             )
@@ -136,6 +136,7 @@ class ShadowIntradayTests(unittest.TestCase):
                 "cutoff_hour": [17, 18],
                 "model_version": ["v1", "v1"],
                 "source_hash": ["source", "source"],
+                "model_fingerprint_version": ["functional-probe-v2", "functional-probe-v2"],
                 "training_end": ["2026-08-26", "2026-08-26"],
                 "generated_at_utc": ["2026-08-27T21:00:00Z", "2026-08-27T22:00:00Z"],
                 "model_fingerprint": ["stable", "drifted"],
@@ -336,6 +337,7 @@ class ShadowIntradayTests(unittest.TestCase):
                 "status": ["shadow_only", "shadow_only"],
                 "training_end": ["2026-08-28", "2026-08-28"],
                 "source_hash": ["source", "source"],
+                "model_fingerprint_version": ["functional-probe-v2", "functional-probe-v2"],
                 "model_fingerprint": ["functional-a", "functional-b"],
                 "artifact_sha256": ["bytes-a", "bytes-b"],
                 "observed_arrivals": [120, 140],

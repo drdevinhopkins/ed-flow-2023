@@ -39,6 +39,7 @@ from backtest_intraday_day_completion import (  # noqa: E402
 )
 
 MODEL_VERSION = "intraday-ensemble-v1-2026-08-28"
+MODEL_FINGERPRINT_VERSION = "functional-probe-v2"
 FALLBACK_VERSION = "intraday-prior-update-fallback-v1"
 OPERATIONAL_HOURS = range(11, 19)
 
@@ -155,8 +156,8 @@ def functional_model_fingerprint(bundle: dict[str, object], probe: pd.DataFrame)
         bundle["weather_models"], ordered, features=bundle["calendar_weather_features"]
     )
     payload = {
+        "fingerprint_version": MODEL_FINGERPRINT_VERSION,
         "model_version": bundle["model_version"],
-        "source_hash": bundle["source_hash"],
         "training_start": bundle["training_start"],
         "training_end": bundle["training_end"],
         "cutoff_hours": ordered["cutoff_hour"].astype(int).tolist(),
@@ -171,25 +172,35 @@ def functional_model_fingerprint(bundle: dict[str, object], probe: pd.DataFrame)
 
 
 def validate_fingerprint_against_ledger(
-    path: Path, *, model_version: str, source_hash: str, training_end: str, fingerprint: str
+    path: Path,
+    *,
+    model_version: str,
+    fingerprint_version: str,
+    training_end: str,
+    fingerprint: str,
 ) -> None:
     """Suppress a refit that changes functionally within a frozen training window."""
     if not path.exists():
         return
     existing = pd.read_csv(path)
-    required = {"model_version", "source_hash", "training_end", "model_fingerprint"}
+    required = {
+        "model_version",
+        "model_fingerprint_version",
+        "training_end",
+        "model_fingerprint",
+    }
     if not required.issubset(existing.columns):
         return
     reference = existing.loc[
         existing["model_version"].eq(model_version)
-        & existing["source_hash"].eq(source_hash)
+        & existing["model_fingerprint_version"].eq(fingerprint_version)
         & existing["training_end"].astype(str).eq(training_end)
         & existing["model_fingerprint"].notna(),
         "model_fingerprint",
     ].astype(str)
     if not reference.empty and not reference.eq(fingerprint).all():
         raise DataQualityError(
-            "functional model fingerprint drift for unchanged version, source, and training window"
+            "functional model fingerprint drift for unchanged model and training window"
         )
 
 
@@ -335,11 +346,12 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
     validate_fingerprint_against_ledger(
         args.output_csv,
         model_version=MODEL_VERSION,
-        source_hash=bundle["source_hash"],
+        fingerprint_version=MODEL_FINGERPRINT_VERSION,
         training_end=bundle["training_end"],
         fingerprint=model_fingerprint,
     )
     artifact_manifest["model_fingerprint"] = model_fingerprint
+    artifact_manifest["model_fingerprint_version"] = MODEL_FINGERPRINT_VERSION
     args.artifact_manifest_json.write_text(json.dumps(artifact_manifest, indent=2) + "\n")
     state_raw = _predict_remaining_quantiles(
         bundle["state_models"], live, features=bundle["state_features"]
@@ -370,6 +382,7 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
         "source_hash": source_hash,
         "artifact_sha256": artifact_manifest["artifact_sha256"],
         "model_fingerprint": model_fingerprint,
+        "model_fingerprint_version": MODEL_FINGERPRINT_VERSION,
         "training_start": pd.Timestamp(train["day"].min()).date().isoformat(),
         "training_end": pd.Timestamp(train["day"].max()).date().isoformat(),
         "training_days": int(train["day"].nunique()),
