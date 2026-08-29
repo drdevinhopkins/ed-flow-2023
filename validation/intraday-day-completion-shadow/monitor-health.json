@@ -1,18 +1,13 @@
 {
-  "generated_at_utc": "2026-08-29T19:06:55.160013+00:00",
-  "health": "critical",
+  "generated_at_utc": "2026-08-29T19:12:06.153245+00:00",
+  "health": "healthy",
   "latest_status": "shadow_only",
-  "status_age_minutes": 0.9,
-  "candidate_forecasts": 8,
+  "status_age_minutes": 0.6,
+  "candidate_forecasts": 9,
   "duplicate_forecast_keys": 0,
   "invalid_candidate_forecasts": 0,
   "prospective_days": 1,
   "required_prospective_days": 28,
   "production_ready": false,
-  "alerts": [
-    {
-      "severity": "critical",
-      "code": "artifact_hash_mismatch"
-    }
-  ]
+  "alerts": []
 }
