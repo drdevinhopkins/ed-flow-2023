@@ -1,1 +1,1 @@
-2026-08-29T15:00:17Z collect 2026-08-29 11:00 shadow forecast
+2026-08-29T16:09:00Z collect 2026-08-29 12:00 shadow forecast
