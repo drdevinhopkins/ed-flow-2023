@@ -40,7 +40,6 @@ def evaluate_shadow_health(
     reason = str(status.get("reason", ""))
     scheduled_idle = (
         state == "suppressed_data_quality"
-        and local_now.hour not in SHADOW_HOURS
         and "outside the shadow window" in reason
     )
     if state == "shadow_fallback":
@@ -51,10 +50,14 @@ def evaluate_shadow_health(
         alerts.append({"severity": "critical", "code": "unknown_status"})
 
     if not history.empty and "status" in history:
-        recent = history["status"].astype(str).tail(2)
-        if len(recent) == 2 and recent.isin(
-            ["shadow_fallback", "suppressed_data_quality"]
-        ).all() and local_now.hour in SHADOW_HOURS:
+        recent = history.tail(2).copy()
+        recent_states = recent["status"].astype(str)
+        recent_reasons = recent.get("reason", pd.Series("", index=recent.index)).fillna("").astype(str)
+        expected_idle = recent_states.eq("suppressed_data_quality") & recent_reasons.str.contains(
+            "outside the shadow window", regex=False
+        )
+        abnormal = recent_states.isin(["shadow_fallback", "suppressed_data_quality"]) & ~expected_idle
+        if len(recent) == 2 and abnormal.all() and local_now.hour in SHADOW_HOURS:
             alerts.append({"severity": "critical", "code": "consecutive_abnormal_runs"})
 
     candidate = forecasts.copy()

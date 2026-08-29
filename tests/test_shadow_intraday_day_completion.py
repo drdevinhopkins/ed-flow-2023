@@ -224,6 +224,29 @@ class ShadowIntradayTests(unittest.TestCase):
         )
         self.assertEqual(idle["health"], "healthy_idle")
 
+        lagged_idle = evaluate_shadow_health(
+            {
+                "status": "suppressed_data_quality",
+                "reason": "cutoff hour 10:00 is outside the shadow window",
+                "generated_at_utc": "2026-08-29T15:03:00Z",
+            },
+            pd.DataFrame(
+                {
+                    "status": ["suppressed_data_quality", "suppressed_data_quality"],
+                    "reason": [
+                        "cutoff hour 19:00 is outside the shadow window",
+                        "cutoff hour 10:00 is outside the shadow window",
+                    ],
+                }
+            ),
+            pd.DataFrame(),
+            {},
+            {"prospective_days": 1, "production_ready": False},
+            now=pd.Timestamp("2026-08-29T15:04:00Z"),
+        )
+        self.assertEqual(lagged_idle["health"], "healthy_idle")
+        self.assertNotIn("consecutive_abnormal_runs", {item["code"] for item in lagged_idle["alerts"]})
+
         bad = pd.DataFrame(
             {
                 "model_version": ["candidate"],
