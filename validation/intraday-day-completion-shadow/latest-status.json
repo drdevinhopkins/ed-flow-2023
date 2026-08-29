@@ -1,18 +1,6 @@
 {
-  "status": "shadow_only",
-  "generated_at_utc": "2026-08-28T23:03:04.645446+00:00",
-  "forecast_day": "2026-08-28",
-  "cutoff_ds_local": "2026-08-28T18:00:00",
-  "cutoff_hour": 18,
-  "model_version": "intraday-ensemble-v1-2026-08-28",
-  "source_hash": "2b6b7eb132abaa5a",
-  "artifact_sha256": "96ab60541d7a654eeebe87c0b6eb9735898ed9d5e297a1505a5b1f2506e2d9f3",
-  "training_start": "2021-01-02",
-  "training_end": "2026-08-27",
-  "training_days": 1985,
-  "observed_arrivals": 222.0,
-  "predicted_total": 280.29046503347166,
-  "p10_total": 271.262288057071,
-  "p90_total": 294.8997075504694,
-  "prior_update_baseline": 280.04965680902677
+  "status": "suppressed_data_quality",
+  "reason": "cutoff hour 19:00 is outside the shadow window",
+  "generated_at_utc": "2026-08-29T00:05:03.799121+00:00",
+  "model_version": "intraday-ensemble-v1-2026-08-28"
 }
