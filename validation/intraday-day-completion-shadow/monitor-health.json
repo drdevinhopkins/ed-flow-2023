@@ -1,9 +1,9 @@
 {
-  "generated_at_utc": "2026-08-29T15:09:18.054696+00:00",
+  "generated_at_utc": "2026-08-29T16:10:59.151130+00:00",
   "health": "healthy",
   "latest_status": "shadow_only",
-  "status_age_minutes": 0.8,
-  "candidate_forecasts": 5,
+  "status_age_minutes": 0.9,
+  "candidate_forecasts": 6,
   "duplicate_forecast_keys": 0,
   "invalid_candidate_forecasts": 0,
   "prospective_days": 1,
