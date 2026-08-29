@@ -356,7 +356,7 @@ def main() -> int:
     try:
         proc = subprocess.run(
             [str(VENV_PY), str(APPEND_WORKER), "--request", str(req_path)],
-            cwd=str(REPO), env=env, timeout=180, capture_output=True, text=True,
+            cwd=str(SCRATCH), env=env, timeout=180, capture_output=True, text=True,
         )
     except subprocess.TimeoutExpired:
         print("TIMEOUT: append worker did not finish in 180s", file=sys.stderr)
