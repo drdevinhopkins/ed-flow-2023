@@ -291,7 +291,12 @@ class ShadowIntradayTests(unittest.TestCase):
             }
         )
         result = evaluate_shadow_health(
-            {"status": "shadow_only", "generated_at_utc": "2026-08-29T18:00:00Z"},
+            {
+                "status": "shadow_only",
+                "generated_at_utc": "2026-08-29T18:00:00Z",
+                "artifact_sha256": "bytes-b",
+                "model_fingerprint": "functional-b",
+            },
             pd.DataFrame({"status": ["shadow_only"]}),
             forecasts,
             {"artifact_sha256": "bytes-b", "model_fingerprint": "functional-b"},

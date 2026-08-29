@@ -84,12 +84,12 @@ def evaluate_shadow_health(
             alerts.append({"severity": "critical", "code": "forecast_invariant_failure"})
 
         latest = candidate.sort_values("generated_at_utc").iloc[-1]
-        row_hash = latest.get("artifact_sha256")
         manifest_hash = manifest.get("artifact_sha256")
-        if pd.notna(row_hash) and row_hash != manifest_hash:
+        status_hash = status.get("artifact_sha256")
+        if pd.notna(status_hash) and status_hash != manifest_hash:
             alerts.append({"severity": "critical", "code": "artifact_hash_mismatch"})
 
-        fingerprint = latest.get("model_fingerprint")
+        fingerprint = status.get("model_fingerprint")
         manifest_fingerprint = manifest.get("model_fingerprint")
         if pd.notna(fingerprint) and fingerprint != manifest_fingerprint:
             alerts.append({"severity": "critical", "code": "model_fingerprint_mismatch"})
