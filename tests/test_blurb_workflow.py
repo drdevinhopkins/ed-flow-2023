@@ -12,3 +12,9 @@ def test_active_workflow_generates_blurb_forecast():
 def test_blurb_append_worker_runs_in_writable_scratch_directory():
     text = (Path(__file__).parents[1] / "scripts" / "automation" / "blurb_automation_wrapper.py").read_text()
     assert 'cwd=str(SCRATCH)' in text
+
+
+def test_publisher_has_durable_per_hour_outbox():
+    text = (Path(__file__).parents[1] / "scripts" / "automation" / "blurb_automation_wrapper.py").read_text()
+    assert "blurb_outbox" in text
+    assert "request_path_for" in text

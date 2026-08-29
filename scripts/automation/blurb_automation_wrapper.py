@@ -51,6 +51,9 @@ ENV_FILE = Path(os.environ.get("ED_FLOW_ENV", "/opt/data/profiles/edflow/.env"))
 SCRATCH = Path(os.environ.get(
     "ED_FLOW_SCRATCH", "/opt/data/profiles/edflow/state-local/blurb_auto"
 ))
+OUTBOX = Path(os.environ.get(
+    "ED_FLOW_BLURB_OUTBOX", "/opt/data/profiles/edflow/state-local/blurb_outbox"
+))
 
 DBX_HOST = "api.dropboxapi.com"
 TOKEN_PATH = "/oauth2/token"
@@ -170,89 +173,70 @@ def run_compute(origin) -> dict:
 
 def band_phrase(band: str | None, val: float) -> str:
     if band == "very_heavy":
-        return "a very heavy night for this time of year"
+        return "very heavy"
     if band == "heavy":
-        return "a heavier-than-usual night for this time of year"
+        return "heavier than usual"
     if band == "light":
-        return "a lighter-than-usual night for this time of year"
-    return "a typical night for this time of year"
+        return "lighter than usual"
+    return "typical"
 
 
 def build_blurb(facts: dict) -> str:
-    """Deterministic 5-sentence blurb (NOW -> PEAK -> MIDNIGHT -> ONCALL -> ACTION)."""
+    """Build a short, clinician-facing handoff from deterministic facts."""
     now = facts["now"]
     tbs = now.get("Total_TBS")
     occ = facts["ttstr_occupancy"]
     overflow = now.get("Overflow")
-    pod = now.get("POD_TBS")
-    vert = now.get("Vertical_TBS")
 
-    ovf = (f"{int(round(overflow))} overflow patients "
-           f"(about {int(round(overflow / 4))} overflow room(s) in use)") if overflow else "no overflow"
+    if overflow:
+        rooms = int(round(overflow / 4))
+        ovf = f"{int(round(overflow))} in overflow (about {rooms} rooms)"
+    else:
+        ovf = "no overflow"
 
-    # 1: NOW
-    s1 = (f"Right now the ED has {int(round(tbs))} patients to be seen, "
-          f"with stretcher occupancy around {int(round(occ))}% and {ovf}.")
+    s1 = (f"ED flow is {int(round(tbs))} TBS now, with stretchers about "
+          f"{int(round(occ))}% full and {ovf}.")
 
-    # 2: PEAK / direction
-    if facts.get("peak_tbs") is not None and facts.get("peak_horizon"):
-        ph = facts["peak_horizon"]
-        peak = facts["peak_tbs"]
+    peak = facts.get("peak_tbs")
+    horizon = facts.get("peak_horizon")
+    if peak is not None and horizon:
         if peak > (tbs or 0) + 1:
-            s2 = (f"The day is likely to build toward a peak of about "
-                  f"{int(round(peak))} patients to be seen around {ph}h from now.")
+            s2 = f"It should build toward about {int(round(peak))} TBS in roughly {horizon} hours."
         else:
-            s2 = "The load is close to its peak and should not build much further."
+            s2 = "Flow is near its peak and should not build much further."
     else:
-        s2 = "The load is broadly steady over the next few hours."
+        s2 = "Flow should stay about the same over the next few hours."
 
-    # 3: MIDNIGHT
     if facts.get("midnight") is not None:
-        s3 = (f"For the night handoff, midnight is tracking for roughly "
-              f"{int(round(facts['midnight']))} patients to be seen — "
-              f"{band_phrase(facts.get('midnight_band'), facts['midnight'])}.")
+        s3 = (f"Midnight looks like about {int(round(facts['midnight']))} TBS, "
+              f"{band_phrase(facts.get('midnight_band'), facts['midnight'])} for this time of year.")
     else:
-        s3 = "Midnight is outside the forecast horizon, so the night handoff is not estimated."
+        s3 = "There is no midnight estimate in this forecast."
 
-    # 4: ON-CALL — state the recommendation and evidence in the blurb itself.
-    probs = facts.get("oncall_probabilities", {})
-    prob_text = ", ".join(
-        f"{round(prob * 100):.0f}% at {horizon}h"
-        for horizon, prob in sorted(probs.items())
-    )
-    impact = facts.get("oncall_impact_summary", {})
     recommendation = facts.get("oncall_recommendation", "NO CLEAR RECOMMENDATION")
-    direction = impact.get("direction")
-    adverse = impact.get("max_adverse_stretcher", 0.0)
-    if recommendation == "NOT INDICATED" and direction == "worsens":
-        s4 = (f"On-call is not recommended: calibrated need is {prob_text}, "
-              f"and modeled activation worsens flow (up to {adverse:.1f} additional "
-              "stretcher patients).")
-    elif recommendation == "USE":
-        s4 = (f"On-call is recommended: calibrated need is {prob_text}, and "
-              "modeled activation shows a meaningful flow benefit.")
+    if recommendation == "USE":
+        s4 = "Use on-call."
     elif recommendation == "CONSIDER":
-        s4 = (f"Consider on-call: calibrated need is {prob_text}, and modeled "
-              "activation shows a meaningful flow benefit.")
-    elif prob_text:
-        s4 = (f"On-call recommendation is not clear: calibrated need is {prob_text}; "
-              "the modeled activation effect is mixed or small.")
+        s4 = "Consider using on-call."
+    elif recommendation == "NOT INDICATED":
+        s4 = "On-call is not currently needed."
     else:
-        s4 = "On-call recommendation is not clear because the calibrated need probabilities are unavailable."
+        s4 = "On-call need is unclear."
 
-    # 5: ACTION — direct available staff to the pressure point.
+    weekend = getattr(facts.get("data_hour"), "dayofweek", -1) >= 5
     if facts["reassign_trigger"] and not facts["pod_pressure"]:
-        s5 = ("Vertical is carrying a markedly heavier share than POD; the orange evening overlap shift "
-              "(4 PM–midnight) can focus on new patients in Vertical, while L1 "
-              "(1–9 PM) can be directed to prepod, POD, or Vertical according to where "
-              "the need is greatest.")
+        if weekend:
+            s5 = "Vertical is much busier than POD; use the orange shift for new patients in Vertical."
+        else:
+            s5 = ("Vertical is much busier than POD; the orange shift can focus on new patients in "
+                  "Vertical, while L1 can flex to the area under greatest pressure.")
     elif facts["reassign_trigger"] and facts["pod_pressure"]:
-        s5 = ("Vertical and POD both need attention; L1 (1–9 PM) can be directed to prepod, "
-              "POD, or Vertical according to where the need is greatest, while the orange evening overlap shift "
-              "(4 PM–midnight) can focus on new patients in Vertical when "
-              "that remains the main pressure point.")
+        if weekend:
+            s5 = "Vertical and POD both need attention; use the available overlap coverage where pressure is greatest."
+        else:
+            s5 = "Vertical and POD both need attention; L1 can flex to the area under greatest pressure."
     else:
-        s5 = "No staffing changes are indicated at this time."
+        s5 = "No staffing change is needed right now."
 
     return " ".join([s1, s2, s3, s4, s5])
 
@@ -281,6 +265,33 @@ def oncall_metadata(facts: dict) -> tuple[str, str]:
     return rec, rat
 
 
+def request_path_for(blurb_id: str) -> Path:
+    OUTBOX.mkdir(parents=True, exist_ok=True)
+    return OUTBOX / f"{blurb_id}.json"
+
+
+def pending_requests() -> list[Path]:
+    OUTBOX.mkdir(parents=True, exist_ok=True)
+    return sorted(OUTBOX.glob("*.json"))
+
+
+def publish_request(req_path: Path) -> tuple[bool, str]:
+    """Publish one durable request; return (appended, worker output)."""
+    env = dict(os.environ)
+    env["ED_FLOW_REPO"] = str(REPO)
+    try:
+        proc = subprocess.run(
+            [str(VENV_PY), str(APPEND_WORKER), "--request", str(req_path)],
+            cwd=str(SCRATCH), env=env, timeout=180, capture_output=True, text=True,
+        )
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("append worker did not finish in 180s")
+    out = ((proc.stdout or "") + "\n" + (proc.stderr or "")).strip()
+    if proc.returncode != 0:
+        raise RuntimeError(out.splitlines()[-1] if out else f"append worker rc={proc.returncode}")
+    return "duplicate_skipped" not in out, out
+
+
 def send_metadata(origin) -> tuple[bool, str]:
     hh = origin.strftime("%H:%M")
     routine = hh in ROUTINE_HOURS
@@ -293,6 +304,18 @@ def send_metadata(origin) -> tuple[bool, str]:
 def main() -> int:
     load_env()
     dbx = token()
+
+    # Retry durable requests before generating a new one.
+    SCRATCH.mkdir(parents=True, exist_ok=True)
+    for pending in pending_requests():
+        try:
+            appended, _ = publish_request(pending)
+            pending.unlink(missing_ok=True)
+            if appended:
+                print(f"PUBLISHED retry blurb_id={pending.stem}")
+        except Exception as exc:
+            print(f"PUBLISH_RETRY_FAILED blurb_id={pending.stem}: {exc}", file=sys.stderr)
+            return 0
 
     # 1) data hour = forecast's own origin (authoritative), not box clock.
     try:
@@ -347,28 +370,19 @@ def main() -> int:
         "source_status": source_status,
     }
 
-    req_path = SCRATCH / "blurb_request.json"
+    # Persist the request before publication so a later tick can retry it.
+    req_path = request_path_for(blurb_id)
     req_path.write_text(json.dumps(request, indent=2))
 
-    # 4) publish via the repo append worker (current 8-col pipeline).
-    env = dict(os.environ)
-    env["ED_FLOW_REPO"] = str(REPO)
+    # 4) publish via the repo append worker (current 8-column pipeline).
     try:
-        proc = subprocess.run(
-            [str(VENV_PY), str(APPEND_WORKER), "--request", str(req_path)],
-            cwd=str(SCRATCH), env=env, timeout=180, capture_output=True, text=True,
-        )
-    except subprocess.TimeoutExpired:
-        print("TIMEOUT: append worker did not finish in 180s", file=sys.stderr)
+        appended, _ = publish_request(req_path)
+    except Exception as exc:
+        print(f"PUBLISH_FAILED blurb_id={blurb_id}: {exc}", file=sys.stderr)
         return 0
 
-    if proc.returncode != 0:
-        print(f"PUBLISH_FAILED rc={proc.returncode}: {(proc.stderr or proc.stdout).strip().splitlines()[-1] if (proc.stderr or proc.stdout) else 'no output'}", file=sys.stderr)
-        return 0
-
-    out = (proc.stdout or "").strip()
-    if "duplicate_skipped" in out:
-        # The worker already had this row -> silent no-op.
+    req_path.unlink(missing_ok=True)
+    if not appended:
         return 0
 
     # A row was appended -> brief announcement (low-frequency, ~<=1x/hour).
