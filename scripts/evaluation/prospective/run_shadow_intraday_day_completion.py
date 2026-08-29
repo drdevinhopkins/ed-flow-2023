@@ -40,7 +40,7 @@ from backtest_intraday_day_completion import (  # noqa: E402
 
 MODEL_VERSION = "intraday-ensemble-v1-2026-08-28"
 FALLBACK_VERSION = "intraday-prior-update-fallback-v1"
-OPERATIONAL_HOURS = range(6, 23)
+OPERATIONAL_HOURS = range(11, 19)
 
 
 class DataQualityError(RuntimeError):

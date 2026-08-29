@@ -22,6 +22,7 @@ Do not install or enable this timer in the production checkout. Do not add opera
 ## Monitoring and recovery
 
 - Alert if `latest-status.json` is missing or older than 90 minutes during the shadow window.
+- Review `monitor-health.json`; `critical` stops the cycle, while `healthy_idle` is the expected state after the 18:00 cutoff.
 - Treat `suppressed_data_quality` as a data incident to investigate, not a forecast.
 - Treat `shadow_fallback` as a model incident. It records the deterministic prior-update baseline without an interval and is excluded from candidate readiness evidence.
 - Confirm `prospective-readiness.json` advances only after a complete day is available.

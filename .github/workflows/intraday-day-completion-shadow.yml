@@ -9,6 +9,7 @@ on:
       - '.github/workflows/intraday-day-completion-shadow.yml'
       - 'scripts/evaluation/prospective/run_shadow_intraday_day_completion.py'
       - 'scripts/evaluation/prospective/score_shadow_intraday_day_completion.py'
+      - 'scripts/evaluation/prospective/check_shadow_intraday_day_completion.py'
       - 'tests/test_shadow_intraday_day_completion.py'
       - 'scripts/evaluation/prospective/run_intraday_shadow_cycle.sh'
 
@@ -40,6 +41,7 @@ jobs:
         run: |
           python -m py_compile scripts/evaluation/prospective/run_shadow_intraday_day_completion.py
           python -m py_compile scripts/evaluation/prospective/score_shadow_intraday_day_completion.py
+          python -m py_compile scripts/evaluation/prospective/check_shadow_intraday_day_completion.py
           python -m unittest tests.test_shadow_intraday_day_completion -v
       - name: Build cutoff-safe historical weather
         run: |
@@ -64,6 +66,15 @@ jobs:
             --scores-csv validation/intraday-day-completion-shadow/scores.csv \
             --summary-json validation/intraday-day-completion-shadow/score-summary.json \
             --readiness-json validation/intraday-day-completion-shadow/prospective-readiness.json
+      - name: Check shadow health
+        run: |
+          python scripts/evaluation/prospective/check_shadow_intraday_day_completion.py \
+            --status-json validation/intraday-day-completion-shadow/latest-status.json \
+            --status-history-csv validation/intraday-day-completion-shadow/status-history.csv \
+            --forecasts-csv validation/intraday-day-completion-shadow/forecasts.csv \
+            --artifact-manifest-json validation/intraday-day-completion-shadow/artifact-manifest.json \
+            --readiness-json validation/intraday-day-completion-shadow/prospective-readiness.json \
+            --output-json validation/intraday-day-completion-shadow/monitor-health.json
       - name: Upload shadow artifacts
         if: always()
         uses: actions/upload-artifact@v4

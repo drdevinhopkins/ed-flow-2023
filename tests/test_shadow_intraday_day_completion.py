@@ -25,6 +25,7 @@ from score_shadow_intraday_day_completion import (
     score_forecasts,
     summarize_scores,
 )
+from check_shadow_intraday_day_completion import evaluate_shadow_health
 
 
 class ShadowIntradayTests(unittest.TestCase):
@@ -206,6 +207,47 @@ class ShadowIntradayTests(unittest.TestCase):
         self.assertEqual(readiness["prospective_days"], 0)
         self.assertTrue(all(count == 0 for count in readiness["operational_hour_counts"].values()))
         self.assertFalse(readiness["prospective_ready"])
+
+    def test_monitor_accepts_expected_idle_and_detects_bad_interval(self):
+        now = pd.Timestamp("2026-08-29T00:05:00Z")
+        idle = evaluate_shadow_health(
+            {
+                "status": "suppressed_data_quality",
+                "reason": "cutoff hour 19:00 is outside the shadow window",
+                "generated_at_utc": "2026-08-29T00:04:00Z",
+            },
+            pd.DataFrame({"status": ["shadow_only", "suppressed_data_quality"]}),
+            pd.DataFrame(),
+            {},
+            {"prospective_days": 0, "production_ready": False},
+            now=now,
+        )
+        self.assertEqual(idle["health"], "healthy_idle")
+
+        bad = pd.DataFrame(
+            {
+                "model_version": ["candidate"],
+                "forecast_day": ["2026-08-28"],
+                "cutoff_hour": [18],
+                "generated_at_utc": ["2026-08-28T23:00:00Z"],
+                "status": ["shadow_only"],
+                "observed_arrivals": [222],
+                "predicted_total": [280],
+                "p10_total": [290],
+                "p90_total": [300],
+                "artifact_sha256": ["abc"],
+            }
+        )
+        critical = evaluate_shadow_health(
+            {"status": "shadow_only", "generated_at_utc": "2026-08-29T00:04:00Z"},
+            pd.DataFrame({"status": ["shadow_only"]}),
+            bad,
+            {"artifact_sha256": "abc"},
+            {"prospective_days": 0},
+            now=now,
+        )
+        self.assertEqual(critical["health"], "critical")
+        self.assertEqual(critical["invalid_candidate_forecasts"], 1)
 
 
 if __name__ == "__main__":

@@ -26,3 +26,10 @@ python "$ROOT/scripts/evaluation/prospective/score_shadow_intraday_day_completio
   --scores-csv "$OUTPUT_DIR/scores.csv" \
   --summary-json "$OUTPUT_DIR/score-summary.json" \
   --readiness-json "$OUTPUT_DIR/prospective-readiness.json"
+python "$ROOT/scripts/evaluation/prospective/check_shadow_intraday_day_completion.py" \
+  --status-json "$OUTPUT_DIR/latest-status.json" \
+  --status-history-csv "$OUTPUT_DIR/status-history.csv" \
+  --forecasts-csv "$OUTPUT_DIR/forecasts.csv" \
+  --artifact-manifest-json "$OUTPUT_DIR/artifact-manifest.json" \
+  --readiness-json "$OUTPUT_DIR/prospective-readiness.json" \
+  --output-json "$OUTPUT_DIR/monitor-health.json"
