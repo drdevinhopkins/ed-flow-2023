@@ -368,8 +368,8 @@
   "artifact_manifest": {
     "model_version": "intraday-ensemble-v1-2026-08-28",
     "source_hash": "7e6eb6d07b3452a8",
-    "artifact_sha256": "2325959d960bc5474063b0af02d18a2cf1cbbf469368a1d55da4e96b39319cf7",
-    "artifact_bytes": 2030343,
+    "artifact_sha256": "c832ba5c9ff3e6609797ff642ad2d32bb9d1401fa0bc52a314ff3ebf5a1da0bd",
+    "artifact_bytes": 2030329,
     "python_version": "3.12.14",
     "pandas_version": "3.0.5",
     "scikit_learn_version": "1.9.0",
