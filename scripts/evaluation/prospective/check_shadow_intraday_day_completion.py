@@ -89,6 +89,20 @@ def evaluate_shadow_health(
         if pd.notna(row_hash) and row_hash != manifest_hash:
             alerts.append({"severity": "critical", "code": "artifact_hash_mismatch"})
 
+        fingerprint = latest.get("model_fingerprint")
+        manifest_fingerprint = manifest.get("model_fingerprint")
+        if pd.notna(fingerprint) and fingerprint != manifest_fingerprint:
+            alerts.append({"severity": "critical", "code": "model_fingerprint_mismatch"})
+        if "model_fingerprint" in candidate and pd.notna(fingerprint):
+            same_training = candidate.loc[
+                candidate["model_version"].eq(latest["model_version"])
+                & candidate["training_end"].eq(latest["training_end"])
+                & candidate["source_hash"].eq(latest["source_hash"])
+                & candidate["model_fingerprint"].notna()
+            ]
+            if same_training["model_fingerprint"].nunique() > 1:
+                alerts.append({"severity": "critical", "code": "model_fingerprint_drift"})
+
     severities = {item["severity"] for item in alerts}
     health = "critical" if "critical" in severities else "warning" if "warning" in severities else "healthy"
     if scheduled_idle and health == "healthy":

@@ -272,6 +272,35 @@ class ShadowIntradayTests(unittest.TestCase):
         self.assertEqual(critical["health"], "critical")
         self.assertEqual(critical["invalid_candidate_forecasts"], 1)
 
+    def test_monitor_detects_functional_model_drift_with_same_training_window(self):
+        forecasts = pd.DataFrame(
+            {
+                "model_version": ["v1", "v1"],
+                "forecast_day": ["2026-08-29", "2026-08-29"],
+                "cutoff_hour": [13, 14],
+                "generated_at_utc": ["2026-08-29T17:00:00Z", "2026-08-29T18:00:00Z"],
+                "status": ["shadow_only", "shadow_only"],
+                "training_end": ["2026-08-28", "2026-08-28"],
+                "source_hash": ["source", "source"],
+                "model_fingerprint": ["functional-a", "functional-b"],
+                "artifact_sha256": ["bytes-a", "bytes-b"],
+                "observed_arrivals": [120, 140],
+                "predicted_total": [260, 259],
+                "p10_total": [245, 246],
+                "p90_total": [275, 274],
+            }
+        )
+        result = evaluate_shadow_health(
+            {"status": "shadow_only", "generated_at_utc": "2026-08-29T18:00:00Z"},
+            pd.DataFrame({"status": ["shadow_only"]}),
+            forecasts,
+            {"artifact_sha256": "bytes-b", "model_fingerprint": "functional-b"},
+            {"prospective_days": 1},
+            now=pd.Timestamp("2026-08-29T18:01:00Z"),
+        )
+        self.assertEqual(result["health"], "critical")
+        self.assertIn("model_fingerprint_drift", {item["code"] for item in result["alerts"]})
+
 
 if __name__ == "__main__":
     unittest.main()

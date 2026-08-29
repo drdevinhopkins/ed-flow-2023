@@ -138,6 +138,38 @@ def write_model_artifact(
     return verified, manifest
 
 
+def functional_model_fingerprint(bundle: dict[str, object], probe: pd.DataFrame) -> str:
+    """Hash stable predictions and calibration state, not nondeterministic pickle bytes."""
+    ordered = probe.sort_values(["day", "cutoff_hour"]).groupby(
+        "cutoff_hour", group_keys=False
+    ).tail(3)
+    state_raw = _predict_remaining_quantiles(
+        bundle["state_models"], ordered, features=bundle["state_features"]
+    )
+    state_calibrated = apply_quantile_corrections(
+        state_raw,
+        ordered["cutoff_hour"].to_numpy(dtype=int),
+        bundle["corrections"],
+    )
+    weather_raw = _predict_remaining_quantiles(
+        bundle["weather_models"], ordered, features=bundle["calendar_weather_features"]
+    )
+    payload = {
+        "model_version": bundle["model_version"],
+        "source_hash": bundle["source_hash"],
+        "training_start": bundle["training_start"],
+        "training_end": bundle["training_end"],
+        "cutoff_hours": ordered["cutoff_hour"].astype(int).tolist(),
+        "state_features": list(bundle["state_features"]),
+        "calendar_weather_features": list(bundle["calendar_weather_features"]),
+        "state_raw": np.round(state_raw, 10).tolist(),
+        "state_calibrated": np.round(state_calibrated, 10).tolist(),
+        "weather_raw": np.round(weather_raw, 10).tolist(),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def run_prior_update_fallback(
     args: argparse.Namespace, model_error: Exception
 ) -> dict[str, object]:
@@ -276,6 +308,9 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
     bundle, artifact_manifest = write_model_artifact(
         bundle, args.artifact_joblib, args.artifact_manifest_json
     )
+    model_fingerprint = functional_model_fingerprint(bundle, train)
+    artifact_manifest["model_fingerprint"] = model_fingerprint
+    args.artifact_manifest_json.write_text(json.dumps(artifact_manifest, indent=2) + "\n")
     state_raw = _predict_remaining_quantiles(
         bundle["state_models"], live, features=bundle["state_features"]
     )
@@ -304,6 +339,7 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
         "model_version": MODEL_VERSION,
         "source_hash": source_hash,
         "artifact_sha256": artifact_manifest["artifact_sha256"],
+        "model_fingerprint": model_fingerprint,
         "training_start": pd.Timestamp(train["day"].min()).date().isoformat(),
         "training_end": pd.Timestamp(train["day"].max()).date().isoformat(),
         "training_days": int(train["day"].nunique()),
