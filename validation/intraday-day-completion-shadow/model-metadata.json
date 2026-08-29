@@ -1,6 +1,6 @@
 {
   "model_version": "intraday-ensemble-v1-2026-08-28",
-  "source_hash": "42d7b288cb143790",
+  "source_hash": "91aa2e1cfbe07913",
   "candidate": "50% raw calendar/weather point + 50% calibrated ED-state point",
   "interval": "calibrated ED-state P80 bounds expanded around ensemble point",
   "training_days": 1986,
@@ -367,9 +367,9 @@
   ],
   "artifact_manifest": {
     "model_version": "intraday-ensemble-v1-2026-08-28",
-    "source_hash": "42d7b288cb143790",
-    "artifact_sha256": "096fe790decdbcc9df35e324af72d5fdf102fb1ea4ffb9c914229af958a406bd",
-    "artifact_bytes": 2030094,
+    "source_hash": "91aa2e1cfbe07913",
+    "artifact_sha256": "9bff722c415ff49f1c38f90f178fd85f0b688ce7bcb590f319b991588bfd865b",
+    "artifact_bytes": 2030093,
     "python_version": "3.12.14",
     "pandas_version": "3.0.5",
     "scikit_learn_version": "1.9.0",
@@ -377,6 +377,6 @@
     "training_start": "2021-01-02",
     "training_end": "2026-08-28",
     "training_days": 1986,
-    "model_fingerprint": "e63ed0cee187830c03f0dec0a286de0ce736da6ae3ecb6ff815b0d52c0d4da22"
+    "model_fingerprint": "0c3ece72bf86405150b66a42819fe7badd51e51bf23c5bcfefed217e89ae000f"
   }
 }
