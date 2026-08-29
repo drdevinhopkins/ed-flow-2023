@@ -12,6 +12,7 @@ on:
       - 'scripts/evaluation/prospective/check_shadow_intraday_day_completion.py'
       - 'tests/test_shadow_intraday_day_completion.py'
       - 'scripts/evaluation/prospective/run_intraday_shadow_cycle.sh'
+      - 'validation/intraday-day-completion-shadow/shadow-trigger.txt'
 
 permissions:
   contents: write

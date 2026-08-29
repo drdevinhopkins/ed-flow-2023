@@ -19,6 +19,8 @@ The templates in `automation/systemd/` run hourly from 11:10 through 18:10 Montr
 
 Do not install or enable this timer in the production checkout. Do not add operational publishing, Dropbox writes, or production workflow dependencies. The service uses a non-blocking lock so overlapping weather/model runs are skipped safely.
 
+Until that isolated timer is reviewed and installed, a timestamp-only update to `validation/intraday-day-completion-shadow/shadow-trigger.txt` may trigger the branch workflow. Update it only for the intended 11:00–18:00 Montreal cutoff collection. This mechanism changes no model code or production workflow and should be retired when the isolated timer is enabled.
+
 ## Monitoring and recovery
 
 - Alert if `latest-status.json` is missing or older than 90 minutes during the shadow window.
