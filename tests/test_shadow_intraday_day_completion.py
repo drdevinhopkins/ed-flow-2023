@@ -24,6 +24,7 @@ from run_shadow_intraday_day_completion import (
 )
 from score_shadow_intraday_day_completion import (
     evaluate_prospective_readiness,
+    merge_immutable_scores,
     score_forecasts,
     summarize_collection_reliability,
     summarize_scores,
@@ -278,6 +279,45 @@ class ShadowIntradayTests(unittest.TestCase):
         self.assertEqual(scored.iloc[0]["error"], 1.0)
         self.assertEqual(summary["prospective_days"], 1)
         self.assertFalse(readiness["prospective_ready"])
+
+    def test_score_ledger_appends_new_keys_and_rejects_truth_revision(self):
+        existing = pd.DataFrame(
+            {
+                "model_version": ["v1"],
+                "forecast_day": ["2026-08-28"],
+                "cutoff_hour": [15],
+                "predicted_total": [277.0],
+                "p10_total": [267.0],
+                "p90_total": [294.0],
+                "prior_update_baseline": [279.0],
+                "actual_total": [289.0],
+            }
+        )
+        fresh = pd.concat(
+            [
+                existing.copy(),
+                pd.DataFrame(
+                    {
+                        "model_version": ["v1"],
+                        "forecast_day": ["2026-08-29"],
+                        "cutoff_hour": [15],
+                        "predicted_total": [256.0],
+                        "p10_total": [245.0],
+                        "p90_total": [269.0],
+                        "prior_update_baseline": [253.0],
+                        "actual_total": [237.0],
+                    }
+                ),
+            ],
+            ignore_index=True,
+        )
+        combined = merge_immutable_scores(existing, fresh)
+        self.assertEqual(len(combined), 2)
+
+        revised = fresh.copy()
+        revised.loc[revised["forecast_day"].eq("2026-08-28"), "actual_total"] = 290.0
+        with self.assertRaisesRegex(ValueError, "refusing to rewrite immutable score"):
+            merge_immutable_scores(existing, revised)
 
     def test_fallback_rows_are_excluded_from_candidate_evidence(self):
         forecasts = pd.DataFrame(
