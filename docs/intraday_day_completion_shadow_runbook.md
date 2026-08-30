@@ -37,4 +37,4 @@ Until that isolated timer is reviewed and installed, a timestamp-only update to 
   If both training matrices are unchanged, treat the event as fitting or dependency
   nondeterminism and freeze the verified daily artifact before resuming collection.
 
-Production remains a no-go until all retrospective gates stay green, at least 28 complete prospective days are scored, every 11:00–18:00 cutoff has adequate samples, safeguards have operated cleanly, and the final review explicitly approves activation.
+Production remains a no-go until all retrospective gates stay green, at least 28 complete prospective days are scored, every 11:00–18:00 cutoff has adequate samples, the seven most recent completed days each contain all eight unquarantined cutoffs, safeguards have operated cleanly, and the final review explicitly approves activation.

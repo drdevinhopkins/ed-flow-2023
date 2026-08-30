@@ -25,6 +25,7 @@ from run_shadow_intraday_day_completion import (
 from score_shadow_intraday_day_completion import (
     evaluate_prospective_readiness,
     score_forecasts,
+    summarize_collection_reliability,
     summarize_scores,
 )
 from check_shadow_intraday_day_completion import evaluate_shadow_health
@@ -334,6 +335,39 @@ class ShadowIntradayTests(unittest.TestCase):
         self.assertEqual(readiness["prospective_days"], 0)
         self.assertTrue(all(count == 0 for count in readiness["operational_hour_counts"].values()))
         self.assertFalse(readiness["prospective_ready"])
+
+    def test_readiness_requires_seven_recent_complete_clean_collection_days(self):
+        rows = []
+        for day in pd.date_range("2026-08-23", "2026-08-29"):
+            for hour in range(11, 19):
+                rows.append(
+                    {
+                        "forecast_day": day.date().isoformat(),
+                        "cutoff_hour": hour,
+                        "generated_at_utc": f"{day.date().isoformat()}T{hour:02d}:00:00Z",
+                        "status": "shadow_only",
+                        "model_version": "v1",
+                        "training_end": (day - pd.Timedelta(days=1)).date().isoformat(),
+                    }
+                )
+        forecasts = pd.DataFrame(rows)
+        collection = summarize_collection_reliability(
+            forecasts, through_day="2026-08-29"
+        )
+        self.assertTrue(collection["recent_complete_clean_collection"])
+        self.assertEqual(collection["clean_recent_days"], 7)
+
+        incomplete = forecasts.loc[
+            ~(
+                forecasts["forecast_day"].eq("2026-08-29")
+                & forecasts["cutoff_hour"].eq(18)
+            )
+        ]
+        collection = summarize_collection_reliability(
+            incomplete, through_day="2026-08-29"
+        )
+        self.assertFalse(collection["recent_complete_clean_collection"])
+        self.assertEqual(collection["clean_recent_days"], 6)
 
     def test_monitor_accepts_expected_idle_and_detects_bad_interval(self):
         now = pd.Timestamp("2026-08-29T00:05:00Z")

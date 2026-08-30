@@ -19,30 +19,45 @@ from backtest_intraday_day_completion import FLOW_URL, load_hourly_flow  # noqa:
 MIN_PROSPECTIVE_DAYS = 28
 MIN_SAMPLES_PER_OPERATIONAL_HOUR = 20
 OPERATIONAL_HOURS = tuple(range(11, 19))
+MIN_RECENT_CLEAN_COLLECTION_DAYS = 7
+
+
+def _quarantine_functional_drift(forecasts: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Split candidate rows into fingerprint-consistent and quarantined forecasts."""
+    sort_columns = [
+        column
+        for column in ("generated_at_utc", "forecast_day", "cutoff_hour")
+        if column in forecasts
+    ]
+    order = forecasts.sort_values(sort_columns).copy() if sort_columns else forecasts.copy()
+    if "model_fingerprint" not in order:
+        return order, order.iloc[0:0].copy()
+    group = ["model_version", "training_end"]
+    if "model_fingerprint_version" in order:
+        group.append("model_fingerprint_version")
+    reference = (
+        order.loc[order["model_fingerprint"].notna()]
+        .groupby(group, dropna=False)["model_fingerprint"]
+        .first()
+        .rename("reference_fingerprint")
+    )
+    order = order.merge(reference, on=group, how="left")
+    consistent = (
+        order["model_fingerprint"].isna()
+        | order["reference_fingerprint"].isna()
+        | order["model_fingerprint"].eq(order["reference_fingerprint"])
+    )
+    return (
+        order.loc[consistent].drop(columns="reference_fingerprint"),
+        order.loc[~consistent].drop(columns="reference_fingerprint"),
+    )
 
 
 def score_forecasts(forecasts: pd.DataFrame, flow: pd.DataFrame) -> pd.DataFrame:
     forecasts = forecasts.copy()
     if "status" in forecasts:
         forecasts = forecasts.loc[forecasts["status"].eq("shadow_only")].copy()
-    if "model_fingerprint" in forecasts:
-        order = forecasts.sort_values("generated_at_utc").copy()
-        group = ["model_version", "training_end"]
-        if "model_fingerprint_version" in order:
-            group.append("model_fingerprint_version")
-        reference = (
-            order.loc[order["model_fingerprint"].notna()]
-            .groupby(group, dropna=False)["model_fingerprint"]
-            .first()
-            .rename("reference_fingerprint")
-        )
-        order = order.merge(reference, on=group, how="left")
-        consistent = (
-            order["model_fingerprint"].isna()
-            | order["reference_fingerprint"].isna()
-            | order["model_fingerprint"].eq(order["reference_fingerprint"])
-        )
-        forecasts = order.loc[consistent].drop(columns="reference_fingerprint")
+    forecasts, _ = _quarantine_functional_drift(forecasts)
     forecasts["forecast_day"] = pd.to_datetime(forecasts["forecast_day"]).dt.normalize()
     complete = flow.loc[flow["is_complete_day"]].copy()
     totals = complete.groupby("day", as_index=False)["Inflow_Total"].sum().rename(
@@ -102,7 +117,59 @@ def summarize_scores(scored: pd.DataFrame) -> dict[str, object]:
     }
 
 
-def evaluate_prospective_readiness(summary: dict[str, object]) -> dict[str, object]:
+def summarize_collection_reliability(
+    forecasts: pd.DataFrame,
+    *,
+    through_day: pd.Timestamp | str | None,
+) -> dict[str, object]:
+    """Require complete, unquarantined cutoff collection on seven recent completed days."""
+    candidate = forecasts.copy()
+    if not candidate.empty and "status" in candidate:
+        candidate = candidate.loc[candidate["status"].eq("shadow_only")].copy()
+    if candidate.empty or through_day is None:
+        return {
+            "required_recent_clean_days": MIN_RECENT_CLEAN_COLLECTION_DAYS,
+            "recent_days": [],
+            "clean_recent_days": 0,
+            "quarantined_forecasts": 0,
+            "recent_complete_clean_collection": False,
+        }
+
+    clean, quarantined = _quarantine_functional_drift(candidate)
+    clean["forecast_day"] = pd.to_datetime(clean["forecast_day"]).dt.normalize()
+    quarantined["forecast_day"] = pd.to_datetime(quarantined["forecast_day"]).dt.normalize()
+    end = pd.Timestamp(through_day).normalize()
+    recent = pd.date_range(end=end, periods=MIN_RECENT_CLEAN_COLLECTION_DAYS, freq="D")
+    clean_days = 0
+    details = []
+    for day in recent:
+        hours = set(
+            clean.loc[clean["forecast_day"].eq(day), "cutoff_hour"].astype(int).tolist()
+        )
+        quarantined_count = int(quarantined["forecast_day"].eq(day).sum())
+        complete = hours == set(OPERATIONAL_HOURS) and quarantined_count == 0
+        clean_days += int(complete)
+        details.append(
+            {
+                "day": day.date().isoformat(),
+                "eligible_cutoff_count": len(hours & set(OPERATIONAL_HOURS)),
+                "quarantined_forecasts": quarantined_count,
+                "complete_clean_collection": complete,
+            }
+        )
+    return {
+        "required_recent_clean_days": MIN_RECENT_CLEAN_COLLECTION_DAYS,
+        "recent_days": details,
+        "clean_recent_days": clean_days,
+        "quarantined_forecasts": int(len(quarantined)),
+        "recent_complete_clean_collection": clean_days == MIN_RECENT_CLEAN_COLLECTION_DAYS,
+    }
+
+
+def evaluate_prospective_readiness(
+    summary: dict[str, object],
+    collection: dict[str, object] | None = None,
+) -> dict[str, object]:
     metrics = summary["metrics"]
     by_hour = pd.DataFrame(summary["by_hour"])
     if by_hour.empty:
@@ -133,12 +200,16 @@ def evaluate_prospective_readiness(summary: dict[str, object]) -> dict[str, obje
         "max_operational_hour_bias_at_most_3": bool(
             max_hour_bias is not None and max_hour_bias <= 3.0
         ),
+        "seven_recent_complete_clean_collection_days": bool(
+            collection is not None and collection["recent_complete_clean_collection"]
+        ),
     }
     return {
         "prospective_days": summary["prospective_days"],
         "scored_forecasts": summary["scored_forecasts"],
         "operational_hour_counts": hour_counts,
         "max_absolute_operational_hour_bias": max_hour_bias,
+        "collection_reliability": collection,
         "gates": gates,
         "prospective_ready": bool(all(gates.values())),
         "production_ready": False,
@@ -163,12 +234,16 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     forecasts = pd.read_csv(args.forecasts_csv) if args.forecasts_csv.exists() else pd.DataFrame()
+    flow = load_hourly_flow(args.flow_csv)
     if forecasts.empty:
         scored = forecasts
     else:
-        scored = score_forecasts(forecasts, load_hourly_flow(args.flow_csv))
+        scored = score_forecasts(forecasts, flow)
     summary = summarize_scores(scored)
-    readiness = evaluate_prospective_readiness(summary)
+    complete_days = flow.loc[flow["is_complete_day"], "day"]
+    through_day = complete_days.max() if not complete_days.empty else None
+    collection = summarize_collection_reliability(forecasts, through_day=through_day)
+    readiness = evaluate_prospective_readiness(summary, collection)
     for path in (args.scores_csv, args.summary_json, args.readiness_json):
         path.parent.mkdir(parents=True, exist_ok=True)
     scored.to_csv(args.scores_csv, index=False)
