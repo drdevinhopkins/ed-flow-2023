@@ -151,6 +151,56 @@ class ShadowIntradayTests(unittest.TestCase):
             training_input_fingerprint(revised_weather, ["weather_feature"]),
         )
 
+    def test_functional_drift_attributes_changed_training_route(self):
+        path = Path(tempfile.NamedTemporaryFile(suffix=".csv", delete=False).name)
+        pd.DataFrame(
+            {
+                "model_version": ["v1"],
+                "model_fingerprint_version": ["functional-probe-v2"],
+                "training_end": ["2026-08-28"],
+                "model_fingerprint": ["stable"],
+                "training_input_fingerprint_version": ["training-matrix-v1"],
+                "state_training_fingerprint": ["state-stable"],
+                "weather_training_fingerprint": ["weather-stable"],
+            }
+        ).to_csv(path, index=False)
+        with self.assertRaisesRegex(DataQualityError, "changed calendar/weather training matrix"):
+            validate_fingerprint_against_ledger(
+                path,
+                model_version="v1",
+                fingerprint_version="functional-probe-v2",
+                training_end="2026-08-28",
+                fingerprint="drifted",
+                training_input_fingerprint_version="training-matrix-v1",
+                state_training_fingerprint="state-stable",
+                weather_training_fingerprint="weather-revised",
+            )
+
+    def test_functional_drift_attributes_fit_nondeterminism(self):
+        path = Path(tempfile.NamedTemporaryFile(suffix=".csv", delete=False).name)
+        pd.DataFrame(
+            {
+                "model_version": ["v1"],
+                "model_fingerprint_version": ["functional-probe-v2"],
+                "training_end": ["2026-08-28"],
+                "model_fingerprint": ["stable"],
+                "training_input_fingerprint_version": ["training-matrix-v1"],
+                "state_training_fingerprint": ["state-stable"],
+                "weather_training_fingerprint": ["weather-stable"],
+            }
+        ).to_csv(path, index=False)
+        with self.assertRaisesRegex(DataQualityError, "possible fit or dependency nondeterminism"):
+            validate_fingerprint_against_ledger(
+                path,
+                model_version="v1",
+                fingerprint_version="functional-probe-v2",
+                training_end="2026-08-28",
+                fingerprint="drifted",
+                training_input_fingerprint_version="training-matrix-v1",
+                state_training_fingerprint="state-stable",
+                weather_training_fingerprint="weather-stable",
+            )
+
     def test_scoring_excludes_functionally_drifted_forecast(self):
         forecasts = pd.DataFrame(
             {

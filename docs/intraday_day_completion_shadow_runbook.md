@@ -34,5 +34,7 @@ Until that isolated timer is reviewed and installed, a timestamp-only update to 
   functional model fingerprint changes. A state-only change points to revised ED history;
   a weather-route change points to revised cutoff-safe weather history. Quarantine the
   forecast until the source revision is explained; never relabel it as the frozen model.
+  If both training matrices are unchanged, treat the event as fitting or dependency
+  nondeterminism and freeze the verified daily artifact before resuming collection.
 
 Production remains a no-go until all retrospective gates stay green, at least 28 complete prospective days are scored, every 11:00–18:00 cutoff has adequate samples, safeguards have operated cleanly, and the final review explicitly approves activation.

@@ -193,8 +193,11 @@ def validate_fingerprint_against_ledger(
     fingerprint_version: str,
     training_end: str,
     fingerprint: str,
+    training_input_fingerprint_version: str | None = None,
+    state_training_fingerprint: str | None = None,
+    weather_training_fingerprint: str | None = None,
 ) -> None:
-    """Suppress a refit that changes functionally within a frozen training window."""
+    """Suppress and attribute functional drift within a frozen training window."""
     if not path.exists():
         return
     existing = pd.read_csv(path)
@@ -211,12 +214,37 @@ def validate_fingerprint_against_ledger(
         & existing["model_fingerprint_version"].eq(fingerprint_version)
         & existing["training_end"].astype(str).eq(training_end)
         & existing["model_fingerprint"].notna(),
-        "model_fingerprint",
-    ].astype(str)
-    if not reference.empty and not reference.eq(fingerprint).all():
-        raise DataQualityError(
-            "functional model fingerprint drift for unchanged model and training window"
+    ]
+    if reference.empty or str(reference.iloc[0]["model_fingerprint"]) == fingerprint:
+        return
+
+    reason = "input provenance unavailable for reference"
+    input_columns = {
+        "training_input_fingerprint_version",
+        "state_training_fingerprint",
+        "weather_training_fingerprint",
+    }
+    first = reference.iloc[0]
+    if (
+        input_columns.issubset(reference.columns)
+        and training_input_fingerprint_version is not None
+        and first["training_input_fingerprint_version"] == training_input_fingerprint_version
+        and pd.notna(first["state_training_fingerprint"])
+        and pd.notna(first["weather_training_fingerprint"])
+    ):
+        changed = []
+        if str(first["state_training_fingerprint"]) != state_training_fingerprint:
+            changed.append("ED-state training matrix")
+        if str(first["weather_training_fingerprint"]) != weather_training_fingerprint:
+            changed.append("calendar/weather training matrix")
+        reason = (
+            f"changed {' and '.join(changed)}"
+            if changed
+            else "unchanged training matrices; possible fit or dependency nondeterminism"
         )
+    raise DataQualityError(
+        "functional model fingerprint drift for unchanged model and training window: " + reason
+    )
 
 
 def run_prior_update_fallback(
@@ -369,6 +397,9 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
         fingerprint_version=MODEL_FINGERPRINT_VERSION,
         training_end=bundle["training_end"],
         fingerprint=model_fingerprint,
+        training_input_fingerprint_version=TRAINING_INPUT_FINGERPRINT_VERSION,
+        state_training_fingerprint=state_training_fingerprint,
+        weather_training_fingerprint=weather_training_fingerprint,
     )
     artifact_manifest["model_fingerprint"] = model_fingerprint
     artifact_manifest["model_fingerprint_version"] = MODEL_FINGERPRINT_VERSION
