@@ -1,6 +1,6 @@
 {
   "status": "suppressed_data_quality",
-  "reason": "current day has missing or out-of-order hours: expected [0, 1, 2, 3, 4, 5], got [0, 1, 2, 9, 10, 11]",
-  "generated_at_utc": "2026-08-30T15:19:51.700879+00:00",
+  "reason": "current day has missing or out-of-order hours: expected [0, 1, 2, 3, 4, 5, 6], got [0, 1, 2, 9, 10, 11, 12]",
+  "generated_at_utc": "2026-08-30T16:10:58.417291+00:00",
   "model_version": "intraday-ensemble-v1-2026-08-28"
 }
