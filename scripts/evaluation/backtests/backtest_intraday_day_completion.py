@@ -193,7 +193,12 @@ def _complete_day_flags(frame: pd.DataFrame) -> pd.Series:
         expected = sorted(expected_local_hours(pd.Timestamp(day)))
         actual = sorted(group["ds"].dt.hour.astype(int).tolist())
         numeric = pd.to_numeric(group["Inflow_Total"], errors="coerce")
-        flags[pd.Timestamp(day)] = actual == expected and numeric.notna().all()
+        flags[pd.Timestamp(day)] = bool(
+            actual == expected
+            and numeric.notna().all()
+            and np.isfinite(numeric.to_numpy(dtype=float)).all()
+            and numeric.ge(0).all()
+        )
     return frame["day"].map(flags).fillna(False).astype(bool)
 
 
