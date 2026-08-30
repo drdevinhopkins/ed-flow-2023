@@ -1,26 +1,20 @@
 {
-  "prospective_days": 1,
-  "scored_forecasts": 4,
+  "prospective_days": 2,
+  "scored_forecasts": 11,
   "operational_hour_counts": {
-    "11": 0,
-    "12": 0,
-    "13": 0,
-    "14": 0,
-    "15": 1,
-    "16": 1,
-    "17": 1,
+    "11": 1,
+    "12": 1,
+    "13": 1,
+    "14": 1,
+    "15": 2,
+    "16": 2,
+    "17": 2,
     "18": 1
   },
   "max_absolute_operational_hour_bias": null,
   "collection_reliability": {
     "required_recent_clean_days": 7,
     "recent_days": [
-      {
-        "day": "2026-08-22",
-        "eligible_cutoff_count": 0,
-        "quarantined_forecasts": 0,
-        "complete_clean_collection": false
-      },
       {
         "day": "2026-08-23",
         "eligible_cutoff_count": 0,
@@ -55,6 +49,12 @@
         "day": "2026-08-28",
         "eligible_cutoff_count": 4,
         "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-29",
+        "eligible_cutoff_count": 7,
+        "quarantined_forecasts": 1,
         "complete_clean_collection": false
       }
     ],

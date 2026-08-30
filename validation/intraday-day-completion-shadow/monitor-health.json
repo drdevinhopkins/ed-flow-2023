@@ -1,13 +1,13 @@
 {
-  "generated_at_utc": "2026-08-30T03:04:48.647158+00:00",
+  "generated_at_utc": "2026-08-30T04:13:06.231022+00:00",
   "health": "warning",
   "latest_status": "suppressed_data_quality",
-  "status_age_minutes": 0.1,
+  "status_age_minutes": 0.2,
   "candidate_forecasts": 11,
   "duplicate_forecast_keys": 0,
   "invalid_candidate_forecasts": 0,
   "quarantined_model_drift_forecasts": 1,
-  "prospective_days": 1,
+  "prospective_days": 2,
   "required_prospective_days": 28,
   "production_ready": false,
   "alerts": [

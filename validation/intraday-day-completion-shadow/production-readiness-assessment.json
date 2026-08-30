@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-08-30T03:04:48.747816+00:00",
+  "generated_at_utc": "2026-08-30T04:13:06.349677+00:00",
   "candidate_model": "ensemble_calendar_weather_state",
   "model_version": "intraday-ensemble-v1-2026-08-28",
   "objective_gates": {
@@ -26,26 +26,20 @@
     "max_operational_hour_bias_at_most_3": false,
     "seven_recent_complete_clean_collection_days": false
   },
-  "prospective_days": 1,
+  "prospective_days": 2,
   "operational_hour_counts": {
-    "11": 0,
-    "12": 0,
-    "13": 0,
-    "14": 0,
-    "15": 1,
-    "16": 1,
-    "17": 1,
+    "11": 1,
+    "12": 1,
+    "13": 1,
+    "14": 1,
+    "15": 2,
+    "16": 2,
+    "17": 2,
     "18": 1
   },
   "collection_reliability": {
     "required_recent_clean_days": 7,
     "recent_days": [
-      {
-        "day": "2026-08-22",
-        "eligible_cutoff_count": 0,
-        "quarantined_forecasts": 0,
-        "complete_clean_collection": false
-      },
       {
         "day": "2026-08-23",
         "eligible_cutoff_count": 0,
@@ -80,6 +74,12 @@
         "day": "2026-08-28",
         "eligible_cutoff_count": 4,
         "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-29",
+        "eligible_cutoff_count": 7,
+        "quarantined_forecasts": 1,
         "complete_clean_collection": false
       }
     ],
