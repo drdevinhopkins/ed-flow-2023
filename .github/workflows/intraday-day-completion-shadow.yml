@@ -13,6 +13,8 @@ on:
       - 'scripts/evaluation/prospective/build_intraday_production_readiness.py'
       - 'tests/test_shadow_intraday_day_completion.py'
       - 'scripts/evaluation/prospective/run_intraday_shadow_cycle.sh'
+      - 'automation/systemd/ed-flow-intraday-shadow.service'
+      - 'automation/systemd/ed-flow-intraday-shadow.timer'
       - 'validation/intraday-day-completion-shadow/shadow-trigger.txt'
 
 permissions:
@@ -46,6 +48,11 @@ jobs:
           python -m py_compile scripts/evaluation/prospective/check_shadow_intraday_day_completion.py
           python -m py_compile scripts/evaluation/prospective/build_intraday_production_readiness.py
           python -m unittest tests.test_shadow_intraday_day_completion -v
+      - name: Verify isolated scheduler templates
+        run: |
+          systemd-analyze verify \
+            automation/systemd/ed-flow-intraday-shadow.service \
+            automation/systemd/ed-flow-intraday-shadow.timer
       - name: Build cutoff-safe historical weather
         run: |
           python scripts/build_weather_history.py \
