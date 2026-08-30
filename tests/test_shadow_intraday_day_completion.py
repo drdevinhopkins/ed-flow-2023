@@ -75,6 +75,20 @@ class ShadowIntradayTests(unittest.TestCase):
                 now=pd.Timestamp("2026-08-28 11:30", tz="America/Montreal"),
             )
 
+    def test_gap_diagnostic_anchors_expected_hours_to_latest_observation(self):
+        flow = self._flow()
+        flow = flow.loc[flow["ds"].dt.hour.isin([0, 1, 2, 9, 10, 11])].copy()
+
+        with self.assertRaisesRegex(
+            DataQualityError,
+            r"expected \[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11\], "
+            r"got \[0, 1, 2, 9, 10, 11\]",
+        ):
+            validate_live_flow(
+                flow,
+                now=pd.Timestamp("2026-08-28 11:30", tz="America/Montreal"),
+            )
+
     def test_invalid_arrivals_suppress_live_and_cannot_complete_day(self):
         live = self._flow()
         live["Inflow_Total"] = live["Inflow_Total"].astype(float)
