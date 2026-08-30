@@ -1,0 +1,114 @@
+{
+  "generated_at_utc": "2026-08-30T03:04:48.747816+00:00",
+  "candidate_model": "ensemble_calendar_weather_state",
+  "model_version": "intraday-ensemble-v1-2026-08-28",
+  "objective_gates": {
+    "retrospective_ready": true,
+    "prospective_ready": false,
+    "artifact_and_input_provenance_complete": false,
+    "no_critical_monitor_alerts": true
+  },
+  "retrospective_gates": {
+    "overall_mae_improvement_at_least_5pct": true,
+    "operational_mae_improvement_at_least_5pct": true,
+    "absolute_overall_bias_at_most_2": true,
+    "max_operational_hour_bias_at_most_3": true,
+    "overall_p80_coverage_between_75_and_85pct": true,
+    "operational_p80_coverage_between_75_and_85pct": true,
+    "forecast_and_interval_invariants": true
+  },
+  "prospective_gates": {
+    "prospective_days_at_least_28": false,
+    "at_least_20_samples_per_operational_hour": false,
+    "mae_improvement_at_least_5pct": false,
+    "absolute_bias_at_most_2": false,
+    "p80_coverage_between_75_and_85pct": false,
+    "max_operational_hour_bias_at_most_3": false,
+    "seven_recent_complete_clean_collection_days": false
+  },
+  "prospective_days": 1,
+  "operational_hour_counts": {
+    "11": 0,
+    "12": 0,
+    "13": 0,
+    "14": 0,
+    "15": 1,
+    "16": 1,
+    "17": 1,
+    "18": 1
+  },
+  "collection_reliability": {
+    "required_recent_clean_days": 7,
+    "recent_days": [
+      {
+        "day": "2026-08-22",
+        "eligible_cutoff_count": 0,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-23",
+        "eligible_cutoff_count": 0,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-24",
+        "eligible_cutoff_count": 0,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-25",
+        "eligible_cutoff_count": 0,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-26",
+        "eligible_cutoff_count": 0,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-27",
+        "eligible_cutoff_count": 0,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-28",
+        "eligible_cutoff_count": 4,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      }
+    ],
+    "clean_recent_days": 0,
+    "quarantined_forecasts": 1,
+    "recent_complete_clean_collection": false
+  },
+  "monitor_health": "warning",
+  "critical_monitor_alerts": [],
+  "missing_artifact_fields": [
+    "state_training_fingerprint",
+    "training_input_fingerprint_version",
+    "weather_training_fingerprint"
+  ],
+  "objective_evidence_ready": false,
+  "manual_authorization_recorded": false,
+  "production_ready": false,
+  "recommendation": "no_go",
+  "blockers": [
+    "prospective_ready",
+    "artifact_and_input_provenance_complete",
+    "prospective:prospective_days_at_least_28",
+    "prospective:at_least_20_samples_per_operational_hour",
+    "prospective:mae_improvement_at_least_5pct",
+    "prospective:absolute_bias_at_most_2",
+    "prospective:p80_coverage_between_75_and_85pct",
+    "prospective:max_operational_hour_bias_at_most_3",
+    "prospective:seven_recent_complete_clean_collection_days",
+    "missing_artifact_fields:state_training_fingerprint,training_input_fingerprint_version,weather_training_fingerprint",
+    "explicit_manual_go_no_go_authorization"
+  ]
+}
