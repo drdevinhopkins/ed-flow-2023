@@ -20,6 +20,7 @@ MIN_PROSPECTIVE_DAYS = 28
 MIN_SAMPLES_PER_OPERATIONAL_HOUR = 20
 OPERATIONAL_HOURS = tuple(range(11, 19))
 MIN_RECENT_CLEAN_COLLECTION_DAYS = 7
+MIN_DAYS_BEFORE_RECALIBRATION_REVIEW = 7
 
 
 def _quarantine_functional_drift(forecasts: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -85,6 +86,13 @@ def summarize_scores(scored: pd.DataFrame) -> dict[str, object]:
             "prospective_days": 0,
             "metrics": None,
             "by_hour": [],
+            "by_day": [],
+            "early_diagnostic": {
+                "minimum_days_before_recalibration_review": MIN_DAYS_BEFORE_RECALIBRATION_REVIEW,
+                "days_observed": 0,
+                "bias_sign_reversal_observed": False,
+                "recommendation": "collect_without_recalibration",
+            },
         }
 
     error = scored["error"].astype(float)
@@ -100,6 +108,21 @@ def summarize_scores(scored: pd.DataFrame) -> dict[str, object]:
         )
         .reset_index()
     )
+    by_day = (
+        scored.groupby("forecast_day")
+        .agg(
+            n=("error", "size"),
+            mae=("absolute_error", "mean"),
+            bias=("error", "mean"),
+            p80_coverage=("p80_covered", "mean"),
+            baseline_mae=("baseline_absolute_error", "mean"),
+        )
+        .reset_index()
+        .sort_values("forecast_day")
+    )
+    day_bias = by_day["bias"].astype(float)
+    bias_sign_reversal = bool((day_bias.lt(0).any()) and (day_bias.gt(0).any()))
+    days_observed = int(len(by_day))
     return {
         "scored_forecasts": int(len(scored)),
         "prospective_days": int(scored["forecast_day"].nunique()),
@@ -114,6 +137,17 @@ def summarize_scores(scored: pd.DataFrame) -> dict[str, object]:
             ),
         },
         "by_hour": by_hour.to_dict(orient="records"),
+        "by_day": by_day.to_dict(orient="records"),
+        "early_diagnostic": {
+            "minimum_days_before_recalibration_review": MIN_DAYS_BEFORE_RECALIBRATION_REVIEW,
+            "days_observed": days_observed,
+            "bias_sign_reversal_observed": bias_sign_reversal,
+            "recommendation": (
+                "review_calibration_without_tuning_on_prospective_data"
+                if days_observed >= MIN_DAYS_BEFORE_RECALIBRATION_REVIEW
+                else "collect_without_recalibration"
+            ),
+        },
     }
 
 
