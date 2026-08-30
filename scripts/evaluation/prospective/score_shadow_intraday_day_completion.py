@@ -21,6 +21,14 @@ MIN_SAMPLES_PER_OPERATIONAL_HOUR = 20
 OPERATIONAL_HOURS = tuple(range(11, 19))
 MIN_RECENT_CLEAN_COLLECTION_DAYS = 7
 MIN_DAYS_BEFORE_RECALIBRATION_REVIEW = 7
+SCORE_KEY = ["model_version", "forecast_day", "cutoff_hour"]
+IMMUTABLE_SCORE_COLUMNS = [
+    "predicted_total",
+    "p10_total",
+    "p90_total",
+    "prior_update_baseline",
+    "actual_total",
+]
 
 
 def wilson_interval(successes: int, total: int, z: float = 1.959963984540054) -> dict[str, float | None]:
@@ -96,6 +104,45 @@ def score_forecasts(forecasts: pd.DataFrame, flow: pd.DataFrame) -> pd.DataFrame
     scored["baseline_absolute_error"] = scored["baseline_error"].abs()
     scored["forecast_day"] = scored["forecast_day"].dt.date.astype(str)
     return scored.sort_values(["forecast_day", "cutoff_hour", "model_version"])
+
+
+def merge_immutable_scores(existing: pd.DataFrame, fresh: pd.DataFrame) -> pd.DataFrame:
+    """Append newly scored keys while refusing to rewrite prior forecast or truth values."""
+    if existing.empty:
+        return fresh.copy()
+    if existing.duplicated(SCORE_KEY).any():
+        raise ValueError("existing score ledger contains duplicate immutable keys")
+    if fresh.empty:
+        return existing.copy()
+    if fresh.duplicated(SCORE_KEY).any():
+        raise ValueError("fresh score output contains duplicate immutable keys")
+
+    old = existing.copy()
+    new = fresh.copy()
+    for frame in (old, new):
+        frame["forecast_day"] = frame["forecast_day"].astype(str)
+        frame["cutoff_hour"] = pd.to_numeric(frame["cutoff_hour"], errors="raise").astype(int)
+        frame["model_version"] = frame["model_version"].astype(str)
+
+    overlap = old.merge(new, on=SCORE_KEY, how="inner", suffixes=("_old", "_new"))
+    for column in IMMUTABLE_SCORE_COLUMNS:
+        old_column = f"{column}_old"
+        new_column = f"{column}_new"
+        if old_column not in overlap or new_column not in overlap:
+            continue
+        old_values = pd.to_numeric(overlap[old_column], errors="coerce").to_numpy(dtype=float)
+        new_values = pd.to_numeric(overlap[new_column], errors="coerce").to_numpy(dtype=float)
+        changed = ~np.isclose(old_values, new_values, rtol=0.0, atol=1e-9, equal_nan=True)
+        if changed.any():
+            keys = overlap.loc[changed, SCORE_KEY].to_dict(orient="records")
+            raise ValueError(
+                f"refusing to rewrite immutable score column {column} for keys {keys}"
+            )
+
+    additions = new.merge(old[SCORE_KEY], on=SCORE_KEY, how="left", indicator=True)
+    additions = additions.loc[additions["_merge"].eq("left_only")].drop(columns="_merge")
+    combined = pd.concat([old, additions], ignore_index=True, sort=False)
+    return combined.sort_values(["forecast_day", "cutoff_hour", "model_version"])
 
 
 def summarize_scores(scored: pd.DataFrame) -> dict[str, object]:
@@ -298,9 +345,13 @@ def main() -> None:
     forecasts = pd.read_csv(args.forecasts_csv) if args.forecasts_csv.exists() else pd.DataFrame()
     flow = load_hourly_flow(args.flow_csv)
     if forecasts.empty:
-        scored = forecasts
+        fresh_scores = forecasts
     else:
-        scored = score_forecasts(forecasts, flow)
+        fresh_scores = score_forecasts(forecasts, flow)
+    existing_scores = (
+        pd.read_csv(args.scores_csv) if args.scores_csv.exists() else pd.DataFrame()
+    )
+    scored = merge_immutable_scores(existing_scores, fresh_scores)
     summary = summarize_scores(scored)
     complete_days = flow.loc[flow["is_complete_day"], "day"]
     through_day = complete_days.max() if not complete_days.empty else None
