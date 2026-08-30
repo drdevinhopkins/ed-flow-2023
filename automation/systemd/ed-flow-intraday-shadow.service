@@ -9,9 +9,29 @@ User=dhopkins
 WorkingDirectory=/home/dhopkins/apps/ed-flow-intraday-shadow
 Environment=INTRADAY_SHADOW_OUTPUT_DIR=/var/lib/ed-flow/intraday-shadow
 Environment=PATH=/home/dhopkins/apps/ed-flow-intraday-shadow/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+Environment=PYTHONDONTWRITEBYTECODE=1
 ExecStart=/usr/bin/bash scripts/evaluation/prospective/run_intraday_shadow_cycle.sh
 Nice=10
 IOSchedulingClass=idle
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/ed-flow/intraday-shadow
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
 
 [Install]
 WantedBy=multi-user.target
