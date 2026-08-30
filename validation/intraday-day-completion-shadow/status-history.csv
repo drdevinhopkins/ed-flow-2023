@@ -22,3 +22,4 @@ shadow_only,2026-08-29T22:22:05.084036+00:00,2026-08-29,2026-08-29T18:00:00,18.0
 suppressed_data_quality,2026-08-29T23:12:01.633676+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,cutoff hour 19:00 is outside the shadow window,,
 suppressed_data_quality,2026-08-30T00:06:28.265026+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,cutoff hour 19:00 is outside the shadow window,,
 suppressed_data_quality,2026-08-30T01:04:29.457011+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,cutoff hour 20:00 is outside the shadow window,,
+suppressed_data_quality,2026-08-30T02:05:06.734274+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,cutoff hour 21:00 is outside the shadow window,,

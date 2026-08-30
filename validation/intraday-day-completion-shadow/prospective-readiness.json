@@ -12,13 +12,64 @@
     "18": 1
   },
   "max_absolute_operational_hour_bias": null,
+  "collection_reliability": {
+    "required_recent_clean_days": 7,
+    "recent_days": [
+      {
+        "day": "2026-08-22",
+        "eligible_cutoff_count": 0,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-23",
+        "eligible_cutoff_count": 0,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-24",
+        "eligible_cutoff_count": 0,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-25",
+        "eligible_cutoff_count": 0,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-26",
+        "eligible_cutoff_count": 0,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-27",
+        "eligible_cutoff_count": 0,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      },
+      {
+        "day": "2026-08-28",
+        "eligible_cutoff_count": 4,
+        "quarantined_forecasts": 0,
+        "complete_clean_collection": false
+      }
+    ],
+    "clean_recent_days": 0,
+    "quarantined_forecasts": 1,
+    "recent_complete_clean_collection": false
+  },
   "gates": {
     "prospective_days_at_least_28": false,
     "at_least_20_samples_per_operational_hour": false,
     "mae_improvement_at_least_5pct": false,
     "absolute_bias_at_most_2": false,
     "p80_coverage_between_75_and_85pct": false,
-    "max_operational_hour_bias_at_most_3": false
+    "max_operational_hour_bias_at_most_3": false,
+    "seven_recent_complete_clean_collection_days": false
   },
   "prospective_ready": false,
   "production_ready": false,
