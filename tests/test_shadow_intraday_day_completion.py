@@ -573,6 +573,61 @@ class ShadowIntradayTests(unittest.TestCase):
             {item["code"] for item in result["alerts"]},
         )
 
+    def test_monitor_detects_missed_cutoff_on_next_cycle(self):
+        history = pd.DataFrame(
+            {
+                "status": ["shadow_only", "shadow_only"],
+                "generated_at_utc": [
+                    "2026-08-30T15:02:00Z",  # 11:02 local
+                    "2026-08-30T17:02:00Z",  # 13:02 local; 12:00 is missing
+                ],
+            }
+        )
+        result = evaluate_shadow_health(
+            {
+                "status": "shadow_only",
+                "generated_at_utc": "2026-08-30T17:02:00Z",
+            },
+            history,
+            pd.DataFrame(),
+            {},
+            {"prospective_days": 2},
+            now=pd.Timestamp("2026-08-30T17:03:00Z"),
+        )
+        self.assertEqual(result["health"], "critical")
+        self.assertEqual(result["missing_shadow_cutoff_hours"], [12])
+        self.assertIn(
+            "missing_shadow_cutoff_attempt",
+            {item["code"] for item in result["alerts"]},
+        )
+
+    def test_monitor_counts_suppressed_cutoff_as_attempted(self):
+        history = pd.DataFrame(
+            {
+                "status": ["suppressed_data_quality", "shadow_only"],
+                "generated_at_utc": [
+                    "2026-08-30T15:02:00Z",  # 11:02 local
+                    "2026-08-30T16:02:00Z",  # 12:02 local
+                ],
+            }
+        )
+        result = evaluate_shadow_health(
+            {
+                "status": "shadow_only",
+                "generated_at_utc": "2026-08-30T16:02:00Z",
+            },
+            history,
+            pd.DataFrame(),
+            {},
+            {"prospective_days": 2},
+            now=pd.Timestamp("2026-08-30T16:03:00Z"),
+        )
+        self.assertEqual(result["missing_shadow_cutoff_hours"], [])
+        self.assertNotIn(
+            "missing_shadow_cutoff_attempt",
+            {item["code"] for item in result["alerts"]},
+        )
+
     def test_final_assessment_never_auto_authorizes_production(self):
         retrospective = {
             "candidate_model": "candidate",
