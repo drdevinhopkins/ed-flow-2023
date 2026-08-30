@@ -60,6 +60,26 @@ def evaluate_shadow_health(
         if len(recent) == 2 and abnormal.all() and local_now.hour in SHADOW_HOURS:
             alerts.append({"severity": "critical", "code": "consecutive_abnormal_runs"})
 
+    missing_cutoff_hours: list[int] = []
+    if not history.empty and "generated_at_utc" in history:
+        attempt_times = pd.to_datetime(history["generated_at_utc"], utc=True, errors="coerce")
+        local_attempts = attempt_times.dt.tz_convert(LOCAL_TZ)
+        attempted_hours = set(
+            local_attempts.loc[
+                local_attempts.dt.date.eq(local_now.date())
+                & local_attempts.dt.hour.isin(SHADOW_HOURS)
+            ].dt.hour.astype(int)
+        )
+        if local_now.hour <= SHADOW_HOURS[0]:
+            expected_hours: tuple[int, ...] = ()
+        elif local_now.hour <= SHADOW_HOURS[-1]:
+            expected_hours = tuple(range(SHADOW_HOURS[0], local_now.hour))
+        else:
+            expected_hours = SHADOW_HOURS
+        missing_cutoff_hours = [hour for hour in expected_hours if hour not in attempted_hours]
+        if missing_cutoff_hours:
+            alerts.append({"severity": "critical", "code": "missing_shadow_cutoff_attempt"})
+
     candidate = forecasts.copy()
     if not candidate.empty and "status" in candidate:
         candidate = candidate.loc[candidate["status"].eq("shadow_only")].copy()
@@ -129,6 +149,7 @@ def evaluate_shadow_health(
         "duplicate_forecast_keys": duplicate_count,
         "invalid_candidate_forecasts": invalid_count,
         "quarantined_model_drift_forecasts": quarantined_drift_count,
+        "missing_shadow_cutoff_hours": missing_cutoff_hours,
         "prospective_days": int(readiness.get("prospective_days", 0)),
         "required_prospective_days": 28,
         "production_ready": bool(readiness.get("production_ready", False)),
