@@ -1,1 +1,1 @@
-2026-08-30T04:12:00Z score completed 2026-08-29 shadow forecasts
+2026-08-30T12:00:00Z pre-window freshness validation
