@@ -1,6 +1,6 @@
 {
-  "generated_at_utc": "2026-08-30T13:59:22.489334+00:00",
-  "health": "warning",
+  "generated_at_utc": "2026-08-30T15:19:59.306599+00:00",
+  "health": "critical",
   "latest_status": "suppressed_data_quality",
   "status_age_minutes": 0.1,
   "candidate_forecasts": 11,
@@ -15,6 +15,10 @@
     {
       "severity": "warning",
       "code": "data_quality_suppression"
+    },
+    {
+      "severity": "critical",
+      "code": "consecutive_abnormal_runs"
     },
     {
       "severity": "warning",

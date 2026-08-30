@@ -1,12 +1,12 @@
 {
-  "generated_at_utc": "2026-08-30T13:59:22.603144+00:00",
+  "generated_at_utc": "2026-08-30T15:19:59.437329+00:00",
   "candidate_model": "ensemble_calendar_weather_state",
   "model_version": "intraday-ensemble-v1-2026-08-28",
   "objective_gates": {
     "retrospective_ready": true,
     "prospective_ready": false,
     "artifact_and_input_provenance_complete": false,
-    "no_critical_monitor_alerts": true
+    "no_critical_monitor_alerts": false
   },
   "retrospective_gates": {
     "overall_mae_improvement_at_least_5pct": true,
@@ -87,8 +87,10 @@
     "quarantined_forecasts": 1,
     "recent_complete_clean_collection": false
   },
-  "monitor_health": "warning",
-  "critical_monitor_alerts": [],
+  "monitor_health": "critical",
+  "critical_monitor_alerts": [
+    "consecutive_abnormal_runs"
+  ],
   "missing_artifact_fields": [
     "state_training_fingerprint",
     "training_input_fingerprint_version",
@@ -101,6 +103,7 @@
   "blockers": [
     "prospective_ready",
     "artifact_and_input_provenance_complete",
+    "no_critical_monitor_alerts",
     "prospective:prospective_days_at_least_28",
     "prospective:at_least_20_samples_per_operational_hour",
     "prospective:mae_improvement_at_least_5pct",
@@ -109,6 +112,7 @@
     "prospective:max_operational_hour_bias_at_most_3",
     "prospective:seven_recent_complete_clean_collection_days",
     "missing_artifact_fields:state_training_fingerprint,training_input_fingerprint_version,weather_training_fingerprint",
+    "critical_monitor_alerts:consecutive_abnormal_runs",
     "explicit_manual_go_no_go_authorization"
   ]
 }
