@@ -32,3 +32,4 @@ suppressed_data_quality,2026-08-30T09:00:31.777164+00:00,,,,intraday-ensemble-v1
 suppressed_data_quality,2026-08-30T10:02:57.776222+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,latest flow timestamp is stale (303 minutes; limit 90),,
 suppressed_data_quality,2026-08-30T11:02:39.796468+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,latest flow timestamp is stale (363 minutes; limit 90),,
 suppressed_data_quality,2026-08-30T12:02:14.151231+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,latest flow timestamp is stale (422 minutes; limit 90),,
+suppressed_data_quality,2026-08-30T13:59:16.303790+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,"current day has missing or out-of-order hours: expected [0, 1, 2, 3], got [0, 1, 2, 9]",,
