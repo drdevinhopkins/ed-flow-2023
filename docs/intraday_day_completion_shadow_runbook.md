@@ -30,5 +30,9 @@ Until that isolated timer is reviewed and installed, a timestamp-only update to 
 - Confirm `prospective-readiness.json` advances only after a complete day is available.
 - Preserve `forecasts.csv` and `scores.csv`; their model/day/hour keys are immutable and idempotent.
 - A serialization or SHA mismatch is a hard failure. Rebuild from the frozen branch commit; do not load an unverified artifact.
+- Compare the versioned state and calendar/weather training-matrix fingerprints when a
+  functional model fingerprint changes. A state-only change points to revised ED history;
+  a weather-route change points to revised cutoff-safe weather history. Quarantine the
+  forecast until the source revision is explained; never relabel it as the frozen model.
 
 Production remains a no-go until all retrospective gates stay green, at least 28 complete prospective days are scored, every 11:00–18:00 cutoff has adequate samples, safeguards have operated cleanly, and the final review explicitly approves activation.

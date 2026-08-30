@@ -40,6 +40,7 @@ from backtest_intraday_day_completion import (  # noqa: E402
 
 MODEL_VERSION = "intraday-ensemble-v1-2026-08-28"
 MODEL_FINGERPRINT_VERSION = "functional-probe-v2"
+TRAINING_INPUT_FINGERPRINT_VERSION = "training-matrix-v1"
 FALLBACK_VERSION = "intraday-prior-update-fallback-v1"
 OPERATIONAL_HOURS = range(11, 19)
 
@@ -169,6 +170,20 @@ def functional_model_fingerprint(bundle: dict[str, object], probe: pd.DataFrame)
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(encoded).hexdigest()
+
+
+def training_input_fingerprint(frame: pd.DataFrame, features: list[str]) -> str:
+    """Hash the exact ordered training matrix and target used by one model route."""
+    columns = ["day", "cutoff_hour", "remaining_arrivals", *features]
+    ordered = frame.loc[:, columns].sort_values(["day", "cutoff_hour"]).copy()
+    ordered["day"] = pd.to_datetime(ordered["day"]).dt.strftime("%Y-%m-%d")
+    payload = ordered.to_csv(
+        index=False,
+        float_format="%.12g",
+        na_rep="<NA>",
+        lineterminator="\n",
+    ).encode()
+    return hashlib.sha256(payload).hexdigest()
 
 
 def validate_fingerprint_against_ledger(
@@ -326,6 +341,8 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
     weather_models = _fit_quantile_models(
         train, features=calendar_weather_features, max_iter=args.max_iter, random_state=args.random_state
     )
+    state_training_fingerprint = training_input_fingerprint(train, sets["boosted_state"])
+    weather_training_fingerprint = training_input_fingerprint(train, calendar_weather_features)
     source_hash = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16]
     bundle = {
         "model_version": MODEL_VERSION,
@@ -333,6 +350,9 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
         "training_start": pd.Timestamp(train["day"].min()).date().isoformat(),
         "training_end": pd.Timestamp(train["day"].max()).date().isoformat(),
         "training_days": int(train["day"].nunique()),
+        "training_input_fingerprint_version": TRAINING_INPUT_FINGERPRINT_VERSION,
+        "state_training_fingerprint": state_training_fingerprint,
+        "weather_training_fingerprint": weather_training_fingerprint,
         "state_features": sets["boosted_state"],
         "calendar_weather_features": calendar_weather_features,
         "state_models": state_models,
@@ -352,6 +372,9 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
     )
     artifact_manifest["model_fingerprint"] = model_fingerprint
     artifact_manifest["model_fingerprint_version"] = MODEL_FINGERPRINT_VERSION
+    artifact_manifest["training_input_fingerprint_version"] = TRAINING_INPUT_FINGERPRINT_VERSION
+    artifact_manifest["state_training_fingerprint"] = state_training_fingerprint
+    artifact_manifest["weather_training_fingerprint"] = weather_training_fingerprint
     args.artifact_manifest_json.write_text(json.dumps(artifact_manifest, indent=2) + "\n")
     state_raw = _predict_remaining_quantiles(
         bundle["state_models"], live, features=bundle["state_features"]
@@ -383,6 +406,9 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
         "artifact_sha256": artifact_manifest["artifact_sha256"],
         "model_fingerprint": model_fingerprint,
         "model_fingerprint_version": MODEL_FINGERPRINT_VERSION,
+        "training_input_fingerprint_version": TRAINING_INPUT_FINGERPRINT_VERSION,
+        "state_training_fingerprint": state_training_fingerprint,
+        "weather_training_fingerprint": weather_training_fingerprint,
         "training_start": pd.Timestamp(train["day"].min()).date().isoformat(),
         "training_end": pd.Timestamp(train["day"].max()).date().isoformat(),
         "training_days": int(train["day"].nunique()),
@@ -404,6 +430,9 @@ def run_shadow(args: argparse.Namespace) -> dict[str, object]:
         "training_end": row["training_end"],
         "calibration_days": calibration_days,
         "calibration_shrinkage_days": args.calibration_shrinkage_days,
+        "training_input_fingerprint_version": TRAINING_INPUT_FINGERPRINT_VERSION,
+        "state_training_fingerprint": state_training_fingerprint,
+        "weather_training_fingerprint": weather_training_fingerprint,
         "state_features": sets["boosted_state"],
         "calendar_weather_features": calendar_weather_features,
         "corrections": corrections.reset_index().to_dict(orient="records"),

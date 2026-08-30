@@ -17,6 +17,7 @@ from run_shadow_intraday_day_completion import (
     DataQualityError,
     _append_forecast,
     run_prior_update_fallback,
+    training_input_fingerprint,
     validate_live_flow,
     validate_fingerprint_against_ledger,
     write_model_artifact,
@@ -128,6 +129,27 @@ class ShadowIntradayTests(unittest.TestCase):
                 training_end="2026-08-28",
                 fingerprint="drifted",
             )
+
+    def test_training_input_fingerprint_is_order_stable_and_route_specific(self):
+        frame = pd.DataFrame(
+            {
+                "day": ["2026-08-27", "2026-08-26"],
+                "cutoff_hour": [12, 11],
+                "remaining_arrivals": [10.0, 20.0],
+                "state_feature": [1.0, 2.0],
+                "weather_feature": [3.0, 4.0],
+            }
+        )
+        state = training_input_fingerprint(frame, ["state_feature"])
+        self.assertEqual(state, training_input_fingerprint(frame.iloc[::-1], ["state_feature"]))
+
+        revised_weather = frame.copy()
+        revised_weather.loc[0, "weather_feature"] = 99.0
+        self.assertEqual(state, training_input_fingerprint(revised_weather, ["state_feature"]))
+        self.assertNotEqual(
+            training_input_fingerprint(frame, ["weather_feature"]),
+            training_input_fingerprint(revised_weather, ["weather_feature"]),
+        )
 
     def test_scoring_excludes_functionally_drifted_forecast(self):
         forecasts = pd.DataFrame(
