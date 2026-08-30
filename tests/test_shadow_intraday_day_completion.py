@@ -361,6 +361,18 @@ class ShadowIntradayTests(unittest.TestCase):
         self.assertEqual(summary["by_day"][0]["bias"], -11.0)
         self.assertEqual(summary["by_day"][1]["bias"], 22.0)
         self.assertTrue(summary["early_diagnostic"]["bias_sign_reversal_observed"])
+        self.assertLess(
+            summary["metrics"]["p80_coverage_wilson_95"]["lower"], 0.5
+        )
+        self.assertGreater(
+            summary["metrics"]["p80_coverage_wilson_95"]["upper"], 0.5
+        )
+        self.assertGreater(
+            summary["by_day"][0]["p80_coverage_wilson_95"]["lower"], 0.0
+        )
+        self.assertLess(
+            summary["by_day"][1]["p80_coverage_wilson_95"]["upper"], 1.0
+        )
         self.assertEqual(
             summary["early_diagnostic"]["recommendation"],
             "collect_without_recalibration",
