@@ -80,15 +80,26 @@ def validate_live_flow(
         )
     if int(latest_ds.hour) not in OPERATIONAL_HOURS:
         raise DataQualityError(f"cutoff hour {latest_ds.hour:02d}:00 is outside the shadow window")
-    if current["Inflow_Total"].isna().any() or current["Inflow_Total"].lt(0).any():
-        raise DataQualityError("current-day inflow contains missing or negative values")
+    current_inflow = pd.to_numeric(current["Inflow_Total"], errors="coerce")
+    if (
+        current_inflow.isna().any()
+        or not np.isfinite(current_inflow.to_numpy(dtype=float)).all()
+        or current_inflow.lt(0).any()
+    ):
+        raise DataQualityError("current-day inflow contains missing, non-finite, or negative values")
 
     missing_state = [column for column in TOTAL_TBS_COMPONENTS if column not in current.columns]
     if missing_state:
         raise DataQualityError(f"current flow is missing Total_TBS components: {missing_state}")
     latest_state = current.iloc[-1][list(TOTAL_TBS_COMPONENTS)].apply(pd.to_numeric, errors="coerce")
-    if latest_state.isna().any() or latest_state.lt(0).any():
-        raise DataQualityError("latest Total_TBS components contain missing or negative values")
+    if (
+        latest_state.isna().any()
+        or not np.isfinite(latest_state.to_numpy(dtype=float)).all()
+        or latest_state.lt(0).any()
+    ):
+        raise DataQualityError(
+            "latest Total_TBS components contain missing, non-finite, or negative values"
+        )
     return latest_ds, current
 
 
