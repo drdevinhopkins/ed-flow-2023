@@ -74,6 +74,25 @@ class ShadowIntradayTests(unittest.TestCase):
                 now=pd.Timestamp("2026-08-28 11:30", tz="America/Montreal"),
             )
 
+    def test_invalid_arrivals_suppress_live_and_cannot_complete_day(self):
+        live = self._flow()
+        live["Inflow_Total"] = live["Inflow_Total"].astype(float)
+        live.loc[live.index[-1], "Inflow_Total"] = float("inf")
+        with self.assertRaises(DataQualityError):
+            validate_live_flow(
+                live, now=pd.Timestamp("2026-08-28 11:30", tz="America/Montreal")
+            )
+
+        rows = [
+            {"ds": f"2026-08-27 {hour:02d}:00:00", "Inflow_Total": 2.0}
+            for hour in range(24)
+        ]
+        rows[-1]["Inflow_Total"] = -1.0
+        handle = tempfile.NamedTemporaryFile(suffix=".csv", delete=False)
+        pd.DataFrame(rows).to_csv(handle.name, index=False)
+        loaded = load_hourly_flow(handle.name)
+        self.assertFalse(loaded["is_complete_day"].any())
+
     def test_append_is_idempotent_for_model_day_and_hour(self):
         path = Path(tempfile.NamedTemporaryFile(suffix=".csv", delete=False).name)
         path.unlink()
