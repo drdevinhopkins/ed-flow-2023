@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-08-30T10:03:01.833339+00:00",
+  "generated_at_utc": "2026-08-30T11:02:47.106526+00:00",
   "health": "warning",
   "latest_status": "suppressed_data_quality",
   "status_age_minutes": 0.1,
@@ -7,6 +7,7 @@
   "duplicate_forecast_keys": 0,
   "invalid_candidate_forecasts": 0,
   "quarantined_model_drift_forecasts": 1,
+  "missing_shadow_cutoff_hours": [],
   "prospective_days": 2,
   "required_prospective_days": 28,
   "production_ready": false,

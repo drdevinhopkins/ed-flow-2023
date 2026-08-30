@@ -30,3 +30,4 @@ suppressed_data_quality,2026-08-30T07:02:16.540400+00:00,,,,intraday-ensemble-v1
 suppressed_data_quality,2026-08-30T08:00:32.325382+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,latest flow timestamp is stale (180 minutes; limit 90),,
 suppressed_data_quality,2026-08-30T09:00:31.777164+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,latest flow timestamp is stale (240 minutes; limit 90),,
 suppressed_data_quality,2026-08-30T10:02:57.776222+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,latest flow timestamp is stale (303 minutes; limit 90),,
+suppressed_data_quality,2026-08-30T11:02:39.796468+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,latest flow timestamp is stale (363 minutes; limit 90),,

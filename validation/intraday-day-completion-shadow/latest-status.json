@@ -1,6 +1,6 @@
 {
   "status": "suppressed_data_quality",
-  "reason": "latest flow timestamp is stale (303 minutes; limit 90)",
-  "generated_at_utc": "2026-08-30T10:02:57.776222+00:00",
+  "reason": "latest flow timestamp is stale (363 minutes; limit 90)",
+  "generated_at_utc": "2026-08-30T11:02:39.796468+00:00",
   "model_version": "intraday-ensemble-v1-2026-08-28"
 }
