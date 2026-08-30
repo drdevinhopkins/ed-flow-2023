@@ -74,5 +74,29 @@
       "p80_coverage": 1.0,
       "baseline_mae": 8.950343190973172
     }
-  ]
+  ],
+  "by_day": [
+    {
+      "forecast_day": "2026-08-28",
+      "n": 4,
+      "mae": 10.836906094512344,
+      "bias": -10.836906094512344,
+      "p80_coverage": 1.0,
+      "baseline_mae": 9.710204131644758
+    },
+    {
+      "forecast_day": "2026-08-29",
+      "n": 7,
+      "mae": 22.23391230575506,
+      "bias": 22.23391230575506,
+      "p80_coverage": 0.0,
+      "baseline_mae": 21.131184536638333
+    }
+  ],
+  "early_diagnostic": {
+    "minimum_days_before_recalibration_review": 7,
+    "days_observed": 2,
+    "bias_sign_reversal_observed": true,
+    "recommendation": "collect_without_recalibration"
+  }
 }
