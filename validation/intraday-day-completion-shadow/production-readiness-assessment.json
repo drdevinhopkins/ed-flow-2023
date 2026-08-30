@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-08-30T20:02:44.018359+00:00",
+  "generated_at_utc": "2026-08-30T21:03:05.608572+00:00",
   "candidate_model": "ensemble_calendar_weather_state",
   "model_version": "intraday-ensemble-v1-2026-08-28",
   "objective_gates": {
