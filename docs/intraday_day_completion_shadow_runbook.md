@@ -37,6 +37,22 @@ Until that isolated timer is reviewed and installed, a timestamp-only update to 
   If both training matrices are unchanged, treat the event as fitting or dependency
   nondeterminism and freeze the verified daily artifact before resuming collection.
 
+## Frozen candidate and calibration review
+
+Prospective observations evaluate the frozen candidate; they are not a rolling tuning
+set. Do not alter the ensemble weights, point correction, interval correction, feature
+routes, or model version in response to an individual day. `score-summary.json` reports
+both pooled and per-day MAE, bias, baseline MAE, and P80 coverage. Its early diagnostic
+may flag a bias-sign reversal, but it must recommend `collect_without_recalibration`
+until at least seven complete scored days are available.
+
+At seven days, review calibration only as a prespecified diagnostic. A proposed correction
+must be evaluated on locked historical folds without using those prospective outcomes to
+select its magnitude. Any accepted model or calibration change requires a new version,
+a new retrospective readiness assessment, and a fresh prospective collection period;
+previous forecasts remain evidence for the old version. Fallback and quarantined rows
+never count toward model accuracy, interval coverage, or clean-collection gates.
+
 Production remains a no-go until all retrospective gates stay green, at least 28 complete prospective days are scored, every 11:00–18:00 cutoff has adequate samples, the seven most recent completed days each contain all eight unquarantined cutoffs, safeguards have operated cleanly, and the final review explicitly approves activation.
 
 `production-readiness-assessment.json` consolidates those objective gates and always leaves
