@@ -23,6 +23,25 @@ MIN_RECENT_CLEAN_COLLECTION_DAYS = 7
 MIN_DAYS_BEFORE_RECALIBRATION_REVIEW = 7
 
 
+def wilson_interval(successes: int, total: int, z: float = 1.959963984540054) -> dict[str, float | None]:
+    """Return a two-sided Wilson score interval for a binomial proportion."""
+    if total <= 0:
+        return {"lower": None, "upper": None}
+    proportion = successes / total
+    z_squared = z**2
+    denominator = 1.0 + z_squared / total
+    center = (proportion + z_squared / (2.0 * total)) / denominator
+    margin = (
+        z
+        * np.sqrt(
+            proportion * (1.0 - proportion) / total
+            + z_squared / (4.0 * total**2)
+        )
+        / denominator
+    )
+    return {"lower": float(center - margin), "upper": float(center + margin)}
+
+
 def _quarantine_functional_drift(forecasts: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Split candidate rows into fingerprint-consistent and quarantined forecasts."""
     sort_columns = [
@@ -120,6 +139,12 @@ def summarize_scores(scored: pd.DataFrame) -> dict[str, object]:
         .reset_index()
         .sort_values("forecast_day")
     )
+    by_day_records = by_day.to_dict(orient="records")
+    for record in by_day_records:
+        day_rows = scored.loc[scored["forecast_day"].eq(record["forecast_day"])]
+        record["p80_coverage_wilson_95"] = wilson_interval(
+            int(day_rows["p80_covered"].sum()), int(len(day_rows))
+        )
     day_bias = by_day["bias"].astype(float)
     bias_sign_reversal = bool((day_bias.lt(0).any()) and (day_bias.gt(0).any()))
     days_observed = int(len(by_day))
@@ -131,13 +156,16 @@ def summarize_scores(scored: pd.DataFrame) -> dict[str, object]:
             "rmse": float(np.sqrt(error.pow(2).mean())),
             "bias": float(error.mean()),
             "p80_coverage": float(scored["p80_covered"].mean()),
+            "p80_coverage_wilson_95": wilson_interval(
+                int(scored["p80_covered"].sum()), int(len(scored))
+            ),
             "baseline_mae": float(baseline_error.abs().mean()),
             "mae_improvement_fraction": float(
                 1.0 - error.abs().mean() / baseline_error.abs().mean()
             ),
         },
         "by_hour": by_hour.to_dict(orient="records"),
-        "by_day": by_day.to_dict(orient="records"),
+        "by_day": by_day_records,
         "early_diagnostic": {
             "minimum_days_before_recalibration_review": MIN_DAYS_BEFORE_RECALIBRATION_REVIEW,
             "days_observed": days_observed,
