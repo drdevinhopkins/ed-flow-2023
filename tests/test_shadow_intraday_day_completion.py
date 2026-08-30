@@ -334,8 +334,37 @@ class ShadowIntradayTests(unittest.TestCase):
         readiness = evaluate_prospective_readiness(summary)
 
         self.assertEqual(readiness["prospective_days"], 0)
+        self.assertEqual(summary["by_day"], [])
+        self.assertEqual(
+            summary["early_diagnostic"]["recommendation"],
+            "collect_without_recalibration",
+        )
         self.assertTrue(all(count == 0 for count in readiness["operational_hour_counts"].values()))
         self.assertFalse(readiness["prospective_ready"])
+
+    def test_early_diagnostic_reports_day_bias_reversal_without_recalibrating(self):
+        scored = pd.DataFrame(
+            {
+                "forecast_day": ["2026-08-28", "2026-08-28", "2026-08-29", "2026-08-29"],
+                "cutoff_hour": [15, 16, 15, 16],
+                "error": [-10.0, -12.0, 20.0, 24.0],
+                "absolute_error": [10.0, 12.0, 20.0, 24.0],
+                "p80_covered": [True, True, False, False],
+                "baseline_error": [-8.0, -9.0, 18.0, 20.0],
+                "baseline_absolute_error": [8.0, 9.0, 18.0, 20.0],
+            }
+        )
+
+        summary = summarize_scores(scored)
+
+        self.assertEqual(len(summary["by_day"]), 2)
+        self.assertEqual(summary["by_day"][0]["bias"], -11.0)
+        self.assertEqual(summary["by_day"][1]["bias"], 22.0)
+        self.assertTrue(summary["early_diagnostic"]["bias_sign_reversal_observed"])
+        self.assertEqual(
+            summary["early_diagnostic"]["recommendation"],
+            "collect_without_recalibration",
+        )
 
     def test_readiness_requires_seven_recent_complete_clean_collection_days(self):
         rows = []
