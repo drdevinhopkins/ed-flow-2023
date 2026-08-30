@@ -27,3 +27,4 @@ suppressed_data_quality,2026-08-30T03:04:41.592710+00:00,,,,intraday-ensemble-v1
 suppressed_data_quality,2026-08-30T04:12:53.620081+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,cutoff hour 00:00 is outside the shadow window,,
 suppressed_data_quality,2026-08-30T05:02:41.480228+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,cutoff hour 00:00 is outside the shadow window,,
 suppressed_data_quality,2026-08-30T07:02:16.540400+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,latest flow timestamp is stale (122 minutes; limit 90),,
+suppressed_data_quality,2026-08-30T08:00:32.325382+00:00,,,,intraday-ensemble-v1-2026-08-28,,,,,,,,,,,latest flow timestamp is stale (180 minutes; limit 90),,
