@@ -29,6 +29,7 @@ from score_shadow_intraday_day_completion import (
     summarize_scores,
 )
 from check_shadow_intraday_day_completion import evaluate_shadow_health
+from build_intraday_production_readiness import REQUIRED_ARTIFACT_FIELDS, build_assessment
 
 
 class ShadowIntradayTests(unittest.TestCase):
@@ -471,6 +472,40 @@ class ShadowIntradayTests(unittest.TestCase):
             "quarantined_model_fingerprint_drift",
             {item["code"] for item in result["alerts"]},
         )
+
+    def test_final_assessment_never_auto_authorizes_production(self):
+        retrospective = {
+            "candidate_model": "candidate",
+            "retrospective_ready": True,
+            "retrospective_gates": {"accuracy": True, "coverage": True},
+        }
+        prospective = {
+            "prospective_ready": True,
+            "prospective_days": 28,
+            "gates": {"accuracy": True, "clean_collection": True},
+        }
+        manifest = {field: "present" for field in REQUIRED_ARTIFACT_FIELDS}
+        result = build_assessment(
+            retrospective,
+            prospective,
+            {"health": "healthy", "alerts": []},
+            manifest,
+        )
+        self.assertTrue(result["objective_evidence_ready"])
+        self.assertEqual(result["recommendation"], "pending_manual_go_no_go")
+        self.assertFalse(result["production_ready"])
+        self.assertIn("explicit_manual_go_no_go_authorization", result["blockers"])
+
+    def test_final_assessment_lists_failed_evidence(self):
+        result = build_assessment(
+            {"retrospective_ready": True, "retrospective_gates": {"accuracy": True}},
+            {"prospective_ready": False, "gates": {"days": False}},
+            {"health": "critical", "alerts": [{"severity": "critical", "code": "stale"}]},
+            {},
+        )
+        self.assertEqual(result["recommendation"], "no_go")
+        self.assertIn("prospective:days", result["blockers"])
+        self.assertIn("critical_monitor_alerts:stale", result["blockers"])
 
 
 if __name__ == "__main__":

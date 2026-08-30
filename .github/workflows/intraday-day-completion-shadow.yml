@@ -10,6 +10,7 @@ on:
       - 'scripts/evaluation/prospective/run_shadow_intraday_day_completion.py'
       - 'scripts/evaluation/prospective/score_shadow_intraday_day_completion.py'
       - 'scripts/evaluation/prospective/check_shadow_intraday_day_completion.py'
+      - 'scripts/evaluation/prospective/build_intraday_production_readiness.py'
       - 'tests/test_shadow_intraday_day_completion.py'
       - 'scripts/evaluation/prospective/run_intraday_shadow_cycle.sh'
       - 'validation/intraday-day-completion-shadow/shadow-trigger.txt'
@@ -43,6 +44,7 @@ jobs:
           python -m py_compile scripts/evaluation/prospective/run_shadow_intraday_day_completion.py
           python -m py_compile scripts/evaluation/prospective/score_shadow_intraday_day_completion.py
           python -m py_compile scripts/evaluation/prospective/check_shadow_intraday_day_completion.py
+          python -m py_compile scripts/evaluation/prospective/build_intraday_production_readiness.py
           python -m unittest tests.test_shadow_intraday_day_completion -v
       - name: Build cutoff-safe historical weather
         run: |
@@ -76,6 +78,15 @@ jobs:
             --artifact-manifest-json validation/intraday-day-completion-shadow/artifact-manifest.json \
             --readiness-json validation/intraday-day-completion-shadow/prospective-readiness.json \
             --output-json validation/intraday-day-completion-shadow/monitor-health.json
+      - name: Build production readiness assessment
+        if: always()
+        run: |
+          python scripts/evaluation/prospective/build_intraday_production_readiness.py \
+            --retrospective-json validation/intraday-day-completion/readiness.json \
+            --prospective-json validation/intraday-day-completion-shadow/prospective-readiness.json \
+            --health-json validation/intraday-day-completion-shadow/monitor-health.json \
+            --artifact-manifest-json validation/intraday-day-completion-shadow/artifact-manifest.json \
+            --output-json validation/intraday-day-completion-shadow/production-readiness-assessment.json
       - name: Upload shadow artifacts
         if: always()
         uses: actions/upload-artifact@v4

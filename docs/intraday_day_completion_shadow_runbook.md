@@ -38,3 +38,8 @@ Until that isolated timer is reviewed and installed, a timestamp-only update to 
   nondeterminism and freeze the verified daily artifact before resuming collection.
 
 Production remains a no-go until all retrospective gates stay green, at least 28 complete prospective days are scored, every 11:00–18:00 cutoff has adequate samples, the seven most recent completed days each contain all eight unquarantined cutoffs, safeguards have operated cleanly, and the final review explicitly approves activation.
+
+`production-readiness-assessment.json` consolidates those objective gates and always leaves
+`production_ready` false. Once `objective_evidence_ready` becomes true, its recommendation
+changes only to `pending_manual_go_no_go`; production publishing still requires an explicit
+review and a separate authorized change.

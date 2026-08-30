@@ -26,10 +26,18 @@ python "$ROOT/scripts/evaluation/prospective/score_shadow_intraday_day_completio
   --scores-csv "$OUTPUT_DIR/scores.csv" \
   --summary-json "$OUTPUT_DIR/score-summary.json" \
   --readiness-json "$OUTPUT_DIR/prospective-readiness.json"
+health_exit=0
 python "$ROOT/scripts/evaluation/prospective/check_shadow_intraday_day_completion.py" \
   --status-json "$OUTPUT_DIR/latest-status.json" \
   --status-history-csv "$OUTPUT_DIR/status-history.csv" \
   --forecasts-csv "$OUTPUT_DIR/forecasts.csv" \
   --artifact-manifest-json "$OUTPUT_DIR/artifact-manifest.json" \
   --readiness-json "$OUTPUT_DIR/prospective-readiness.json" \
-  --output-json "$OUTPUT_DIR/monitor-health.json"
+  --output-json "$OUTPUT_DIR/monitor-health.json" || health_exit=$?
+python "$ROOT/scripts/evaluation/prospective/build_intraday_production_readiness.py" \
+  --retrospective-json "$ROOT/validation/intraday-day-completion/readiness.json" \
+  --prospective-json "$OUTPUT_DIR/prospective-readiness.json" \
+  --health-json "$OUTPUT_DIR/monitor-health.json" \
+  --artifact-manifest-json "$OUTPUT_DIR/artifact-manifest.json" \
+  --output-json "$OUTPUT_DIR/production-readiness-assessment.json"
+exit "$health_exit"
