@@ -73,7 +73,17 @@ def validate_live_flow(
     latest_day = latest_ds.normalize()
     current = flow.loc[flow["day"].eq(latest_day)].sort_values(["ds", "_source_order"]).copy()
     actual_hours = current["ds"].dt.hour.astype(int).tolist()
-    expected_prefix = expected_local_hours(latest_day)[: len(actual_hours)]
+    expected_hours = expected_local_hours(latest_day)
+    latest_hour_positions = [
+        position for position, hour in enumerate(expected_hours) if hour == int(latest_ds.hour)
+    ]
+    # On the fall DST transition, 01:00 occurs twice. Choose the occurrence whose
+    # prefix length best matches the observed row count; all other hours are unique.
+    latest_hour_position = min(
+        latest_hour_positions,
+        key=lambda position: abs((position + 1) - len(actual_hours)),
+    )
+    expected_prefix = expected_hours[: latest_hour_position + 1]
     if actual_hours != expected_prefix:
         raise DataQualityError(
             f"current day has missing or out-of-order hours: expected {expected_prefix}, got {actual_hours}"
