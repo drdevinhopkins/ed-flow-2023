@@ -1,0 +1,119 @@
+name: Hourly Chronos-2 history-window backtest
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - chronos2-history-window-backtest
+    paths:
+      - '.github/workflows/hourly-history-window-backtest.yml'
+      - 'chronos-requirements.txt'
+      - 'scripts/backtest_hourly_history_windows.py'
+      - 'scripts/backtest_covariate_ablation.py'
+      - 'scripts/forecast_oncall_impact.py'
+
+permissions:
+  contents: write
+
+jobs:
+  backtest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - name: Check out history-window branch
+        uses: actions/checkout@v7
+
+      - name: Record run id
+        run: |
+          mkdir -p validation/hourly-history-window-backtest
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > validation/hourly-history-window-backtest/run-id.txt
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-hourly-history-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-hourly-history-${{ runner.os }}-
+            huggingface-hourly-final-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+
+      - name: Compile backtest
+        run: |
+          python -m py_compile scripts/backtest_hourly_history_windows.py
+
+      - name: Run history-window comparison
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          mkdir -p validation-output-hourly-history-windows
+          set +e
+          python scripts/backtest_hourly_history_windows.py \
+            --horizon 24 \
+            --num-cutoffs 8 \
+            --spacing-hours 1008 \
+            --windows 720 1440 2160 4320 6480 8192 \
+            --output-dir validation-output-hourly-history-windows \
+            2>&1 | tee validation-output-hourly-history-windows/run.log
+          status=${PIPESTATUS[0]}
+          echo "$status" > validation-output-hourly-history-windows/exit_code.txt
+          exit 0
+
+      - name: Upload backtest results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos2-hourly-history-window-backtest
+          path: validation-output-hourly-history-windows/*
+          if-no-files-found: warn
+
+      - name: Record latest aggregate results on branch
+        if: always()
+        run: |
+          mkdir -p validation/hourly-history-window-backtest
+          for file in \
+            cutoffs.csv \
+            summary.csv \
+            by_horizon_band.csv \
+            by_cutoff.csv \
+            global_ranking.csv \
+            winners_by_target.csv \
+            winners_by_target_horizon_band.csv \
+            exit_code.txt; do
+            if [ -f "validation-output-hourly-history-windows/$file" ]; then
+              cp "validation-output-hourly-history-windows/$file" \
+                "validation/hourly-history-window-backtest/$file"
+            fi
+          done
+          if [ -f validation-output-hourly-history-windows/run.log ]; then
+            tail -n 1600 validation-output-hourly-history-windows/run.log \
+              > validation/hourly-history-window-backtest/latest.log
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/hourly-history-window-backtest
+          if ! git diff --cached --quiet; then
+            git commit -m "Record hourly history-window backtest results [skip ci]"
+            git push
+          fi
+
+      - name: Fail if backtest failed
+        if: always()
+        run: |
+          test -f validation-output-hourly-history-windows/exit_code.txt
+          test "$(cat validation-output-hourly-history-windows/exit_code.txt)" = "0"
