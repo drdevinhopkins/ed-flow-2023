@@ -111,7 +111,7 @@ explicit go/no-go review after prospective evidence is available.
 ensemble and appends one versioned record per day/cutoff to a shadow-only CSV. It never
 publishes to the operational forecast or blurb. Output is suppressed when flow is stale,
 current-day hours are missing or out of order, Total TBS components are invalid, weather
-is unavailable within two hours, the cutoff is outside 06:00–22:00, or training history
+is unavailable within two hours, the cutoff is outside 11:00–18:00, or training history
 is insufficient. The branch-only manual workflow records the forecast, latest status,
 feature membership, and calibration corrections under
 `validation/intraday-day-completion-shadow/`.
@@ -120,7 +120,12 @@ feature membership, and calibration corrections under
 the source marks a forecast day complete. It reports candidate and prior-update MAE,
 bias, P80 coverage, and cutoff-hour slices. Prospective readiness requires at least 28
 distinct completed days, at least 20 scored forecasts at each 11:00–18:00 cutoff, and
-the same accuracy, bias, coverage, and per-hour bias limits used retrospectively.
+the same accuracy, bias, coverage, and per-hour bias limits used retrospectively. It also
+requires the seven most recent completed days to contain all eight unquarantined cutoffs.
+The score summary includes per-day diagnostics and can flag a bias-sign reversal, but it
+does not recommend a calibration review before seven scored days. Prospective outcomes
+must not be used for incremental tuning of the frozen candidate; any accepted change is
+a new version that must repeat retrospective and prospective validation.
 
 GitHub schedules execute workflow files from the default branch, so this experiment
 workflow is intentionally manual while it remains isolated on the branch. A scheduler
