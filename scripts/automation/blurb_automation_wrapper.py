@@ -28,6 +28,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import math
 import os
 import subprocess
 import sys
@@ -181,6 +182,58 @@ def band_phrase(band: str | None, val: float) -> str:
     return "typical"
 
 
+def situation_phrase(now: dict) -> str:
+    """Give the handoff a high-level load label from observed burden."""
+    tbs = now.get("Total_TBS")
+    overflow = now.get("Overflow")
+    ttstr = now.get("TTStr")
+    occupancy_pct = None if ttstr is None else ttstr / STRETCHER_CAPACITY * 100
+    if ((overflow is not None and overflow >= 30)
+            or (occupancy_pct is not None and occupancy_pct >= 250)
+            or (tbs is not None and tbs >= 80)):
+        return "critical"
+    if ((overflow is not None and overflow >= 17)
+            or (occupancy_pct is not None and occupancy_pct >= 200)
+            or (tbs is not None and tbs >= 60)):
+        return "busy"
+    if ((tbs is not None and tbs <= 25)
+            and (overflow is None or overflow <= 12)
+            and (occupancy_pct is None or occupancy_pct < 180)):
+        return "relatively light"
+    return "moderately busy"
+
+
+def anomaly_text(facts: dict, mentioned_targets: set[str]) -> str:
+    """Mention novel current/near-term anomaly breaches without repetition."""
+    labels = {
+        "Total_TBS": "TBS", "POD_TBS": "POD TBS", "Vertical_TBS": "Vertical TBS",
+        "TTStr": "stretcher occupancy", "Overflow": "overflow",
+        "WAITINGADM": "boarding", "TRG_HALLWAY1": "triage hallway",
+        "TRG_HALLWAY_TBS": "triage hallway TBS",
+    }
+    clauses = []
+    seen = set()
+    for anomaly in facts.get("anomalies", []):
+        target = anomaly.get("target")
+        if target in mentioned_targets or target in seen or target not in labels:
+            continue
+        seen.add(target)
+        label = labels[target]
+        value = int(round(anomaly["value"]))
+        if anomaly.get("status") == "current":
+            clauses.append(f"{label} is currently above its anomaly threshold ({value})")
+        else:
+            clauses.append(
+                f"{label} is expected to rise above its anomaly threshold "
+                f"within 4 hours (forecast {value})"
+            )
+    if not clauses:
+        return ""
+    if len(clauses) == 1:
+        return clauses[0].capitalize() + "."
+    return "Anomaly thresholds to watch: " + "; ".join(clauses) + "."
+
+
 def build_blurb(facts: dict) -> str:
     """Build a short, clinician-facing handoff from deterministic facts."""
     now = facts["now"]
@@ -189,27 +242,33 @@ def build_blurb(facts: dict) -> str:
     overflow = now.get("Overflow")
 
     if overflow:
-        rooms = int(round(overflow / 4))
+        rooms = math.floor(overflow / 7)
         ovf = f"{int(round(overflow))} in overflow (about {rooms} rooms)"
     else:
         ovf = "no overflow"
 
-    s1 = (f"ED flow is {int(round(tbs))} TBS now, with stretchers about "
+    s1 = (f"Overall, the ED is {situation_phrase(now)}: {int(round(tbs))} TBS now, with stretchers about "
           f"{int(round(occ))}% full and {ovf}.")
 
     peak = facts.get("peak_tbs")
     horizon = facts.get("peak_horizon")
     if peak is not None and horizon:
-        if peak > (tbs or 0) + 1:
+        peak_time = facts.get("peak_time")
+        data_hour = facts.get("data_hour")
+        if peak_time is not None and data_hour is not None and peak_time.date() != data_hour.date():
+            s2 = "Today's peak appears to have passed."
+        elif peak > (tbs or 0) + 1:
             s2 = f"It should build toward about {int(round(peak))} TBS in roughly {horizon} hours."
         else:
             s2 = "Flow is near its peak and should not build much further."
     else:
         s2 = "Flow should stay about the same over the next few hours."
 
+    s_anomaly = anomaly_text(facts, {"Total_TBS", "TTStr", "Overflow"})
+
     if facts.get("midnight") is not None:
-        s3 = (f"Midnight looks like about {int(round(facts['midnight']))} TBS, "
-              f"{band_phrase(facts.get('midnight_band'), facts['midnight'])} for this time of year.")
+        s3 = (f"Midnight looks like about {int(round(facts['midnight']))} TBS "
+              f"[{band_phrase(facts.get('midnight_band'), facts['midnight'])} for this time of year].")
     else:
         s3 = "There is no midnight estimate in this forecast."
 
@@ -238,7 +297,11 @@ def build_blurb(facts: dict) -> str:
     else:
         s5 = "No staffing change is needed right now."
 
-    return " ".join([s1, s2, s3, s4, s5])
+    parts = [s1, s2]
+    if s_anomaly:
+        parts.append(s_anomaly)
+    parts.extend([s3, s4, s5])
+    return " ".join(parts)
 
 
 def oncall_metadata(facts: dict) -> tuple[str, str]:

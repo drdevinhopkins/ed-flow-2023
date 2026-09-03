@@ -119,7 +119,19 @@ run_optional_step python scripts/hourly_forecast_v2.py
 # forecast-v2.1.csv with canonical targets plus explainability metadata.
 run_step python scripts/hourly_forecast_v2_1.py
 
+# Publish the clinician-facing blurb after all forecast inputs are available,
+# before the staffing refresh completes the workflow.
+run_step .venv-blurb/bin/python scripts/automation/blurb_automation_wrapper.py
+
+# Additive experimental prose layer. It writes only the separate
+# hourly_forecast_blurbs_llm.csv and falls back to deterministic text.
+run_optional_step .venv-blurb/bin/python scripts/automation/llm_blurb_automation_wrapper.py
+
 run_step python scripts/shiftadmin.py
+
+# Refresh weather after the forecast/staffing outputs. The next hourly cycle
+# will consume this newly uploaded weather.csv.
+run_step python scripts/update_weather.py
 
 # Run the paired prospective weather experiment only after all established
 # outputs finish. It reuses the GPU selected above, freezes one common input
