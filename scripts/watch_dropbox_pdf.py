@@ -27,9 +27,9 @@ import dropbox
 from dropbox.files import DeletedMetadata, FileMetadata
 
 
-REPO_DIR = Path("/home/dhopkins/apps/ed-flow-2023")
-ENV_FILE = REPO_DIR / ".env"
-STATE_DIR = REPO_DIR / "state"
+REPO_DIR = Path(os.environ.get("ED_FLOW_REPO", "/home/dhopkins/apps/ed-flow-2023"))
+ENV_FILE = Path(os.environ.get("ED_FLOW_ENV", str(REPO_DIR / ".env")))
+STATE_DIR = Path(os.environ.get("ED_FLOW_STATE_DIR", str(REPO_DIR / "state")))
 CURSOR_FILE = STATE_DIR / "dropbox_cursor.txt"
 
 # App-folder Dropbox root. For Dropbox API, the app folder root is "".
@@ -41,6 +41,13 @@ WATCH_FOLDER = ""
 TARGET_PDF = "/hourlyreport.pdf"
 
 RUN_SCRIPT = REPO_DIR / "scripts" / "run_ed_flow_update.sh"
+BLURB_PYTHON = Path(os.environ.get(
+    "ED_FLOW_BLURB_PYTHON", str(REPO_DIR / ".venv-blurb" / "bin" / "python")
+))
+BLURB_WRAPPER = Path(os.environ.get(
+    "ED_FLOW_BLURB_WRAPPER",
+    str(REPO_DIR / "scripts" / "automation" / "blurb_automation_wrapper.py"),
+))
 
 LONGPOLL_TIMEOUT_SECONDS = 120
 ERROR_SLEEP_SECONDS = 30
@@ -142,6 +149,25 @@ def run_workflow() -> None:
     )
 
     print("Workflow completed successfully.", flush=True)
+
+    if not BLURB_PYTHON.exists() or not BLURB_WRAPPER.exists():
+        print(
+            f"Warning: blurb runner unavailable: {BLURB_PYTHON} / {BLURB_WRAPPER}",
+            flush=True,
+        )
+        return
+
+    print("Running hourly forecast blurb publisher.", flush=True)
+    blurb_env = os.environ.copy()
+    blurb_env["ED_FLOW_REPO"] = str(REPO_DIR)
+    blurb_env["ED_FLOW_ENV"] = str(ENV_FILE)
+    subprocess.run(
+        [str(BLURB_PYTHON), str(BLURB_WRAPPER)],
+        cwd=str(REPO_DIR),
+        env=blurb_env,
+        check=True,
+    )
+    print("Hourly forecast blurb publisher completed.", flush=True)
 
 
 def process_dropbox_changes(dbx: dropbox.Dropbox, cursor: str) -> str:

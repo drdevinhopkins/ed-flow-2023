@@ -174,3 +174,6 @@ models/
 .DS_Store
 .cache.sqlite
 state/dropbox_cursor.txt
+# Local/generated ED-flow runtime artifacts
+.venv-autogluon/
+validation/prospective-weather/

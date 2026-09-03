@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /home/dhopkins/apps/ed-flow-2023
+REPO_DIR="${ED_FLOW_REPO:-/home/dhopkins/apps/ed-flow-2023}"
+cd "$REPO_DIR"
 
-source .venv/bin/activate
+VENV_DIR="${ED_FLOW_VENV:-.venv}"
+source "$VENV_DIR/bin/activate"
 
 # Make direct/manual invocation behave like the Dropbox watcher. A dotenv file
 # is not necessarily valid Bash syntax (values may contain spaces, parentheses,
@@ -113,7 +115,23 @@ run_step python scripts/forecast_oncall_probability.py
 # prevent the established pipeline outputs.
 run_optional_step python scripts/hourly_forecast_v2.py
 
+# Required production forecast for the hourly blurb pipeline. This publishes
+# forecast-v2.1.csv with canonical targets plus explainability metadata.
+run_step python scripts/hourly_forecast_v2_1.py
+
+# Publish the clinician-facing blurb after all forecast inputs are available,
+# before the staffing refresh completes the workflow.
+run_step .venv-blurb/bin/python scripts/automation/blurb_automation_wrapper.py
+
+# Additive experimental prose layer. It writes only the separate
+# hourly_forecast_blurbs_llm.csv and falls back to deterministic text.
+run_optional_step .venv-blurb/bin/python scripts/automation/llm_blurb_automation_wrapper.py
+
 run_step python scripts/shiftadmin.py
+
+# Refresh weather after the forecast/staffing outputs. The next hourly cycle
+# will consume this newly uploaded weather.csv.
+run_step python scripts/update_weather.py
 
 # Run the paired prospective weather experiment only after all established
 # outputs finish. It reuses the GPU selected above, freezes one common input
