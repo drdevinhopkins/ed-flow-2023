@@ -6,10 +6,12 @@ on:
       - chronos2-weather-features
       - daily-inflow-source
       - experiment/daily-arrivals-explainability
+      - feature/daily-arrival-outlook
     paths:
       - 'scripts/forecast_daily_visits.py'
       - 'scripts/forecast_daily_visits_from_daily.py'
       - 'scripts/explain_daily_visits_forecast.py'
+      - 'scripts/build_daily_arrival_outlook.py'
       - 'scripts/daily_weather_feature_set.py'
       - 'scripts/live_weather_forecast.py'
       - 'scripts/weather_features.py'
@@ -19,6 +21,7 @@ on:
       - 'scripts/backtest_daily_holiday_targeted.py'
       - 'tests/test_daily_visit_forecast.py'
       - 'tests/test_daily_visit_explainability.py'
+      - 'tests/test_daily_arrival_outlook.py'
       - '.github/workflows/daily-visits-forecast.yml'
       - 'data/jgh_ramq_holidays.csv'
       - 'chronos-requirements.txt'
@@ -88,13 +91,16 @@ jobs:
           python -m py_compile scripts/forecast_daily_visits.py
           python -m py_compile scripts/forecast_daily_visits_from_daily.py
           python -m py_compile scripts/explain_daily_visits_forecast.py
+          python -m py_compile scripts/build_daily_arrival_outlook.py
           python -m py_compile tests/test_daily_visit_forecast.py
           python -m py_compile tests/test_daily_visit_explainability.py
+          python -m py_compile tests/test_daily_arrival_outlook.py
 
       - name: Test promoted feature contract
         run: |
           python tests/test_daily_visit_forecast.py
           python tests/test_daily_visit_explainability.py
+          python tests/test_daily_arrival_outlook.py
 
       - name: Run current 7-day forecast
         env:
@@ -139,6 +145,24 @@ jobs:
             "${extra_args[@]}" \
             2>&1 | tee daily_visits_explainability.log
 
+      - name: Build Power BI daily arrival outlook
+        continue-on-error: true
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        shell: bash
+        run: |
+          extra_args=()
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            extra_args+=(--download-intraday-dropbox --upload-dropbox)
+          fi
+          python scripts/build_daily_arrival_outlook.py \
+            --daily-explained daily_visits_forecast_explained.csv \
+            --intraday intraday-daily-inflow-forecast.csv \
+            --output daily_arrival_outlook.csv \
+            "${extra_args[@]}"
+
       - name: Validate forecast output
         run: |
           python - <<'PY'
@@ -149,6 +173,7 @@ jobs:
           weather = pd.read_csv('daily_visits_weather_snapshot.csv')
           explained = pd.read_csv('daily_visits_forecast_explained.csv')
           drivers = pd.read_csv('daily_visits_explainability.csv')
+          outlook = pd.read_csv('daily_arrival_outlook.csv')
 
           assert len(forecast) == 7, f'expected 7 forecast days, got {len(forecast)}'
           assert forecast['ds'].nunique() == 7
@@ -180,8 +205,32 @@ jobs:
           assert drivers.groupby('ds')['driver_group'].nunique().eq(8).all()
           assert np.isfinite(drivers['effect_visits']).all()
           assert (drivers['explainability_method'] == 'chronos2_group_counterfactual_v1').all()
+
+          required_outlook = {
+              'target_date', 'generated_at_local', 'forecast_stage', 'horizon_day',
+              'predicted_arrivals', 'lower_80', 'upper_80', 'observed_arrivals',
+              'expected_remaining', 'seasonal_weekday_baseline', 'delta_vs_baseline',
+              'top_driver_1', 'top_driver_1_effect', 'top_driver_2',
+              'top_driver_2_effect', 'explainability_method', 'explanation_text',
+              'source_model', 'data_cutoff', 'model_version',
+          }
+          assert required_outlook.issubset(outlook.columns), sorted(
+              required_outlook - set(outlook.columns)
+          )
+          assert 1 <= len(outlook) <= 8
+          assert not outlook['target_date'].duplicated().any()
+          assert outlook['predicted_arrivals'].notna().all()
+          assert (outlook['lower_80'] <= outlook['predicted_arrivals']).all()
+          assert (outlook['predicted_arrivals'] <= outlook['upper_80']).all()
+          assert set(outlook['forecast_stage']).issubset({'day_ahead', 'daily', 'intraday'})
+          assert outlook['horizon_day'].min() >= 0
+
           print(explained[['ds', 'daily_visits_prediction', 'seasonal_weekday_baseline',
                            'top_driver_1', 'top_driver_1_effect', 'explanation_text']].to_string(index=False))
+          print('\nPower BI outlook:')
+          print(outlook[['target_date', 'forecast_stage', 'predicted_arrivals',
+                         'lower_80', 'upper_80', 'observed_arrivals',
+                         'expected_remaining']].to_string(index=False))
           PY
 
       - name: Upload forecast artifact
@@ -193,6 +242,7 @@ jobs:
             daily_visits_weather_snapshot.csv
             daily_visits_forecast_explained.csv
             daily_visits_explainability.csv
+            daily_arrival_outlook.csv
             daily_visits_forecast.log
             daily_visits_explainability.log
 
@@ -205,6 +255,7 @@ jobs:
           cp daily_visits_weather_snapshot.csv validation/daily-visits-forecast/latest-weather.csv
           cp daily_visits_forecast_explained.csv validation/daily-visits-forecast/latest-explained.csv
           cp daily_visits_explainability.csv validation/daily-visits-forecast/latest-explainability.csv
+          cp daily_arrival_outlook.csv validation/daily-visits-forecast/latest-outlook.csv
           tail -n 500 daily_visits_forecast.log > validation/daily-visits-forecast/latest.log
           tail -n 500 daily_visits_explainability.log > validation/daily-visits-forecast/latest-explainability.log
           git config user.name "github-actions[bot]"
