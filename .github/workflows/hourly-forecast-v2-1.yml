@@ -112,6 +112,8 @@ jobs:
           test ! -e forecast_variable_effects_hourly.csv
           python - <<'PY'
           import sys
+
+          import numpy as np
           import pandas as pd
 
           sys.path.insert(0, 'scripts')
@@ -216,9 +218,27 @@ jobs:
               / future.loc[nonzero_baseline, 'baseline_forecast'].abs()
               * 100.0
           )
-          assert (
-              expected_pct - future.loc[nonzero_baseline, 'feature_effect_pct']
-          ).abs().lt(1e-8).all()
+          actual_pct = future.loc[nonzero_baseline, 'feature_effect_pct']
+          pct_close = np.isclose(
+              expected_pct.to_numpy(),
+              actual_pct.to_numpy(),
+              rtol=1e-9,
+              atol=1e-8,
+              equal_nan=True,
+          )
+          if not pct_close.all():
+              bad = future.loc[nonzero_baseline].loc[
+                  ~pct_close,
+                  [
+                      'target_name', 'horizon_hour', 'baseline_forecast',
+                      'feature_effect', 'feature_effect_pct',
+                  ],
+              ].copy()
+              bad['recomputed_pct'] = expected_pct.loc[~pct_close].to_numpy()
+              raise AssertionError(
+                  'feature_effect_pct inconsistent with baseline/effect after CSV round-trip:\n'
+                  + bad.to_string(index=False)
+              )
 
           # Synthetic regression cases for explanation sign and percent semantics.
           up = _explain_effect(
