@@ -1,0 +1,109 @@
+name: Daily visits prospective scoring
+
+on:
+  push:
+    branches:
+      - experiment/daily-arrivals-prospective-scoring
+    paths:
+      - 'scripts/evaluation/prospective/score_daily_visits_forecast.py'
+      - 'tests/test_daily_visits_prospective_score.py'
+      - '.github/workflows/daily-visits-prospective-score.yml'
+  workflow_dispatch:
+  # Run after the scheduled daily forecast so newly matured outcomes are incorporated.
+  schedule:
+    - cron: '45 10 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-visits-prospective-score
+  cancel-in-progress: true
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install scoring dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy dropbox requests
+
+      - name: Compile and test scorer
+        run: |
+          python -m py_compile scripts/evaluation/prospective/score_daily_visits_forecast.py
+          python -m py_compile tests/test_daily_visits_prospective_score.py
+          python tests/test_daily_visits_prospective_score.py
+
+      - name: Score matured archived forecasts
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        shell: bash
+        run: |
+          extra_args=()
+          if [ "${GITHUB_REF_NAME}" != "main" ]; then
+            extra_args+=(--no-dropbox-output)
+          fi
+          python scripts/evaluation/prospective/score_daily_visits_forecast.py \
+            --detail-output daily_visits_prospective_detail.csv \
+            --summary-output daily_visits_prospective_horizon_summary.csv \
+            "${extra_args[@]}" \
+            2>&1 | tee daily_visits_prospective_score.log
+
+      - name: Validate score outputs
+        run: |
+          python - <<'PY'
+          import pandas as pd
+
+          detail = pd.read_csv('daily_visits_prospective_detail.csv')
+          summary = pd.read_csv('daily_visits_prospective_horizon_summary.csv')
+          assert summary['horizon'].tolist() == [f'D+{day}' for day in range(1, 8)] + ['all']
+          required_summary = {
+              'n', 'n_issue_dates', 'forecast_mae', 'baseline_mae',
+              'forecast_bias', 'forecast_rmse', 'forecast_wape',
+              'interval_80_coverage', 'evidence_ready'
+          }
+          assert required_summary.issubset(summary.columns)
+          if not detail.empty:
+              assert set(detail['horizon_day'].astype(int)).issubset(set(range(1, 8)))
+              assert detail['actual'].notna().all()
+              assert detail['baseline_prediction'].notna().all()
+              assert detail['forecast_absolute_error'].notna().all()
+          print(summary.to_string(index=False))
+          PY
+
+      - name: Upload scoring artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-visits-prospective-score
+          path: |
+            daily_visits_prospective_detail.csv
+            daily_visits_prospective_horizon_summary.csv
+            daily_visits_prospective_score.log
+
+      - name: Record latest branch score
+        if: github.ref_name != 'main'
+        shell: bash
+        run: |
+          mkdir -p validation/daily-visits-prospective
+          cp daily_visits_prospective_detail.csv validation/daily-visits-prospective/latest-detail.csv
+          cp daily_visits_prospective_horizon_summary.csv validation/daily-visits-prospective/latest-summary.csv
+          tail -n 300 daily_visits_prospective_score.log > validation/daily-visits-prospective/latest.log
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f validation/daily-visits-prospective
+          if ! git diff --cached --quiet; then
+            git commit -m "Record daily visits prospective score [skip ci]"
+            git push
+          fi
