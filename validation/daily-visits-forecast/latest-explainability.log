@@ -1,0 +1,24 @@
+Loaded daily target from /daily_inflow.csv: 2021-01-01..2026-09-02 (0 missing calendar days)
+Fetching historical forecast chunk 1: 2023-08-20 to 2023-12-17
+Historical Forecast API connection timeout/error for 2023-08-20..2023-12-17: HTTPSConnectionPool(host='historical-forecast-api.open-meteo.com', port=443): Read timed out. (read timeout=20); retrying in 2s (attempt 1/6)
+Fetching historical forecast chunk 2: 2023-12-18 to 2024-04-15
+Fetching historical forecast chunk 3: 2024-04-16 to 2024-08-13
+Fetching historical forecast chunk 4: 2024-08-14 to 2024-12-11
+Fetching historical forecast chunk 5: 2024-12-12 to 2025-04-10
+Fetching historical forecast chunk 6: 2025-04-11 to 2025-08-08
+Fetching historical forecast chunk 7: 2025-08-09 to 2025-12-06
+Fetching historical forecast chunk 8: 2025-12-07 to 2026-04-05
+Fetching historical forecast chunk 9: 2026-04-06 to 2026-08-03
+Fetching historical forecast chunk 10: 2026-08-04 to 2026-09-02
+Loading amazon/chronos-2 on cpu for grouped perturbation explainability
+Loading weights:   0%|          | 0/170 [00:00<?, ?it/s]Loading weights: 100%|██████████| 170/170 [00:00<00:00, 3877.89it/s]
+Wrote 7 explained forecast rows to daily_visits_forecast_explained.csv
+Wrote 56 driver rows to daily_visits_explainability.csv
+        ds  daily_visits_prediction  seasonal_weekday_baseline     top_driver_1  top_driver_1_effect top_driver_2  top_driver_2_effect                                                                                                                        explanation_text
+2026-09-03                284.80164                    294.750 calendar_closure            -1.096126         wind            -0.895351  Forecast 285; 8-week same-weekday baseline 295 (-10). Largest model perturbations: calendar_closure -1.1, wind -0.9, temperature +0.7.
+2026-09-04                295.12158                    293.500 calendar_closure             4.657041   atmosphere            -0.311983    Forecast 295; 8-week same-weekday baseline 294 (+2). Largest model perturbations: calendar_closure +4.7, atmosphere -0.3, wind -0.2.
+2026-09-05                244.76959                    251.250 calendar_closure            -2.503481         wind            -0.758669   Forecast 245; 8-week same-weekday baseline 251 (-6). Largest model perturbations: calendar_closure -2.5, wind -0.8, temperature -0.3.
+2026-09-06                235.09668                    238.375 calendar_closure            -2.424011  temperature            -0.830978   Forecast 235; 8-week same-weekday baseline 238 (-3). Largest model perturbations: calendar_closure -2.4, temperature -0.8, wind -0.8.
+2026-09-07                293.37448                    320.000 calendar_closure           -12.985536         wind            -1.958406  Forecast 293; 8-week same-weekday baseline 320 (-27). Largest model perturbations: calendar_closure -13.0, wind -2.0, atmosphere +1.3.
+2026-09-08                302.40070                    287.875 calendar_closure            12.417759  temperature            -1.750942 Forecast 302; 8-week same-weekday baseline 288 (+15). Largest model perturbations: calendar_closure +12.4, temperature -1.8, wind -1.2.
+2026-09-09                281.34406                    288.500      temperature            -2.744685         wind            -1.059962         Forecast 281; 8-week same-weekday baseline 288 (-7). Largest model perturbations: temperature -2.7, wind -1.1, atmosphere -0.4.
