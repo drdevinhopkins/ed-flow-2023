@@ -9,6 +9,15 @@ on:
       - '.github/workflows/score-shadow-weather.yml'
       - 'scripts/evaluation/prospective/score_shadow_weather_forecast.py'
       - 'scripts/evaluation/prospective/summarize_shadow_weather_slices.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_scenarios.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_confidence.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_trajectory.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_high_congestion.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_independence.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_unique_hour_sensitivity.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_by_horizon_hour.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_selective_policy.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_policy_grid.py'
 
 permissions:
   contents: read
@@ -133,6 +142,124 @@ jobs:
               --output-dir validation/prospective-weather/latest-score
           else
             echo 'No matured detail rows yet; diagnostic slices skipped.'
+          fi
+
+      - name: Summarize exact weather scenarios
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_scenarios.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score
+          else
+            echo 'No matured detail rows yet; scenario summary skipped.'
+          fi
+
+      - name: Summarize exact lead-hour performance
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_by_horizon_hour.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score
+          else
+            echo 'No matured detail rows yet; exact lead-hour diagnostics skipped.'
+          fi
+
+      - name: Evaluate selective h3-h4 weather counterfactual
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_selective_policy.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score \
+              --target Total_TBS \
+              --horizon-band h01_04 \
+              --weather-hours 3 4
+          else
+            echo 'No matured detail rows yet; selective-policy diagnostic skipped.'
+          fi
+
+      - name: Evaluate exhaustive short-horizon weather policy grid
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_policy_grid.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score \
+              --target Total_TBS \
+              --horizon-band h01_04
+          else
+            echo 'No matured detail rows yet; policy-grid diagnostic skipped.'
+          fi
+
+      - name: Summarize high-congestion weather performance
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_high_congestion.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score
+          else
+            echo 'No matured detail rows yet; high-congestion diagnostics skipped.'
+          fi
+
+      - name: Summarize overlap and independence
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_independence.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score
+          else
+            echo 'No matured detail rows yet; independence diagnostics skipped.'
+          fi
+
+      - name: Summarize unique-realized-hour sensitivity
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_unique_hour_sensitivity.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score
+          else
+            echo 'No matured detail rows yet; unique-hour sensitivity skipped.'
+          fi
+
+      - name: Estimate weather-route confidence
+        run: |
+          if [ -s validation/prospective-weather/latest-score/detail.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_confidence.py \
+              validation/prospective-weather/latest-score/detail.csv \
+              --output-dir validation/prospective-weather/latest-score
+          else
+            echo 'No matured detail rows yet; confidence diagnostics skipped.'
+          fi
+
+      - name: Summarize issue-date evidence trajectory
+        run: |
+          if [ -s validation/prospective-weather/latest-score/weather-route-by-issue-date.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_weather_trajectory.py \
+              validation/prospective-weather/latest-score/weather-route-by-issue-date.csv \
+              --output-dir validation/prospective-weather/latest-score
+          else
+            echo 'No issue-date summary yet; trajectory skipped.'
+          fi
+
+      - name: Verify confidence evidence labeling
+        run: |
+          if [ -s validation/prospective-weather/latest-score/weather-route-confidence.csv ]; then
+            python - <<'PY'
+          import pandas as pd
+
+          path = 'validation/prospective-weather/latest-score/weather-route-confidence.csv'
+          frame = pd.read_csv(path)
+          required = {
+              'n_issue_dates', 'min_issue_dates_for_confidence_claim',
+              'exploratory_ci_direction', 'confidence_evidence_ready', 'confidence_status'
+          }
+          missing = required - set(frame.columns)
+          assert not missing, sorted(missing)
+          ready = frame['n_issue_dates'] >= frame['min_issue_dates_for_confidence_claim']
+          assert frame['confidence_evidence_ready'].astype(bool).eq(ready).all()
+          assert frame.loc[~ready, 'confidence_status'].eq('insufficient_complete_issue_dates').all()
+          print('Bootstrap labels remain exploratory until enough complete issue dates are available.')
+          PY
+          else
+            echo 'No confidence summary yet; labeling check skipped.'
           fi
 
       - name: Verify scorer safety
