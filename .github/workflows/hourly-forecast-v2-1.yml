@@ -22,11 +22,13 @@ on:
       - 'scripts/hourly_calendar_features.py'
       - 'scripts/hourly_weather_features.py'
       - 'scripts/forecast_intraday_daily_inflow.py'
+      - 'scripts/build_daily_arrival_outlook.py'
       - 'scripts/build_weather_history.py'
       - 'scripts/intraday_day_completion_model.py'
       - 'scripts/evaluation/backtests/backtest_intraday_day_completion.py'
       - 'tests/test_intraday_day_completion.py'
       - 'tests/test_intraday_hourly_forecast.py'
+      - 'tests/test_daily_arrival_outlook.py'
       - 'requirements.txt'
 
 permissions:
@@ -74,6 +76,12 @@ jobs:
       - name: Compile intraday day-completion script
         continue-on-error: true
         run: python -m py_compile scripts/forecast_intraday_daily_inflow.py
+
+      - name: Compile daily arrival outlook builder
+        run: python -m py_compile scripts/build_daily_arrival_outlook.py
+
+      - name: Test daily arrival outlook presentation layer
+        run: python tests/test_daily_arrival_outlook.py
 
       - name: Test intraday day-completion safeguards
         continue-on-error: true
@@ -328,6 +336,60 @@ jobs:
           print(json.dumps(status, indent=2))
           PY
 
+      - name: Build Power BI daily arrival outlook
+        if: always()
+        continue-on-error: true
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        shell: bash
+        run: |
+          extra_args=(--download-daily-dropbox)
+          if [ "${GITHUB_EVENT_NAME}" != "pull_request" ]; then
+            extra_args+=(--upload-dropbox)
+          fi
+          python scripts/build_daily_arrival_outlook.py \
+            --daily-explained daily_visits_forecast_explained.csv \
+            --intraday intraday-daily-inflow-forecast.csv \
+            --output daily_arrival_outlook.csv \
+            "${extra_args[@]}"
+
+      - name: Verify Power BI daily arrival outlook
+        if: always()
+        continue-on-error: true
+        run: |
+          test -s daily_arrival_outlook.csv
+          python - <<'PY'
+          import pandas as pd
+
+          frame = pd.read_csv('daily_arrival_outlook.csv')
+          required = {
+              'target_date', 'forecast_stage', 'horizon_day',
+              'predicted_arrivals', 'lower_80', 'upper_80',
+              'observed_arrivals', 'expected_remaining',
+              'seasonal_weekday_baseline', 'delta_vs_baseline',
+              'explanation_text', 'source_model', 'data_cutoff', 'model_version',
+          }
+          assert required.issubset(frame.columns), sorted(required - set(frame.columns))
+          assert not frame['target_date'].duplicated().any()
+          assert frame['predicted_arrivals'].notna().all()
+          assert (frame['lower_80'] <= frame['predicted_arrivals']).all()
+          assert (frame['predicted_arrivals'] <= frame['upper_80']).all()
+          intraday = frame.loc[frame['forecast_stage'].eq('intraday')]
+          if not intraday.empty:
+              assert len(intraday) == 1
+              row = intraday.iloc[0]
+              assert row['horizon_day'] == 0
+              assert row['observed_arrivals'] <= row['predicted_arrivals']
+              assert abs(
+                  row['expected_remaining']
+                  - (row['predicted_arrivals'] - row['observed_arrivals'])
+              ) < 1e-8
+          print(frame[['target_date', 'forecast_stage', 'predicted_arrivals',
+                       'observed_arrivals', 'expected_remaining']].to_string(index=False))
+          PY
+
       - name: Upload v2.1 artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -344,4 +406,5 @@ jobs:
           path: |
             intraday-daily-inflow-forecast.csv
             intraday-daily-inflow-status.json
+            daily_arrival_outlook.csv
           if-no-files-found: warn
