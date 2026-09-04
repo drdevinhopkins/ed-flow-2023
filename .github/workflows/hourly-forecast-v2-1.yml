@@ -21,6 +21,13 @@ on:
       - 'scripts/staffing_features.py'
       - 'scripts/hourly_calendar_features.py'
       - 'scripts/hourly_weather_features.py'
+      - 'scripts/forecast_intraday_daily_inflow.py'
+      - 'scripts/build_weather_history.py'
+      - 'scripts/intraday_day_completion_model.py'
+      - 'scripts/evaluation/backtests/backtest_intraday_day_completion.py'
+      - 'tests/test_intraday_day_completion.py'
+      - 'tests/test_intraday_hourly_forecast.py'
+      - 'requirements.txt'
 
 permissions:
   contents: read
@@ -63,6 +70,17 @@ jobs:
 
       - name: Compile v2.1 script
         run: python -m py_compile scripts/hourly_forecast_v2_1.py
+
+      - name: Compile intraday day-completion script
+        continue-on-error: true
+        run: python -m py_compile scripts/forecast_intraday_daily_inflow.py
+
+      - name: Test intraday day-completion safeguards
+        continue-on-error: true
+        run: |
+          python -m unittest \
+            tests.test_intraday_day_completion \
+            tests.test_intraday_hourly_forecast -v
 
       - name: Validate current forecast inputs
         run: python scripts/validate_forecast_inputs.py
@@ -234,10 +252,96 @@ jobs:
           print('forecast-v2.1.csv validated: eight targets with validated triage routes and additive baseline attribution; v2/legacy outputs untouched.')
           PY
 
+      - name: Set intraday weather cache date
+        id: intraday-weather-date
+        run: echo "date=$(TZ=America/Montreal date +%F)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache intraday weather history
+        id: intraday-weather-cache
+        uses: actions/cache@v5
+        with:
+          path: .cache/intraday/weather_backfilled.csv
+          key: intraday-weather-v1-${{ runner.os }}-${{ steps.intraday-weather-date.outputs.date }}
+          restore-keys: |
+            intraday-weather-v1-${{ runner.os }}-
+
+      - name: Build cutoff-safe intraday weather history
+        if: steps.intraday-weather-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: |
+          mkdir -p .cache/intraday
+          python scripts/build_weather_history.py \
+            --start-date 2021-01-01 \
+            --output .cache/intraday/weather_backfilled.csv
+
+      - name: Generate guarded intraday total-arrivals forecast
+        if: always()
+        continue-on-error: true
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        run: |
+          python scripts/forecast_intraday_daily_inflow.py \
+            --weather-csv .cache/intraday/weather_backfilled.csv \
+            --output-csv intraday-daily-inflow-forecast.csv \
+            --status-json intraday-daily-inflow-status.json \
+            --upload-dropbox
+
+      - name: Verify guarded intraday output
+        if: always()
+        continue-on-error: true
+        run: |
+          test -s intraday-daily-inflow-status.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          import pandas as pd
+
+          status = json.loads(Path('intraday-daily-inflow-status.json').read_text())
+          assert status['status'] in {
+              'forecast_written',
+              'suppressed_data_quality',
+              'suppressed_model_error',
+          }
+          if status['status'] == 'forecast_written':
+              frame = pd.read_csv('intraday-daily-inflow-forecast.csv')
+              required = {
+                  'generated_at_utc', 'generated_at_local', 'forecast_day',
+                  'cutoff_ds_local',
+                  'cutoff_hour', 'observed_arrivals', 'predicted_total',
+                  'p10_total', 'p90_total', 'expected_additional_arrivals',
+                  'prior_update_baseline', 'model_version', 'method',
+                  'within_prospective_window', 'prospective_window', 'status',
+                  'forecast_text',
+              }
+              assert len(frame) == 1
+              assert required.issubset(frame.columns), sorted(required - set(frame.columns))
+              row = frame.iloc[0]
+              assert row['observed_arrivals'] <= row['p10_total']
+              assert row['p10_total'] <= row['predicted_total'] <= row['p90_total']
+              assert abs(
+                  row['expected_additional_arrivals']
+                  - (row['predicted_total'] - row['observed_arrivals'])
+              ) < 1e-8
+          print(json.dumps(status, indent=2))
+          PY
+
       - name: Upload v2.1 artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: forecast-v2.1
           path: forecast-v2.1.csv
+          if-no-files-found: warn
+
+      - name: Upload intraday total-arrivals artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: intraday-daily-inflow-forecast
+          path: |
+            intraday-daily-inflow-forecast.csv
+            intraday-daily-inflow-status.json
           if-no-files-found: warn
