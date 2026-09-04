@@ -44,7 +44,10 @@ def synthetic_frames() -> tuple[pd.DataFrame, pd.DataFrame]:
     )
     day = np.arange(len(history), dtype=float)
     for column in covariates:
-        if column in explain.ZERO_NEUTRAL_COLUMNS:
+        if column == "days_since_major_snow_capped":
+            history[column] = 8.0
+            future[column] = 8.0
+        elif column in explain.ZERO_NEUTRAL_COLUMNS:
             history[column] = 0.0
             future[column] = 0.0
         elif column.startswith(("temp", "apparent_temp")):
@@ -86,6 +89,7 @@ def test_neutral_future_is_complete_and_event_free() -> None:
     assert neutral["is_system_closed_day"].eq(0.0).all()
     assert neutral["major_snow_event"].eq(0.0).all()
     assert neutral["day_after_major_snow"].eq(0.0).all()
+    assert neutral["days_since_major_snow_capped"].gt(0.0).all()
 
     # Continuous weather is seasonally neutralized rather than zeroed.
     assert neutral["temp_mean"].abs().max() > 1.0
