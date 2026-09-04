@@ -1,0 +1,5 @@
+# Manual single-GPU Chronos-2 native vs AutoGluon benchmark.
+# Install this only inside the dedicated .venv-autogluon created by
+# setup_native_vs_autogluon_gpu_env.sh. That script installs torch 2.13.0
+# from the CUDA 12.6 wheel index first so V100/Volta (SM70) remains supported.
+autogluon.timeseries==1.6.1
