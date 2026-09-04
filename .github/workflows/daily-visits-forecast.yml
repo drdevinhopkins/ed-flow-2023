@@ -47,6 +47,7 @@ jobs:
 
       - name: Publish branch validation run id
         if: github.ref_name != 'main'
+        continue-on-error: true
         shell: bash
         run: |
           mkdir -p validation/daily-visits-forecast
@@ -248,6 +249,7 @@ jobs:
 
       - name: Record latest branch forecast
         if: github.ref_name != 'main'
+        continue-on-error: true
         shell: bash
         run: |
           mkdir -p validation/daily-visits-forecast
