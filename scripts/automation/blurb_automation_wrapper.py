@@ -145,6 +145,14 @@ def download_inputs(dbx):
     ]
     for name in files:
         (SCRATCH / name).write_bytes(download(dbx, "/" + name))
+    # The intraday arrival forecast is an optional additive companion. A missing
+    # or suppressed artifact must not block the established blurb pipeline.
+    try:
+        (SCRATCH / "intraday-daily-inflow-forecast.csv").write_bytes(
+            download(dbx, "/intraday-daily-inflow-forecast.csv")
+        )
+    except Exception:
+        (SCRATCH / "intraday-daily-inflow-forecast.csv").unlink(missing_ok=True)
     # origin from the downloaded forecast
     fc = pd.read_csv(SCRATCH / "forecast-v2.1.csv")
     fc["forecast_origin"] = pd.to_datetime(fc["forecast_origin"])
@@ -169,7 +177,30 @@ def run_compute(origin) -> dict:
     r = mod.compute(Path(SCRATCH), data_hour=origin)
     if not r.get("ready"):
         raise RuntimeError("compute readiness failed: " + "; ".join(r.get("failures", [])))
+    r["daily_inflow"] = read_daily_inflow_forecast(origin)
     return r
+
+
+def read_daily_inflow_forecast(origin):
+    """Read a valid same-hour intraday forecast, or return None."""
+    path = SCRATCH / "intraday-daily-inflow-forecast.csv"
+    if not path.exists():
+        return None
+    try:
+        frame = pd.read_csv(path)
+        if len(frame) != 1 or frame.loc[0].get("status") != "experimental_forecast":
+            return None
+        cutoff = pd.Timestamp(frame.loc[0]["cutoff_ds_local"])
+        cutoff = cutoff.tz_localize("America/Montreal") if cutoff.tzinfo is None else cutoff.tz_convert("America/Montreal")
+        if cutoff.floor("h") != origin.floor("h"):
+            return None
+        predicted = pd.to_numeric(frame.loc[0]["predicted_total"], errors="coerce")
+        additional = pd.to_numeric(frame.loc[0]["expected_additional_arrivals"], errors="coerce")
+        if pd.isna(predicted) or pd.isna(additional) or predicted < 0 or additional < 0:
+            return None
+        return {"predicted_total": float(predicted), "expected_additional": float(additional)}
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 def band_phrase(band: str | None, val: float) -> str:
@@ -221,17 +252,17 @@ def anomaly_text(facts: dict, mentioned_targets: set[str]) -> str:
         label = labels[target]
         value = int(round(anomaly["value"]))
         if anomaly.get("status") == "current":
-            clauses.append(f"{label} is currently above its anomaly threshold ({value})")
+            clauses.append(f"{label} is outside its usual range right now ({value})")
         else:
             clauses.append(
-                f"{label} is expected to rise above its anomaly threshold "
+                f"{label} is expected to be outside its usual range "
                 f"within 4 hours (forecast {value})"
             )
     if not clauses:
         return ""
     if len(clauses) == 1:
         return clauses[0].capitalize() + "."
-    return "Anomaly thresholds to watch: " + "; ".join(clauses) + "."
+    return "Other areas to watch: " + "; ".join(clauses) + "."
 
 
 def build_blurb(facts: dict) -> str:
@@ -265,6 +296,12 @@ def build_blurb(facts: dict) -> str:
         s2 = "Flow should stay about the same over the next few hours."
 
     s_anomaly = anomaly_text(facts, {"Total_TBS", "TTStr", "Overflow"})
+    daily_inflow = facts.get("daily_inflow")
+    s_daily = (
+        f"The day is heading toward about {int(round(daily_inflow['predicted_total']))} total arrivals by midnight, "
+        f"with roughly {int(round(daily_inflow['expected_additional']))} more expected."
+        if daily_inflow else ""
+    )
 
     if facts.get("midnight") is not None:
         s3 = (f"Midnight looks like about {int(round(facts['midnight']))} TBS "
@@ -298,6 +335,8 @@ def build_blurb(facts: dict) -> str:
         s5 = "No staffing change is needed right now."
 
     parts = [s1, s2]
+    if s_daily:
+        parts.append(s_daily)
     if s_anomaly:
         parts.append(s_anomaly)
     parts.extend([s3, s4, s5])
