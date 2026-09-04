@@ -5,9 +5,11 @@ on:
     branches:
       - chronos2-weather-features
       - daily-inflow-source
+      - experiment/daily-arrivals-explainability
     paths:
       - 'scripts/forecast_daily_visits.py'
       - 'scripts/forecast_daily_visits_from_daily.py'
+      - 'scripts/explain_daily_visits_forecast.py'
       - 'scripts/daily_weather_feature_set.py'
       - 'scripts/live_weather_forecast.py'
       - 'scripts/weather_features.py'
@@ -16,6 +18,7 @@ on:
       - 'scripts/backtest_holiday_features.py'
       - 'scripts/backtest_daily_holiday_targeted.py'
       - 'tests/test_daily_visit_forecast.py'
+      - 'tests/test_daily_visit_explainability.py'
       - '.github/workflows/daily-visits-forecast.yml'
       - 'data/jgh_ramq_holidays.csv'
       - 'chronos-requirements.txt'
@@ -35,7 +38,7 @@ concurrency:
 jobs:
   forecast:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
 
@@ -84,10 +87,14 @@ jobs:
           python -m py_compile scripts/live_weather_forecast.py
           python -m py_compile scripts/forecast_daily_visits.py
           python -m py_compile scripts/forecast_daily_visits_from_daily.py
+          python -m py_compile scripts/explain_daily_visits_forecast.py
           python -m py_compile tests/test_daily_visit_forecast.py
+          python -m py_compile tests/test_daily_visit_explainability.py
 
       - name: Test promoted feature contract
-        run: python tests/test_daily_visit_forecast.py
+        run: |
+          python tests/test_daily_visit_forecast.py
+          python tests/test_daily_visit_explainability.py
 
       - name: Run current 7-day forecast
         env:
@@ -110,12 +117,39 @@ jobs:
             "${extra_args[@]}" \
             2>&1 | tee daily_visits_forecast.log
 
+      - name: Explain current 7-day forecast
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        shell: bash
+        run: |
+          extra_args=()
+          if [ "${GITHUB_REF_NAME}" != "main" ]; then
+            extra_args+=(--no-dropbox)
+          fi
+          python scripts/explain_daily_visits_forecast.py \
+            --forecast daily_visits_forecast.csv \
+            --weather-snapshot daily_visits_weather_snapshot.csv \
+            --output daily_visits_forecast_explained.csv \
+            --long-output daily_visits_explainability.csv \
+            --context-days 1095 \
+            --min-history-days 28 \
+            "${extra_args[@]}" \
+            2>&1 | tee daily_visits_explainability.log
+
       - name: Validate forecast output
         run: |
           python - <<'PY'
+          import numpy as np
           import pandas as pd
+
           forecast = pd.read_csv('daily_visits_forecast.csv')
           weather = pd.read_csv('daily_visits_weather_snapshot.csv')
+          explained = pd.read_csv('daily_visits_forecast_explained.csv')
+          drivers = pd.read_csv('daily_visits_explainability.csv')
+
           assert len(forecast) == 7, f'expected 7 forecast days, got {len(forecast)}'
           assert forecast['ds'].nunique() == 7
           assert forecast['daily_visits_prediction'].notna().all()
@@ -130,7 +164,24 @@ jobs:
           assert weather['ds'].tolist() == forecast['ds'].tolist()
           assert weather['horizon_day'].tolist() == list(range(1, 8))
           assert weather.drop(columns=['forecast_generated_at_utc']).notna().all().all()
-          print(forecast.to_string(index=False))
+
+          assert len(explained) == 7
+          assert explained['ds'].tolist() == forecast['ds'].tolist()
+          assert np.allclose(
+              explained['daily_visits_prediction'], forecast['daily_visits_prediction']
+          )
+          assert explained['seasonal_weekday_baseline'].notna().all()
+          assert explained['top_driver_1'].notna().all()
+          assert explained['top_driver_1_effect'].notna().all()
+          assert explained['explanation_text'].str.len().gt(20).all()
+          assert (explained['explainability_method'] == 'chronos2_group_counterfactual_v1').all()
+
+          assert len(drivers) == 56, f'expected 8 groups x 7 days, got {len(drivers)} rows'
+          assert drivers.groupby('ds')['driver_group'].nunique().eq(8).all()
+          assert np.isfinite(drivers['effect_visits']).all()
+          assert (drivers['explainability_method'] == 'chronos2_group_counterfactual_v1').all()
+          print(explained[['ds', 'daily_visits_prediction', 'seasonal_weekday_baseline',
+                           'top_driver_1', 'top_driver_1_effect', 'explanation_text']].to_string(index=False))
           PY
 
       - name: Upload forecast artifact
@@ -140,7 +191,10 @@ jobs:
           path: |
             daily_visits_forecast.csv
             daily_visits_weather_snapshot.csv
+            daily_visits_forecast_explained.csv
+            daily_visits_explainability.csv
             daily_visits_forecast.log
+            daily_visits_explainability.log
 
       - name: Record latest branch forecast
         if: github.ref_name != 'main'
@@ -149,7 +203,10 @@ jobs:
           mkdir -p validation/daily-visits-forecast
           cp daily_visits_forecast.csv validation/daily-visits-forecast/latest.csv
           cp daily_visits_weather_snapshot.csv validation/daily-visits-forecast/latest-weather.csv
+          cp daily_visits_forecast_explained.csv validation/daily-visits-forecast/latest-explained.csv
+          cp daily_visits_explainability.csv validation/daily-visits-forecast/latest-explainability.csv
           tail -n 500 daily_visits_forecast.log > validation/daily-visits-forecast/latest.log
+          tail -n 500 daily_visits_explainability.log > validation/daily-visits-forecast/latest-explainability.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f validation/daily-visits-forecast
