@@ -62,13 +62,7 @@ CURRENT_SNOW_COLUMNS = [
 SNOW_RECOVERY_ONLY_COLUMNS = [
     column
     for column in SNOW_RECOVERY_COLUMNS
-    if column
-    not in {
-        "snowfall_anomaly",
-        "snowfall_anomaly_z",
-        "major_snow_event",
-        "snow_wind_event",
-    }
+    if column not in {"snowfall_anomaly", "snowfall_anomaly_z", "major_snow_event", "snow_wind_event"}
 ]
 WIND_COLUMNS = ["wind_mean", "wind_max", "gust_max"]
 ATMOSPHERE_COLUMNS = [
@@ -93,6 +87,9 @@ FEATURE_GROUPS = {
 
 ZERO_NEUTRAL_COLUMNS = set(forecast.CALENDAR_CLOSURE_COLUMNS)
 ZERO_NEUTRAL_COLUMNS.update(SNOW_RECOVERY_COLUMNS)
+# Zero means "just had major snow" for this recency counter, so neutralize it
+# to its seasonally typical historical value instead of zero.
+ZERO_NEUTRAL_COLUMNS.discard("days_since_major_snow_capped")
 ZERO_NEUTRAL_COLUMNS.update(SURFACE_CONDITION_COLUMNS)
 
 
@@ -128,9 +125,7 @@ def seasonal_reference(
             continue
 
         values = pd.to_numeric(history[column], errors="coerce")
-        fallback = pd.to_numeric(
-            fallback_history[column], errors="coerce"
-        ).median(skipna=True)
+        fallback = pd.to_numeric(fallback_history[column], errors="coerce").median(skipna=True)
         if not np.isfinite(fallback):
             fallback = values.median(skipna=True)
         if not np.isfinite(fallback):
@@ -182,12 +177,8 @@ def strongest_feature_detail(
     for column in columns:
         if column not in actual_row.index or column not in neutral_row.index:
             continue
-        actual = pd.to_numeric(
-            pd.Series([actual_row[column]]), errors="coerce"
-        ).iloc[0]
-        neutral = pd.to_numeric(
-            pd.Series([neutral_row[column]]), errors="coerce"
-        ).iloc[0]
+        actual = pd.to_numeric(pd.Series([actual_row[column]]), errors="coerce").iloc[0]
+        neutral = pd.to_numeric(pd.Series([neutral_row[column]]), errors="coerce").iloc[0]
         if not np.isfinite(actual) or not np.isfinite(neutral):
             continue
         score = abs(float(actual) - float(neutral)) / _robust_scale(history, column)
@@ -253,12 +244,8 @@ def build_explanation_rows(
             raise ValueError(f"Counterfactual date mismatch for group {group}")
 
         for idx, ds in enumerate(full_dates):
-            actual_row = future.loc[
-                pd.to_datetime(future["ds"]).dt.normalize().eq(ds)
-            ].iloc[0]
-            neutral_row = neutral.loc[
-                pd.to_datetime(neutral["ds"]).dt.normalize().eq(ds)
-            ].iloc[0]
+            actual_row = future.loc[pd.to_datetime(future["ds"]).dt.normalize().eq(ds)].iloc[0]
+            neutral_row = neutral.loc[pd.to_datetime(neutral["ds"]).dt.normalize().eq(ds)].iloc[0]
             feature_name, feature_value, neutral_value = strongest_feature_detail(
                 history, actual_row, neutral_row, columns
             )
@@ -288,8 +275,7 @@ def enrich_forecast(
     out["ds"] = pd.to_datetime(out["ds"]).dt.normalize()
     out["seasonal_weekday_baseline"] = weekday_baseline(history, out["ds"])
     out["delta_vs_weekday_baseline"] = (
-        _prediction_values(out).to_numpy()
-        - out["seasonal_weekday_baseline"].to_numpy()
+        _prediction_values(out).to_numpy() - out["seasonal_weekday_baseline"].to_numpy()
     )
     out["explainability_method"] = EXPLAINABILITY_METHOD
 
@@ -298,20 +284,14 @@ def enrich_forecast(
     for idx, ds in enumerate(out["ds"]):
         day_rows = explanations.loc[explanations["ds"].eq(ds)].copy()
         day_rows["abs_effect"] = day_rows["effect_visits"].abs()
-        ranked = [
-            row
-            for _, row in day_rows.sort_values(
-                "abs_effect", ascending=False
-            ).head(3).iterrows()
-        ]
+        ranked = [row for _, row in day_rows.sort_values("abs_effect", ascending=False).head(3).iterrows()]
         top_rows[idx] = ranked
 
         prediction = float(_prediction_values(out.iloc[[idx]]).iloc[0])
         baseline = float(out.iloc[idx]["seasonal_weekday_baseline"])
-        pieces = [
-            f"{row['driver_group']} {float(row['effect_visits']):+.1f}"
-            for row in ranked
-        ]
+        pieces = []
+        for row in ranked:
+            pieces.append(f"{row['driver_group']} {float(row['effect_visits']):+.1f}")
         explanation_text.append(
             f"Forecast {prediction:.0f}; 8-week same-weekday baseline {baseline:.0f} "
             f"({prediction - baseline:+.0f}). Largest model perturbations: "
@@ -351,10 +331,7 @@ def enrich_forecast(
 
 
 def future_from_snapshot(snapshot: pd.DataFrame) -> pd.DataFrame:
-    required = [
-        *forecast.CALENDAR_CLOSURE_COLUMNS,
-        *forecast.RAW_PLUS_SNOW_COLUMNS,
-    ]
+    required = [*forecast.CALENDAR_CLOSURE_COLUMNS, *forecast.RAW_PLUS_SNOW_COLUMNS]
     missing = [column for column in required if column not in snapshot.columns]
     if missing:
         raise ValueError(f"Weather snapshot missing model covariates: {missing}")
@@ -369,17 +346,11 @@ def future_from_snapshot(snapshot: pd.DataFrame) -> pd.DataFrame:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--forecast", type=Path, default=DEFAULT_FORECAST)
-    parser.add_argument(
-        "--weather-snapshot", type=Path, default=DEFAULT_WEATHER_SNAPSHOT
-    )
+    parser.add_argument("--weather-snapshot", type=Path, default=DEFAULT_WEATHER_SNAPSHOT)
     parser.add_argument("--output", type=Path, default=DEFAULT_EXPLAINED_OUTPUT)
     parser.add_argument("--long-output", type=Path, default=DEFAULT_LONG_OUTPUT)
-    parser.add_argument(
-        "--context-days", type=int, default=forecast.DEFAULT_CONTEXT_DAYS
-    )
-    parser.add_argument(
-        "--min-history-days", type=int, default=forecast.DEFAULT_MIN_HISTORY_DAYS
-    )
+    parser.add_argument("--context-days", type=int, default=forecast.DEFAULT_CONTEXT_DAYS)
+    parser.add_argument("--min-history-days", type=int, default=forecast.DEFAULT_MIN_HISTORY_DAYS)
     parser.add_argument("--model-id", default=forecast.MODEL_ID)
     parser.add_argument("--no-dropbox", action="store_true")
     return parser.parse_args()
@@ -399,9 +370,7 @@ def main() -> None:
         raise ValueError("Forecast must have one row per date")
 
     cutoff = pd.Timestamp(formatted["data_cutoff"].iloc[0]).normalize()
-    if not formatted["data_cutoff"].astype(str).eq(
-        str(formatted["data_cutoff"].iloc[0])
-    ).all():
+    if not formatted["data_cutoff"].astype(str).eq(str(formatted["data_cutoff"].iloc[0])).all():
         raise ValueError("Forecast contains multiple data cutoffs")
 
     daily = load_daily_visits_from_dropbox()
@@ -434,10 +403,7 @@ def main() -> None:
         raise ValueError("Persisted weather snapshot dates do not match forecast dates")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(
-        f"Loading {args.model_id} on {device} for grouped perturbation explainability",
-        flush=True,
-    )
+    print(f"Loading {args.model_id} on {device} for grouped perturbation explainability", flush=True)
     pipeline = BaseChronosPipeline.from_pretrained(args.model_id, device_map=device)
 
     explanations = build_explanation_rows(
@@ -456,41 +422,27 @@ def main() -> None:
     explanations.to_csv(args.long_output, index=False)
     print(f"Wrote {len(explained)} explained forecast rows to {args.output}", flush=True)
     print(f"Wrote {len(explanations)} driver rows to {args.long_output}", flush=True)
-    print(
-        explained[
-            [
-                "ds",
-                "daily_visits_prediction",
-                "seasonal_weekday_baseline",
-                "top_driver_1",
-                "top_driver_1_effect",
-                "top_driver_2",
-                "top_driver_2_effect",
-                "explanation_text",
-            ]
-        ].to_string(index=False),
-        flush=True,
-    )
+    print(explained[[
+        "ds",
+        "daily_visits_prediction",
+        "seasonal_weekday_baseline",
+        "top_driver_1",
+        "top_driver_1_effect",
+        "top_driver_2",
+        "top_driver_2_effect",
+        "explanation_text",
+    ]].to_string(index=False), flush=True)
 
     if not args.no_dropbox:
         dbx = forecast._dropbox_client()
         if dbx is None:
-            print(
-                "Dropbox credentials not present; leaving explainability as local CSVs",
-                flush=True,
-            )
+            print("Dropbox credentials not present; leaving explainability as local CSVs", flush=True)
         else:
             forecast.upload_to_dropbox(
-                dbx,
-                args.output,
-                name="daily_visits_forecast_explained.csv",
-                overwrite=True,
+                dbx, args.output, name="daily_visits_forecast_explained.csv", overwrite=True
             )
             forecast.upload_to_dropbox(
-                dbx,
-                args.long_output,
-                name="daily_visits_explainability.csv",
-                overwrite=True,
+                dbx, args.long_output, name="daily_visits_explainability.csv", overwrite=True
             )
             generated = pd.Timestamp.now(tz="UTC")
             stamp = generated.strftime("%Y%m%dT%H%M%SZ")
@@ -508,10 +460,7 @@ def main() -> None:
                 name=f"daily_visits_explainability_{stamp}.csv",
                 overwrite=False,
             )
-            print(
-                "Uploaded current and archived daily explainability outputs to Dropbox",
-                flush=True,
-            )
+            print("Uploaded current and archived daily explainability outputs to Dropbox", flush=True)
 
 
 if __name__ == "__main__":
