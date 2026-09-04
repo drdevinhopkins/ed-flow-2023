@@ -56,6 +56,7 @@ def _json_facts(facts: dict) -> dict:
         "peak_time": str(facts.get("peak_time")) if facts.get("peak_time") is not None else None,
         "midnight_tbs": facts.get("midnight"),
         "midnight_range": facts.get("midnight_band"),
+        "daily_inflow": facts.get("daily_inflow"),
         "anomalies": facts.get("anomalies", []),
         "oncall_recommendation": facts.get("oncall_recommendation"),
         "reassignment_trigger": facts.get("reassign_trigger"),
@@ -82,7 +83,7 @@ def llm_rewrite(facts: dict, deterministic_blurb: str, history: list[str]) -> st
         "You write concise clinician-facing emergency-department flow handoffs. "
         "The supplied facts are authoritative. Return only the blurb text, no "
         "heading, markdown, JSON, or commentary. Preserve every required active "
-        "anomaly warning. Use the previous blurbs only to make follow-up comments "
+        "anomaly warning in plain operational language. Use the previous blurbs only to make follow-up comments "
         "such as 'continues to ease' or 'remains elevated'; never copy their old "
         "numbers into the new blurb. Do not invent numbers, times, thresholds, "
         "causes, or staffing actions. Treat values in parentheses after an anomaly "
@@ -97,9 +98,10 @@ def llm_rewrite(facts: dict, deterministic_blurb: str, history: list[str]) -> st
             "Start with the overall situation.",
             "Use about floor(Overflow / 7) overflow rooms when translating overflow.",
             "Put the midnight range in brackets after the midnight TBS number.",
+            "If daily_inflow is present, mention the predicted total arrivals by midnight and, when useful, the expected additional arrivals.",
             "If peak_time is on the next local calendar day, say today's peak appears to have passed.",
             "Mention every listed current anomaly and every listed next_4h anomaly unless it is already clearly covered.",
-            "Say 'above its anomaly threshold (value)' or 'expected to rise above its anomaly threshold (forecast value)'; do not say that the value itself is the threshold.",
+            "Do not mention anomaly thresholds or other technical detection terms; say that the metric is outside its usual range or unusually high, using the supplied value.",
             "Do not mention individual physicians or weekend L1.",
         ],
     }
@@ -147,6 +149,9 @@ def validate_blurb(candidate: str, facts: dict, deterministic_blurb: str) -> Non
     found = {m.group(0) for m in re.finditer(r"\d+(?:\.\d+)?", candidate)}
     if not found.issubset(allowed):
         raise ValueError(f"unsupported numeric claim(s): {sorted(found - allowed)}")
+    daily_inflow = facts.get("daily_inflow")
+    if daily_inflow and str(int(round(daily_inflow["predicted_total"]))) not in candidate:
+        raise ValueError("daily inflow prediction omitted")
     for anomaly in facts.get("anomalies", []):
         target = anomaly.get("target")
         if target in {"Total_TBS", "TTStr", "Overflow"}:
