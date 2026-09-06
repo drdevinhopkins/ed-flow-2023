@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -11,8 +12,14 @@ from catboost import CatBoostClassifier
 from sklearn.isotonic import IsotonicRegression
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 
-# Reuse the production feature construction so the replay evaluates the same signal.
-from scripts.forecast_oncall_probability import (
+REPO_ROOT = Path(__file__).resolve().parents[3]
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+# Reuse production feature construction so the retrospective experiment scores
+# the same information available to the live probability model.
+from forecast_oncall_probability import (  # noqa: E402
     CATBOOST_TASK_TYPE,
     HORIZONS,
     RANDOM_SEED,
@@ -26,7 +33,6 @@ from scripts.forecast_oncall_probability import (
 
 FIT_FRACTION = 0.70
 CALIBRATION_FRACTION = 0.10
-REPLAY_FRACTION = 0.20
 DEFAULT_HORIZON = 6
 DEFAULT_ALERT_THRESHOLD = 0.70
 DEFAULT_BAD_OUTCOME_QUANTILE = 0.90
@@ -55,6 +61,7 @@ class ReplayConfig:
 def chronological_three_way_split(
     df: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Chronological 70/10/20 split: fit, calibration, untouched replay."""
     n = len(df)
     fit_end = int(n * FIT_FRACTION)
     calibration_end = int(n * (FIT_FRACTION + CALIBRATION_FRACTION))
@@ -128,39 +135,58 @@ def bad_outcome_thresholds(
 
 
 def add_future_outcomes(
-    replay: pd.DataFrame,
+    decision_points: pd.DataFrame,
+    full_timeline: pd.DataFrame,
     thresholds: dict[str, float],
     outcome_hours: int,
 ) -> pd.DataFrame:
-    out = replay.copy().reset_index(drop=True)
-    active = pd.to_numeric(out["oncall_active"], errors="coerce").fillna(0).astype(int)
+    """Attach future outcomes using the full hourly timeline, including active on-call hours."""
+    out = decision_points.copy().reset_index(drop=True)
+    timeline = full_timeline.copy()
+    timeline[TS_COL] = pd.to_datetime(timeline[TS_COL], errors="coerce")
+    timeline = timeline.dropna(subset=[TS_COL]).sort_values(TS_COL).drop_duplicates(TS_COL, keep="last")
+    timeline = timeline.set_index(TS_COL)
 
-    for metric, threshold in thresholds.items():
-        values = pd.to_numeric(out[metric], errors="coerce")
-        future_max = pd.concat(
-            [values.shift(-step) for step in range(1, outcome_hours + 1)], axis=1
-        ).max(axis=1, skipna=True)
-        out[f"future_{outcome_hours}h_max_{metric}"] = future_max
-        out[f"future_{outcome_hours}h_bad_{metric}"] = future_max >= threshold
+    future_max: dict[str, list[float]] = {metric: [] for metric in thresholds}
+    future_bad: dict[str, list[bool]] = {metric: [] for metric in thresholds}
+    activation_any: list[int] = []
+    activation_delay: list[float] = []
+    complete_windows: list[bool] = []
+
+    for ts in pd.to_datetime(out[TS_COL]):
+        expected_hours = pd.date_range(
+            ts + pd.Timedelta(hours=1),
+            ts + pd.Timedelta(hours=outcome_hours),
+            freq="h",
+        )
+        window = timeline.reindex(expected_hours)
+        complete = len(window) == outcome_hours and window.index.isin(timeline.index).all()
+        complete_windows.append(bool(complete))
+
+        active = pd.to_numeric(window.get("oncall_active"), errors="coerce").fillna(0)
+        active_steps = np.flatnonzero(active.to_numpy() >= 1)
+        activation_any.append(int(len(active_steps) > 0))
+        activation_delay.append(float(active_steps[0] + 1) if len(active_steps) else np.nan)
+
+        for metric, threshold in thresholds.items():
+            if metric not in window.columns:
+                future_max[metric].append(np.nan)
+                future_bad[metric].append(False)
+                continue
+            values = pd.to_numeric(window[metric], errors="coerce")
+            maximum = float(values.max()) if values.notna().any() else np.nan
+            future_max[metric].append(maximum)
+            future_bad[metric].append(bool(pd.notna(maximum) and maximum >= threshold))
+
+    for metric in thresholds:
+        out[f"future_{outcome_hours}h_max_{metric}"] = future_max[metric]
+        out[f"future_{outcome_hours}h_bad_{metric}"] = future_bad[metric]
 
     bad_cols = [c for c in out.columns if c.startswith(f"future_{outcome_hours}h_bad_")]
     out[f"severe_flow_within_{outcome_hours}h"] = out[bad_cols].any(axis=1) if bad_cols else False
-
-    future_active = pd.concat(
-        [active.shift(-step) for step in range(1, outcome_hours + 1)], axis=1
-    )
-    out[f"actual_activation_within_{outcome_hours}h"] = future_active.max(axis=1, skipna=True).fillna(0).astype(int)
-
-    activation_delay: list[float] = []
-    for idx in range(len(out)):
-        delay = np.nan
-        for step in range(1, outcome_hours + 1):
-            j = idx + step
-            if j < len(out) and active.iloc[j] == 1:
-                delay = float(step)
-                break
-        activation_delay.append(delay)
+    out[f"actual_activation_within_{outcome_hours}h"] = activation_any
     out["hours_to_actual_activation"] = activation_delay
+    out["complete_outcome_window"] = complete_windows
     return out
 
 
@@ -177,7 +203,10 @@ def build_alert_episodes(
     replay: pd.DataFrame,
     config: ReplayConfig,
 ) -> pd.DataFrame:
-    alerts = replay[replay["calibrated_probability"] >= config.alert_threshold].copy()
+    alerts = replay[
+        (replay["calibrated_probability"] >= config.alert_threshold)
+        & replay["complete_outcome_window"]
+    ].copy()
     if alerts.empty:
         return pd.DataFrame()
 
@@ -189,8 +218,7 @@ def build_alert_episodes(
     for episode_id, group in alerts.groupby("episode_id", sort=True):
         first = group.iloc[0]
         last = group.iloc[-1]
-        peak_idx = group["calibrated_probability"].idxmax()
-        peak = alerts.loc[peak_idx]
+        peak = group.loc[group["calibrated_probability"].idxmax()]
         actual_activation = bool(group[f"actual_activation_within_{config.outcome_hours}h"].max())
         severe_flow = bool(group[f"severe_flow_within_{config.outcome_hours}h"].max())
 
@@ -238,10 +266,11 @@ def summarize_replay(
 ) -> pd.DataFrame:
     target = f"oncall_within_{config.horizon}h"
     severe = f"severe_flow_within_{config.outcome_hours}h"
-    alert_mask = replay["calibrated_probability"] >= config.alert_threshold
+    valid = replay["complete_outcome_window"].copy()
+    alert_mask = valid["calibrated_probability"] >= config.alert_threshold
 
     span_days = max(
-        (replay[TS_COL].max() - replay[TS_COL].min()).total_seconds() / 86400.0,
+        (valid[TS_COL].max() - valid[TS_COL].min()).total_seconds() / 86400.0,
         1.0,
     )
     weeks = span_days / 7.0
@@ -251,20 +280,20 @@ def summarize_replay(
         ("alert_threshold", config.alert_threshold),
         ("outcome_window_hours", config.outcome_hours),
         ("bad_outcome_quantile", config.bad_outcome_quantile),
-        ("replay_rows", len(replay)),
-        ("replay_start", replay[TS_COL].min()),
-        ("replay_end", replay[TS_COL].max()),
-        ("raw_roc_auc", safe_metric(roc_auc_score, replay[target], replay["raw_probability"].to_numpy())),
-        ("raw_average_precision", safe_metric(average_precision_score, replay[target], replay["raw_probability"].to_numpy())),
-        ("raw_brier", float(brier_score_loss(replay[target], replay["raw_probability"]))),
-        ("calibrated_roc_auc", safe_metric(roc_auc_score, replay[target], replay["calibrated_probability"].to_numpy())),
-        ("calibrated_average_precision", safe_metric(average_precision_score, replay[target], replay["calibrated_probability"].to_numpy())),
-        ("calibrated_brier", float(brier_score_loss(replay[target], replay["calibrated_probability"]))),
+        ("replay_rows", len(valid)),
+        ("replay_start", valid[TS_COL].min()),
+        ("replay_end", valid[TS_COL].max()),
+        ("raw_roc_auc", safe_metric(roc_auc_score, valid[target], valid["raw_probability"].to_numpy())),
+        ("raw_average_precision", safe_metric(average_precision_score, valid[target], valid["raw_probability"].to_numpy())),
+        ("raw_brier", float(brier_score_loss(valid[target], valid["raw_probability"]))),
+        ("calibrated_roc_auc", safe_metric(roc_auc_score, valid[target], valid["calibrated_probability"].to_numpy())),
+        ("calibrated_average_precision", safe_metric(average_precision_score, valid[target], valid["calibrated_probability"].to_numpy())),
+        ("calibrated_brier", float(brier_score_loss(valid[target], valid["calibrated_probability"]))),
         ("alert_hours", int(alert_mask.sum())),
         ("episode_count", int(len(episodes))),
         ("episodes_per_week", float(len(episodes) / weeks)),
-        ("alert_hour_ppv_actual_activation", float(replay.loc[alert_mask, target].mean()) if alert_mask.any() else np.nan),
-        ("alert_hour_ppv_severe_flow", float(replay.loc[alert_mask, severe].mean()) if alert_mask.any() else np.nan),
+        ("alert_hour_ppv_actual_activation", float(valid.loc[alert_mask, target].mean()) if alert_mask.any() else np.nan),
+        ("alert_hour_ppv_severe_flow", float(valid.loc[alert_mask, severe].mean()) if alert_mask.any() else np.nan),
     ]
 
     if not episodes.empty:
@@ -285,16 +314,16 @@ def run_replay(config: ReplayConfig) -> tuple[pd.DataFrame, pd.DataFrame, pd.Dat
     if config.horizon not in HORIZONS:
         raise ValueError(f"horizon must be one of {HORIZONS}")
 
-    df = add_horizon_targets(add_time_and_trend_features(load_dataset()))
-    df = df[df["oncall_active"] == 0].copy()
+    full_df = add_horizon_targets(add_time_and_trend_features(load_dataset()))
+    decision_df = full_df[full_df["oncall_active"] == 0].copy()
     target = f"oncall_within_{config.horizon}h"
-    df = df.dropna(subset=[target]).reset_index(drop=True)
+    decision_df = decision_df.dropna(subset=[target]).reset_index(drop=True)
 
-    features, categorical = feature_columns(df)
+    features, categorical = feature_columns(decision_df)
     for col in categorical:
-        df[col] = df[col].fillna("Unknown").astype(str)
+        decision_df[col] = decision_df[col].fillna("Unknown").astype(str)
 
-    fit, calibration, replay = chronological_three_way_split(df)
+    fit, calibration, replay = chronological_three_way_split(decision_df)
     model, calibrator = train_independent_replay_model(
         fit, calibration, features, categorical, config.horizon
     )
@@ -308,12 +337,14 @@ def run_replay(config: ReplayConfig) -> tuple[pd.DataFrame, pd.DataFrame, pd.Dat
     thresholds = bad_outcome_thresholds(
         pd.concat([fit, calibration], ignore_index=True), config.bad_outcome_quantile
     )
-    replay = add_future_outcomes(replay, thresholds, config.outcome_hours)
-    replay["would_recommend_oncall"] = replay["calibrated_probability"] >= config.alert_threshold
+    replay = add_future_outcomes(replay, full_df, thresholds, config.outcome_hours)
+    replay["would_recommend_oncall"] = (
+        replay["complete_outcome_window"]
+        & (replay["calibrated_probability"] >= config.alert_threshold)
+    )
 
     episodes = build_alert_episodes(replay, config)
     summary = summarize_replay(replay, episodes, config)
-
     top = episodes.head(config.top_n).copy() if not episodes.empty else episodes.copy()
     return replay, top, summary
 
