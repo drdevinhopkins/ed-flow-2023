@@ -8,13 +8,21 @@ on:
         required: false
         default: "6"
       pressure_percentile_threshold:
-        description: Historical pressure percentile used to define an alert episode
+        description: Historical need-pressure percentile used to define an alert episode
         required: false
-        default: "95"
+        default: "99"
       bad_outcome_quantile:
         description: Historical quantile defining each core congestion threshold
         required: false
         default: "0.90"
+      late_call_hour:
+        description: Sensitivity proxy hour at/after which activation is late-evening constrained
+        required: false
+        default: "21"
+      min_rest_buffer_hours:
+        description: Sensitivity proxy for hours before the on-call physician's next non-on-call shift
+        required: false
+        default: "10"
   push:
     branches:
       - experiment/oncall-retrospective-replay
@@ -63,7 +71,7 @@ jobs:
       - name: Run percentile-based pressure analysis
         env:
           HORIZON: ${{ github.event.inputs.horizon || '6' }}
-          PRESSURE_THRESHOLD: ${{ github.event.inputs.pressure_percentile_threshold || '95' }}
+          PRESSURE_THRESHOLD: ${{ github.event.inputs.pressure_percentile_threshold || '99' }}
           BAD_OUTCOME_QUANTILE: ${{ github.event.inputs.bad_outcome_quantile || '0.90' }}
         run: |
           python scripts/experiments/oncall/retrospective_oncall_pressure_analysis.py \
@@ -73,28 +81,54 @@ jobs:
             --outcome-hours 6 \
             --major-core-count 3 \
             --matches 5 \
-            --top-n 20 \
+            --top-n 30 \
+            --output-dir artifacts/oncall-retrospective
+
+      - name: Run availability-adjusted need-pressure analysis
+        env:
+          HORIZON: ${{ github.event.inputs.horizon || '6' }}
+          PRESSURE_THRESHOLD: ${{ github.event.inputs.pressure_percentile_threshold || '99' }}
+          BAD_OUTCOME_QUANTILE: ${{ github.event.inputs.bad_outcome_quantile || '0.90' }}
+          LATE_CALL_HOUR: ${{ github.event.inputs.late_call_hour || '21' }}
+          MIN_REST_BUFFER_HOURS: ${{ github.event.inputs.min_rest_buffer_hours || '10' }}
+        run: |
+          python scripts/experiments/oncall/retrospective_oncall_availability_adjusted.py \
+            --horizon "$HORIZON" \
+            --pressure-percentile-threshold "$PRESSURE_THRESHOLD" \
+            --bad-outcome-quantile "$BAD_OUTCOME_QUANTILE" \
+            --outcome-hours 6 \
+            --major-core-count 3 \
+            --matches 5 \
+            --top-n 30 \
+            --late-call-hour "$LATE_CALL_HOUR" \
+            --min-rest-buffer-hours "$MIN_REST_BUFFER_HOURS" \
             --output-dir artifacts/oncall-retrospective
 
       - name: Show pressure summary
         if: always()
         run: |
-          if test -f artifacts/oncall-retrospective/oncall_pressure_performance.csv; then
-            echo '### On-call pressure performance' >> "$GITHUB_STEP_SUMMARY"
+          if test -f artifacts/oncall-retrospective/oncall_availability_adjusted_performance.csv; then
+            echo '### Availability-adjusted on-call need pressure' >> "$GITHUB_STEP_SUMMARY"
             echo '```csv' >> "$GITHUB_STEP_SUMMARY"
-            cat artifacts/oncall-retrospective/oncall_pressure_performance.csv >> "$GITHUB_STEP_SUMMARY"
+            cat artifacts/oncall-retrospective/oncall_availability_adjusted_performance.csv >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
           fi
-          if test -f artifacts/oncall-retrospective/oncall_pressure_thresholds.csv; then
-            echo '### Pressure thresholds' >> "$GITHUB_STEP_SUMMARY"
+          if test -f artifacts/oncall-retrospective/oncall_availability_adjusted_summary.csv; then
+            echo '### High-pressure hours by callability' >> "$GITHUB_STEP_SUMMARY"
             echo '```csv' >> "$GITHUB_STEP_SUMMARY"
-            cat artifacts/oncall-retrospective/oncall_pressure_thresholds.csv >> "$GITHUB_STEP_SUMMARY"
+            cat artifacts/oncall-retrospective/oncall_availability_adjusted_summary.csv >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
           fi
-          if test -f artifacts/oncall-retrospective/oncall_pressure_top_cases.csv; then
-            echo '### Top pressure episodes' >> "$GITHUB_STEP_SUMMARY"
+          if test -f artifacts/oncall-retrospective/oncall_callability_sensitivity.csv; then
+            echo '### Callability sensitivity' >> "$GITHUB_STEP_SUMMARY"
             echo '```csv' >> "$GITHUB_STEP_SUMMARY"
-            head -n 21 artifacts/oncall-retrospective/oncall_pressure_top_cases.csv >> "$GITHUB_STEP_SUMMARY"
+            cat artifacts/oncall-retrospective/oncall_callability_sensitivity.csv >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if test -f artifacts/oncall-retrospective/oncall_availability_adjusted_top_cases.csv; then
+            echo '### Top availability-adjusted episodes' >> "$GITHUB_STEP_SUMMARY"
+            echo '```csv' >> "$GITHUB_STEP_SUMMARY"
+            head -n 31 artifacts/oncall-retrospective/oncall_availability_adjusted_top_cases.csv >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
           fi
 
