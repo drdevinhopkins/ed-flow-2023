@@ -7,12 +7,12 @@ on:
         description: On-call probability horizon (hours)
         required: false
         default: "6"
-      alert_threshold:
-        description: Exploratory strong-recommendation threshold
+      pressure_percentile_threshold:
+        description: Historical pressure percentile used to define an alert episode
         required: false
-        default: "0.70"
+        default: "95"
       bad_outcome_quantile:
-        description: Historical quantile defining severe flow
+        description: Historical quantile defining each core congestion threshold
         required: false
         default: "0.90"
   push:
@@ -46,28 +46,55 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pandas numpy catboost scikit-learn holidays dropbox python-dotenv requests
 
-      - name: Run independent retrospective replay
+      - name: Run independent calibration benchmark
         env:
           HORIZON: ${{ github.event.inputs.horizon || '6' }}
-          ALERT_THRESHOLD: ${{ github.event.inputs.alert_threshold || '0.70' }}
           BAD_OUTCOME_QUANTILE: ${{ github.event.inputs.bad_outcome_quantile || '0.90' }}
         run: |
           mkdir -p artifacts/oncall-retrospective
           python scripts/experiments/oncall/retrospective_oncall_decision_replay.py \
             --horizon "$HORIZON" \
-            --alert-threshold "$ALERT_THRESHOLD" \
+            --alert-threshold 0.70 \
             --bad-outcome-quantile "$BAD_OUTCOME_QUANTILE" \
             --outcome-hours 6 \
             --top-n 20 \
             --output-dir artifacts/oncall-retrospective
 
-      - name: Show top cases
+      - name: Run percentile-based pressure analysis
+        env:
+          HORIZON: ${{ github.event.inputs.horizon || '6' }}
+          PRESSURE_THRESHOLD: ${{ github.event.inputs.pressure_percentile_threshold || '95' }}
+          BAD_OUTCOME_QUANTILE: ${{ github.event.inputs.bad_outcome_quantile || '0.90' }}
+        run: |
+          python scripts/experiments/oncall/retrospective_oncall_pressure_analysis.py \
+            --horizon "$HORIZON" \
+            --pressure-percentile-threshold "$PRESSURE_THRESHOLD" \
+            --bad-outcome-quantile "$BAD_OUTCOME_QUANTILE" \
+            --outcome-hours 6 \
+            --major-core-count 3 \
+            --matches 5 \
+            --top-n 20 \
+            --output-dir artifacts/oncall-retrospective
+
+      - name: Show pressure summary
         if: always()
         run: |
-          if test -f artifacts/oncall-retrospective/oncall_retrospective_top_cases.csv; then
-            echo '### Top retrospective cases' >> "$GITHUB_STEP_SUMMARY"
+          if test -f artifacts/oncall-retrospective/oncall_pressure_performance.csv; then
+            echo '### On-call pressure performance' >> "$GITHUB_STEP_SUMMARY"
             echo '```csv' >> "$GITHUB_STEP_SUMMARY"
-            head -n 21 artifacts/oncall-retrospective/oncall_retrospective_top_cases.csv >> "$GITHUB_STEP_SUMMARY"
+            cat artifacts/oncall-retrospective/oncall_pressure_performance.csv >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if test -f artifacts/oncall-retrospective/oncall_pressure_thresholds.csv; then
+            echo '### Pressure thresholds' >> "$GITHUB_STEP_SUMMARY"
+            echo '```csv' >> "$GITHUB_STEP_SUMMARY"
+            cat artifacts/oncall-retrospective/oncall_pressure_thresholds.csv >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if test -f artifacts/oncall-retrospective/oncall_pressure_top_cases.csv; then
+            echo '### Top pressure episodes' >> "$GITHUB_STEP_SUMMARY"
+            echo '```csv' >> "$GITHUB_STEP_SUMMARY"
+            head -n 21 artifacts/oncall-retrospective/oncall_pressure_top_cases.csv >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
           fi
 
