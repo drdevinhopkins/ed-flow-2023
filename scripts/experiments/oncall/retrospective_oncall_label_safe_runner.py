@@ -13,8 +13,13 @@ future activation targets are constructed.
 
 import importlib
 import sys
+from pathlib import Path
 
-from retrospective_oncall_label_coverage import (
+SCRIPTS_DIR = Path(__file__).resolve().parents[2]
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from retrospective_oncall_label_coverage import (  # noqa: E402
     explicit_label_bounds,
     truncate_to_explicit_label_coverage,
 )
