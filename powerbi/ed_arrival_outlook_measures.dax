@@ -1,0 +1,129 @@
+// Table name assumed: daily_arrival_outlook
+// horizon_day is calculated by the Montreal-local forecast pipeline and should be
+// preferred over TODAY() in the Power BI service.
+
+Arrival Outlook Today =
+CALCULATE(
+    MAX(daily_arrival_outlook[predicted_arrivals]),
+    daily_arrival_outlook[horizon_day] = 0
+)
+
+Arrival Outlook Today Lower 80 =
+CALCULATE(
+    MAX(daily_arrival_outlook[lower_80]),
+    daily_arrival_outlook[horizon_day] = 0
+)
+
+Arrival Outlook Today Upper 80 =
+CALCULATE(
+    MAX(daily_arrival_outlook[upper_80]),
+    daily_arrival_outlook[horizon_day] = 0
+)
+
+Arrivals Observed Today =
+CALCULATE(
+    MAX(daily_arrival_outlook[observed_arrivals]),
+    daily_arrival_outlook[horizon_day] = 0
+)
+
+Arrivals Expected Remaining Today =
+CALCULATE(
+    MAX(daily_arrival_outlook[expected_remaining]),
+    daily_arrival_outlook[horizon_day] = 0
+)
+
+Arrival Outlook Today Baseline =
+CALCULATE(
+    MAX(daily_arrival_outlook[seasonal_weekday_baseline]),
+    daily_arrival_outlook[horizon_day] = 0
+)
+
+Arrival Outlook Today Delta vs Baseline =
+CALCULATE(
+    MAX(daily_arrival_outlook[delta_vs_baseline]),
+    daily_arrival_outlook[horizon_day] = 0
+)
+
+Arrival Outlook Today Stage =
+CALCULATE(
+    SELECTEDVALUE(daily_arrival_outlook[forecast_stage]),
+    daily_arrival_outlook[horizon_day] = 0
+)
+
+Arrival Outlook Today Source =
+CALCULATE(
+    SELECTEDVALUE(daily_arrival_outlook[source_model]),
+    daily_arrival_outlook[horizon_day] = 0
+)
+
+Arrival Outlook Today Generated =
+CALCULATE(
+    MAX(daily_arrival_outlook[generated_at_local]),
+    daily_arrival_outlook[horizon_day] = 0
+)
+
+Arrival Outlook Today Range Text =
+VAR Lower = [Arrival Outlook Today Lower 80]
+VAR Upper = [Arrival Outlook Today Upper 80]
+RETURN
+IF(
+    ISBLANK(Lower) || ISBLANK(Upper),
+    BLANK(),
+    FORMAT(ROUND(Lower, 0), "0") & "–" & FORMAT(ROUND(Upper, 0), "0")
+)
+
+Arrival Outlook Today Summary =
+VAR Pred = [Arrival Outlook Today]
+VAR Obs = [Arrivals Observed Today]
+VAR Remaining = [Arrivals Expected Remaining Today]
+VAR RangeText = [Arrival Outlook Today Range Text]
+VAR Stage = [Arrival Outlook Today Stage]
+RETURN
+SWITCH(
+    TRUE(),
+    ISBLANK(Pred), BLANK(),
+    Stage = "intraday" && NOT ISBLANK(Obs) && NOT ISBLANK(Remaining),
+        FORMAT(ROUND(Obs, 0), "0") & " arrived so far • " &
+        FORMAT(ROUND(Remaining, 0), "0") & " more expected • 80% range " & RangeText,
+    "Expected total • 80% range " & RangeText
+)
+
+Arrival Outlook Explanation Today =
+CALCULATE(
+    SELECTEDVALUE(daily_arrival_outlook[explanation_text]),
+    daily_arrival_outlook[horizon_day] = 0
+)
+
+Arrival Outlook Next 7 Day Average =
+AVERAGEX(
+    FILTER(
+        daily_arrival_outlook,
+        daily_arrival_outlook[horizon_day] >= 1 &&
+        daily_arrival_outlook[horizon_day] <= 7
+    ),
+    daily_arrival_outlook[predicted_arrivals]
+)
+
+Arrival Outlook Highest Next 7 Days =
+MAXX(
+    FILTER(
+        daily_arrival_outlook,
+        daily_arrival_outlook[horizon_day] >= 1 &&
+        daily_arrival_outlook[horizon_day] <= 7
+    ),
+    daily_arrival_outlook[predicted_arrivals]
+)
+
+Arrival Outlook Busiest Future Date =
+VAR FutureRows =
+    FILTER(
+        daily_arrival_outlook,
+        daily_arrival_outlook[horizon_day] >= 1 &&
+        daily_arrival_outlook[horizon_day] <= 7
+    )
+VAR MaxPrediction = MAXX(FutureRows, daily_arrival_outlook[predicted_arrivals])
+RETURN
+MAXX(
+    FILTER(FutureRows, daily_arrival_outlook[predicted_arrivals] = MaxPrediction),
+    daily_arrival_outlook[target_date]
+)
