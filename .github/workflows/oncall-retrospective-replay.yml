@@ -1,0 +1,90 @@
+name: Retrospective on-call decision replay
+
+on:
+  workflow_dispatch:
+    inputs:
+      horizon:
+        description: On-call probability horizon (hours)
+        required: false
+        default: "6"
+      alert_threshold:
+        description: Exploratory strong-recommendation threshold
+        required: false
+        default: "0.70"
+      bad_outcome_quantile:
+        description: Historical quantile defining severe flow
+        required: false
+        default: "0.90"
+  push:
+    branches:
+      - experiment/oncall-retrospective-replay
+    paths:
+      - scripts/experiments/oncall/**
+      - scripts/forecast_oncall_probability.py
+      - hourly_oncall_used_for_busy_since_2022.csv
+      - .github/workflows/oncall-retrospective-replay.yml
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install replay dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pandas numpy catboost scikit-learn holidays dropbox python-dotenv requests
+
+      - name: Run independent retrospective replay
+        env:
+          HORIZON: ${{ github.event.inputs.horizon || '6' }}
+          ALERT_THRESHOLD: ${{ github.event.inputs.alert_threshold || '0.70' }}
+          BAD_OUTCOME_QUANTILE: ${{ github.event.inputs.bad_outcome_quantile || '0.90' }}
+        run: |
+          mkdir -p artifacts/oncall-retrospective
+          python scripts/experiments/oncall/retrospective_oncall_decision_replay.py \
+            --horizon "$HORIZON" \
+            --alert-threshold "$ALERT_THRESHOLD" \
+            --bad-outcome-quantile "$BAD_OUTCOME_QUANTILE" \
+            --outcome-hours 6 \
+            --top-n 20 \
+            --output-dir artifacts/oncall-retrospective
+
+      - name: Show top cases
+        if: always()
+        run: |
+          if test -f artifacts/oncall-retrospective/oncall_retrospective_top_cases.csv; then
+            echo '### Top retrospective cases' >> "$GITHUB_STEP_SUMMARY"
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import pandas as pd
+          p = 'artifacts/oncall-retrospective/oncall_retrospective_top_cases.csv'
+          df = pd.read_csv(p)
+          cols = [c for c in [
+              'alert_start', 'peak_probability', 'episode_class',
+              'hours_to_actual_activation', 'start_total_tbs',
+              'subsequent_max_total_tbs', 'start_stretcher_occupancy',
+              'subsequent_max_stretcher_occupancy', 'start_overflow',
+              'subsequent_max_overflow'
+          ] if c in df.columns]
+          print(df[cols].head(20).to_markdown(index=False) if len(df) else 'No alert episodes at this threshold.')
+          PY
+          fi
+
+      - name: Upload replay outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oncall-retrospective-replay
+          path: artifacts/oncall-retrospective/
+          if-no-files-found: warn
