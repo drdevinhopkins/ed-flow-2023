@@ -1,0 +1,90 @@
+name: Hour-adjusted label-safe on-call replay
+
+on:
+  workflow_dispatch:
+    inputs:
+      risk_percentile_threshold:
+        description: Historical percentile defining high-risk episodes
+        required: false
+        default: "99"
+      hour_delta_quantile:
+        description: Same-hour untreated delta quantile defining unusual deterioration
+        required: false
+        default: "0.80"
+      large_total_quantile:
+        description: Same-hour Total TBS delta quantile defining a large rise
+        required: false
+        default: "0.90"
+  push:
+    branches:
+      - experiment/oncall-retrospective-replay
+    paths:
+      - scripts/experiments/oncall/retrospective_oncall_deterioration_hour_adjusted.py
+      - scripts/experiments/oncall/retrospective_oncall_deterioration_risk.py
+      - scripts/experiments/oncall/retrospective_oncall_label_coverage.py
+      - scripts/experiments/oncall/retrospective_oncall_label_safe_runner.py
+      - hourly_oncall_used_for_busy_since_2022.csv
+      - .github/workflows/oncall-retrospective-hour-adjusted.yml
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pandas numpy catboost scikit-learn holidays dropbox python-dotenv requests
+
+      - name: Run hour-adjusted replay inside explicit label coverage
+        env:
+          RISK_THRESHOLD: ${{ github.event.inputs.risk_percentile_threshold || '99' }}
+          HOUR_DELTA_QUANTILE: ${{ github.event.inputs.hour_delta_quantile || '0.80' }}
+          LARGE_TOTAL_QUANTILE: ${{ github.event.inputs.large_total_quantile || '0.90' }}
+        run: |
+          mkdir -p artifacts/oncall-hour-adjusted
+          python scripts/experiments/oncall/retrospective_oncall_label_safe_runner.py \
+            retrospective_oncall_deterioration_hour_adjusted \
+            --risk-percentile-threshold "$RISK_THRESHOLD" \
+            --bad-outcome-quantile 0.90 \
+            --hour-delta-quantile "$HOUR_DELTA_QUANTILE" \
+            --large-total-quantile "$LARGE_TOTAL_QUANTILE" \
+            --outcome-hours 6 \
+            --matches 5 \
+            --top-n 40 \
+            --late-call-hour 21 \
+            --min-rest-buffer-hours 10 \
+            --output-dir artifacts/oncall-hour-adjusted
+
+      - name: Show summary
+        if: always()
+        run: |
+          echo '## Hour-adjusted label-safe on-call deterioration replay' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Explicit activation-label coverage ends 2026-05-15 06:00.' >> "$GITHUB_STEP_SUMMARY"
+          for f in \
+            oncall_deterioration_hour_adjusted_performance.csv \
+            oncall_deterioration_hour_adjusted_bands.csv; do
+            if test -f "artifacts/oncall-hour-adjusted/$f"; then
+              echo "### $f" >> "$GITHUB_STEP_SUMMARY"
+              echo '```csv' >> "$GITHUB_STEP_SUMMARY"
+              cat "artifacts/oncall-hour-adjusted/$f" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - name: Upload outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oncall-retrospective-hour-adjusted
+          path: artifacts/oncall-hour-adjusted/
+          if-no-files-found: warn
