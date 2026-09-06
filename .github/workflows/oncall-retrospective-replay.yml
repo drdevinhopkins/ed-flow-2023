@@ -66,19 +66,9 @@ jobs:
         run: |
           if test -f artifacts/oncall-retrospective/oncall_retrospective_top_cases.csv; then
             echo '### Top retrospective cases' >> "$GITHUB_STEP_SUMMARY"
-            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
-          import pandas as pd
-          p = 'artifacts/oncall-retrospective/oncall_retrospective_top_cases.csv'
-          df = pd.read_csv(p)
-          cols = [c for c in [
-              'alert_start', 'peak_probability', 'episode_class',
-              'hours_to_actual_activation', 'start_total_tbs',
-              'subsequent_max_total_tbs', 'start_stretcher_occupancy',
-              'subsequent_max_stretcher_occupancy', 'start_overflow',
-              'subsequent_max_overflow'
-          ] if c in df.columns]
-          print(df[cols].head(20).to_markdown(index=False) if len(df) else 'No alert episodes at this threshold.')
-          PY
+            echo '```csv' >> "$GITHUB_STEP_SUMMARY"
+            head -n 21 artifacts/oncall-retrospective/oncall_retrospective_top_cases.csv >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Upload replay outputs
