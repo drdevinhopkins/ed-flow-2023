@@ -8,6 +8,7 @@ on:
     paths:
       - scripts/experiments/oncall/retrospective_oncall_ocu_day_labels.py
       - scripts/experiments/oncall/retrospective_oncall_ocu_replay.py
+      - scripts/experiments/oncall/retrospective_oncall_ocu_replay_trusted.py
       - scripts/experiments/oncall/retrospective_oncall_availability_adjusted.py
       - scripts/experiments/oncall/retrospective_oncall_label_coverage.py
       - scripts/experiments/oncall/retrospective_oncall_decision_replay.py
@@ -41,9 +42,9 @@ jobs:
           python scripts/experiments/oncall/retrospective_oncall_ocu_day_labels.py \
             --output-dir artifacts/oncall-ocu
 
-      - name: Score post-cutoff period against ocU day labels
+      - name: Score post-April period against ocU day labels
         run: |
-          python scripts/experiments/oncall/retrospective_oncall_ocu_replay.py \
+          python scripts/experiments/oncall/retrospective_oncall_ocu_replay_trusted.py \
             --horizon 6 \
             --start-hour 8 \
             --end-hour 22 \
@@ -55,7 +56,7 @@ jobs:
         if: always()
         run: |
           echo '## ocU day-level validation' >> "$GITHUB_STEP_SUMMARY"
-          echo 'ocU is treated only as a definite calendar-day positive. Missing ocU rows are unknown, not negatives; no activation timestamp is inferred.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Trusted exact-hour labels end 2026-04-30 because ocU confirms May 1-4 use while the hourly CSV records zeros. From May 1 onward, ocU is treated only as a definite calendar-day positive. Missing ocU rows are unknown, not negatives; no activation timestamp is inferred.' >> "$GITHUB_STEP_SUMMARY"
           for f in \
             oncall_ocu_day_summary.csv \
             oncall_ocu_postcutoff_summary.csv \
