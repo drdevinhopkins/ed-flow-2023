@@ -1,0 +1,77 @@
+name: ocU day-level retrospective on-call validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - experiment/oncall-retrospective-replay
+    paths:
+      - scripts/experiments/oncall/retrospective_oncall_ocu_day_labels.py
+      - scripts/experiments/oncall/retrospective_oncall_ocu_replay.py
+      - scripts/experiments/oncall/retrospective_oncall_availability_adjusted.py
+      - scripts/experiments/oncall/retrospective_oncall_label_coverage.py
+      - scripts/experiments/oncall/retrospective_oncall_decision_replay.py
+      - scripts/forecast_oncall_probability.py
+      - hourly_oncall_used_for_busy_since_2022.csv
+      - .github/workflows/oncall-retrospective-ocu.yml
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pandas numpy catboost scikit-learn holidays dropbox python-dotenv requests
+
+      - name: Audit ocU schedule labels
+        run: |
+          mkdir -p artifacts/oncall-ocu
+          python scripts/experiments/oncall/retrospective_oncall_ocu_day_labels.py \
+            --output-dir artifacts/oncall-ocu
+
+      - name: Score post-cutoff period against ocU day labels
+        run: |
+          python scripts/experiments/oncall/retrospective_oncall_ocu_replay.py \
+            --horizon 6 \
+            --start-hour 8 \
+            --end-hour 22 \
+            --late-call-hour 21 \
+            --min-rest-buffer-hours 10 \
+            --output-dir artifacts/oncall-ocu
+
+      - name: Show summary
+        if: always()
+        run: |
+          echo '## ocU day-level validation' >> "$GITHUB_STEP_SUMMARY"
+          echo 'ocU is treated only as a definite calendar-day positive. Missing ocU rows are unknown, not negatives; no activation timestamp is inferred.' >> "$GITHUB_STEP_SUMMARY"
+          for f in \
+            oncall_ocu_day_summary.csv \
+            oncall_ocu_postcutoff_summary.csv \
+            oncall_ocu_positive_day_cases.csv; do
+            if test -f "artifacts/oncall-ocu/$f"; then
+              echo "### $f" >> "$GITHUB_STEP_SUMMARY"
+              echo '```csv' >> "$GITHUB_STEP_SUMMARY"
+              cat "artifacts/oncall-ocu/$f" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - name: Upload outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oncall-retrospective-ocu
+          path: artifacts/oncall-ocu/
+          if-no-files-found: warn
