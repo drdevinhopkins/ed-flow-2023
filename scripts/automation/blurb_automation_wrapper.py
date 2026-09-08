@@ -37,23 +37,23 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-REPO = Path(os.environ.get("ED_FLOW_REPO", "/opt/apps/ed-flow-2023"))
+REPO = Path(os.environ.get("ED_FLOW_REPO", str(Path(__file__).resolve().parents[2])))
 # Use the interpreter that launched this wrapper. The shell workflow activates
 # the environment selected by the Dropbox watcher via ED_FLOW_VENV.
 VENV_PY = Path(sys.executable)
 COMPUTE = Path(os.environ.get(
     "ED_FLOW_COMPUTE",
-    "/opt/data/profiles/edflow/skills/ed-flow/hourly-forecast-blurb/scripts/compute_blurb_facts.py",
+    str(REPO / "scripts" / "automation" / "compute_blurb_facts.py"),
 ))
 APPEND_WORKER = REPO / "scripts" / "append_ed_forecast_blurb_request.py"
-ENV_FILE = Path(os.environ.get("ED_FLOW_ENV", "/opt/data/profiles/edflow/.env"))
-# Keep automation state under the active profile by default. A prior manual
-# root run left /tmp/blurb_auto root-owned, which blocked the cron user.
+ENV_FILE = Path(os.environ.get("ED_FLOW_ENV", str(REPO / ".env")))
+# Keep automation state under the repository by default so the scheduler
+# can create it on the deployment host without profile-specific paths.
 SCRATCH = Path(os.environ.get(
-    "ED_FLOW_SCRATCH", "/opt/data/profiles/edflow/state-local/blurb_auto"
+    "ED_FLOW_SCRATCH", str(REPO / "state" / "blurb_auto")
 ))
 OUTBOX = Path(os.environ.get(
-    "ED_FLOW_BLURB_OUTBOX", "/opt/data/profiles/edflow/state-local/blurb_outbox"
+    "ED_FLOW_BLURB_OUTBOX", str(REPO / "state" / "blurb_outbox")
 ))
 
 DBX_HOST = "api.dropboxapi.com"
