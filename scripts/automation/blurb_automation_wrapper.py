@@ -38,9 +38,9 @@ import pandas as pd
 import requests
 
 REPO = Path(os.environ.get("ED_FLOW_REPO", "/opt/apps/ed-flow-2023"))
-# Minimal blurb venv (py3.13 + pandas/requests/dropbox). The repo's main .venv is
-# tied to a since-removed Python 3.12 and is not usable for this automation.
-VENV_PY = REPO / ".venv-blurb" / "bin" / "python"
+# Use the interpreter that launched this wrapper. The shell workflow activates
+# the environment selected by the Dropbox watcher via ED_FLOW_VENV.
+VENV_PY = Path(sys.executable)
 COMPUTE = Path(os.environ.get(
     "ED_FLOW_COMPUTE",
     "/opt/data/profiles/edflow/skills/ed-flow/hourly-forecast-blurb/scripts/compute_blurb_facts.py",
