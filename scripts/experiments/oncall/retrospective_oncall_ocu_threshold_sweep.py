@@ -2,9 +2,9 @@ from __future__ import annotations
 
 """Threshold sweep for day-level ocU validation.
 
-Known ocU-positive days support a capture-rate calculation only.  Days without an ocU
-marker remain unknown, so ``all_scored_days_flagged`` is alert burden/descriptive
-frequency, not a false-positive count and must not be used to claim specificity/PPV.
+Known ocU-positive days support a capture-rate calculation only. Days without an ocU
+marker remain unknown, so alert-day counts are descriptive burden, not false-positive
+counts, and cannot be used to claim specificity or PPV.
 """
 
 import argparse
@@ -27,15 +27,11 @@ def main() -> None:
     state = pd.read_csv(inp / "oncall_schedule_state_daily.csv")
     daily["date"] = pd.to_datetime(daily["date"]).dt.date
     state["date"] = pd.to_datetime(state["date"]).dt.date
+
+    # daily already contains the B2 audit fields. Merge only the new reserve-reassignment
+    # state here to avoid _x/_y collisions.
     merged = daily.merge(
-        state[
-            [
-                "date",
-                "reserve_reassigned_regular_shift_proxy",
-                "b2_absent_on_mon_thu",
-                "schedule_supply_state",
-            ]
-        ],
+        state[["date", "reserve_reassigned_regular_shift_proxy", "schedule_supply_state"]],
         on="date",
         how="left",
     )
@@ -77,11 +73,6 @@ def main() -> None:
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
     result.to_csv(out / "oncall_ocu_threshold_sweep.csv", index=False)
-
-    pareto = result[
-        result["known_ocu_positive_captured"].diff().fillna(1).ne(0)
-        | result["all_scored_days_flagged_descriptive_only"].diff().fillna(1).ne(0)
-    ]
     print(result.to_string(index=False))
     print("\nReminder: unlabeled days are unknown, not negatives; alert burden is descriptive only.")
 
