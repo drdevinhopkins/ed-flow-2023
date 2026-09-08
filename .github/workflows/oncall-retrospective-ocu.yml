@@ -9,6 +9,7 @@ on:
       - scripts/experiments/oncall/retrospective_oncall_ocu_day_labels.py
       - scripts/experiments/oncall/retrospective_oncall_ocu_replay.py
       - scripts/experiments/oncall/retrospective_oncall_ocu_replay_trusted.py
+      - scripts/experiments/oncall/retrospective_oncall_ocu_threshold_sweep.py
       - scripts/experiments/oncall/retrospective_oncall_schedule_state.py
       - scripts/experiments/oncall/retrospective_oncall_availability_adjusted.py
       - scripts/experiments/oncall/retrospective_oncall_label_coverage.py
@@ -59,6 +60,14 @@ jobs:
             --min-rest-buffer-hours 10 \
             --output-dir artifacts/oncall-ocu
 
+      - name: Sweep pressure thresholds
+        run: |
+          python scripts/experiments/oncall/retrospective_oncall_ocu_threshold_sweep.py \
+            --input-dir artifacts/oncall-ocu \
+            --output-dir artifacts/oncall-ocu \
+            --min-threshold 80 \
+            --max-threshold 99
+
       - name: Show summary
         if: always()
         run: |
@@ -68,6 +77,7 @@ jobs:
             oncall_ocu_day_summary.csv \
             oncall_schedule_state_summary.csv \
             oncall_ocu_postcutoff_summary.csv \
+            oncall_ocu_threshold_sweep.csv \
             oncall_ocu_positive_day_cases.csv; do
             if test -f "artifacts/oncall-ocu/$f"; then
               echo "### $f" >> "$GITHUB_STEP_SUMMARY"
