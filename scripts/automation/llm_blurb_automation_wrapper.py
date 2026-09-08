@@ -29,7 +29,7 @@ from dropbox.files import WriteMode
 import blurb_automation_wrapper as deterministic
 
 LLM_OUTPUT_PATH = "/hourly_forecast_blurbs_llm.csv"
-LLM_BASE_URL = os.environ.get("ED_FLOW_LLM_BASE_URL", "http://qwen:8080/v1")
+LLM_BASE_URL = os.environ.get("ED_FLOW_LLM_BASE_URL", "http://127.0.0.1:8082/v1")
 LLM_MODEL = os.environ.get("ED_FLOW_LLM_MODEL", "unsloth/Qwen3.8-27B-UD-Q4_K_XL")
 LLM_TIMEOUT = int(os.environ.get("ED_FLOW_LLM_TIMEOUT", "90"))
 CSV_COLUMNS = [
