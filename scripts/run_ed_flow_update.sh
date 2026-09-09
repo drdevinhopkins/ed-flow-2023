@@ -103,6 +103,13 @@ run_step python scripts/get_current.py
 # Hard gate: do not forecast from stale/incomplete ED, staffing, or weather data.
 run_step python scripts/validate_forecast_inputs.py
 
+# Additive guarded same-day arrival-completion forecast. It writes and uploads
+# only the separate intraday artifact; stale/incomplete inputs are suppressed
+# and a model failure must not block the established hourly outputs.
+run_optional_step python scripts/forecast_intraday_daily_inflow.py \
+    --weather-csv weather.csv \
+    --upload-dropbox
+
 # Existing production forecast and decision-support outputs.
 run_step python scripts/chronos_forecast.py
 run_step python scripts/forecast_oncall_impact.py
@@ -132,6 +139,53 @@ run_step python scripts/shiftadmin.py
 # Refresh weather after the forecast/staffing outputs. The next hourly cycle
 # will consume this newly uploaded weather.csv.
 run_step python scripts/update_weather.py
+
+# The hospital host is the authoritative daily publisher. Run the expensive
+# daily Chronos/explainability chain once during the 06:00 Montreal hour rather
+# than on every hourly report. GitHub retains manual/validation execution only.
+run_daily_arrival_forecast() {
+    local local_hour local_day state_dir state_file last_run
+    local_hour=$(TZ=America/Montreal date +%H)
+    local_day=$(TZ=America/Montreal date +%F)
+    if [[ "$local_hour" != "06" ]]; then
+        printf "Skipping daily arrival forecast outside the 06:00 Montreal hour (now %s).\n" "$local_hour"
+        return 0
+    fi
+
+    state_dir="${ED_FLOW_STATE_DIR:-.state}"
+    state_file="$state_dir/daily-arrival-forecast.last-run"
+    mkdir -p "$state_dir"
+    last_run=""
+    if [[ -f "$state_file" ]]; then
+        last_run=$(<"$state_file")
+    fi
+    if [[ "$last_run" == "$local_day" ]]; then
+        printf "Skipping daily arrival forecast; already completed for %s.\n" "$local_day"
+        return 0
+    fi
+
+    run_step python scripts/forecast_daily_visits_from_daily.py \
+        --horizon-days 7 \
+        --context-days 1095 \
+        --min-history-days 28 \
+        --output daily_visits_forecast.csv \
+        --weather-snapshot-output daily_visits_weather_snapshot.csv || return
+    run_step python scripts/explain_daily_visits_forecast.py \
+        --forecast daily_visits_forecast.csv \
+        --weather-snapshot daily_visits_weather_snapshot.csv \
+        --output daily_visits_forecast_explained.csv \
+        --long-output daily_visits_explainability.csv \
+        --context-days 1095 \
+        --min-history-days 28 || return
+    run_step python scripts/build_daily_arrival_outlook.py \
+        --daily-explained daily_visits_forecast_explained.csv \
+        --intraday intraday-daily-inflow-forecast.csv \
+        --output daily_arrival_outlook.csv \
+        --upload-dropbox || return
+    printf "%s\n" "$local_day" > "$state_file"
+}
+run_optional_step run_daily_arrival_forecast
+
 
 # Run the paired prospective weather experiment only after all established
 # outputs finish. It reuses the GPU selected above, freezes one common input

@@ -26,11 +26,8 @@ on:
       - 'data/jgh_ramq_holidays.csv'
       - 'chronos-requirements.txt'
   workflow_dispatch:
-  # GitHub schedules run from the default branch only. Once merged, this becomes the
-  # operational daily forecast and archives exact D+1..D+7 forecast-time covariates.
-  schedule:
-    - cron: '15 10 * * *'
-
+  # Scheduled production publishing runs on the hospital host. Keep this
+  # workflow manual/validation-only to avoid competing Dropbox publishers.
 permissions:
   contents: write
 

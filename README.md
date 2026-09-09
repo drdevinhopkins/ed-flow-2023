@@ -80,6 +80,7 @@ get_current.py
   → forecast_oncall_probability.py
   → calculated_kpis.py
   → alerts.py
+  → forecast_intraday_daily_inflow.py (additive/non-blocking)
   → hourly_forecast_v2.py  (additive/non-blocking)
 ```
 
