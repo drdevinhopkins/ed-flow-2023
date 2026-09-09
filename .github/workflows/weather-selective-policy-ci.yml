@@ -1,0 +1,61 @@
+name: Weather selective-policy CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/weather-selective-policy-ci.yml'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_selective_policy.py'
+
+permissions:
+  contents: read
+
+jobs:
+  selective-policy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install pandas numpy
+      - name: Verify selective h3-h4 counterfactual
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          rows = []
+          for date_i, date in enumerate(['2026-08-25', '2026-08-26']):
+              for h in range(1, 5):
+                  actual = 40.0 + h
+                  baseline = actual + 2.0
+                  # Weather is intentionally worse at h1-h2 and much better at h3-h4.
+                  weather = actual + (3.0 if h <= 2 else 0.5)
+                  rows.append({
+                      'forecast_run_id': f'r{date_i}-{h}',
+                      'forecast_issued_at': f'{date}T12:00:00Z',
+                      'ds': f'{date} {12+h:02d}:00:00',
+                      'target_name': 'Total_TBS',
+                      'horizon_band': 'h01_04',
+                      'horizon_hour': h,
+                      'actual': actual,
+                      'baseline_prediction': baseline,
+                      'weather_prediction': weather,
+                  })
+          pd.DataFrame(rows).to_csv('/tmp/detail.csv', index=False)
+          PY
+          python scripts/evaluation/prospective/summarize_shadow_weather_selective_policy.py \
+            /tmp/detail.csv --output-dir /tmp/selective
+          python - <<'PY'
+          import pandas as pd
+          s = pd.read_csv('/tmp/selective/weather-selective-policy.csv').set_index('policy')
+          selective = s.loc['selective_weather_hours_3_4']
+          current = s.loc['current_weather_policy']
+          baseline = s.loc['all_baseline']
+          assert selective['mae'] < current['mae']
+          assert selective['mae'] < baseline['mae']
+          assert selective['mae_improvement_pct_vs_current_weather_policy'] > 0
+          by_date = pd.read_csv('/tmp/selective/weather-selective-policy-by-issue-date.csv')
+          assert by_date['forecast_issue_date'].nunique() == 2
+          print('Selective h3-h4 policy beats both all-baseline and all-h1-h4 weather in regression case.')
+          PY

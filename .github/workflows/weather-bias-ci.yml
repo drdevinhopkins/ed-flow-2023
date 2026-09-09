@@ -1,0 +1,61 @@
+name: Weather bias diagnostics CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/weather-bias-ci.yml'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_bias.py'
+
+permissions:
+  contents: read
+
+jobs:
+  weather-bias-diagnostics:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install lightweight dependencies
+        run: pip install pandas numpy
+
+      - name: Validate signed-bias guardrail
+        run: |
+          python - <<'PY'
+          import sys
+          import pandas as pd
+
+          sys.path.insert(0, 'scripts/evaluation/prospective')
+          from summarize_shadow_weather_bias import summarize
+
+          good = pd.DataFrame({
+              'target_name': ['Total_TBS'] * 4,
+              'horizon_band': ['h01_04'] * 4,
+              'weather_route_active': [True] * 4,
+              'baseline_error': [2.0, -2.0, 2.0, -2.0],
+              'weather_error': [1.0, -1.0, 1.0, -1.0],
+              'baseline_absolute_error': [2.0] * 4,
+          })
+          result = summarize(good).iloc[0]
+          assert bool(result['bias_not_materially_worse'])
+
+          bad = pd.DataFrame({
+              'target_name': ['Total_TBS'] * 4,
+              'horizon_band': ['h01_04'] * 4,
+              'weather_route_active': [True] * 4,
+              'baseline_error': [1.0, -1.0, 1.0, -1.0],
+              'weather_error': [3.0, 3.0, 3.0, 3.0],
+              'baseline_absolute_error': [1.0] * 4,
+          })
+          result = summarize(bad).iloc[0]
+          assert not bool(result['bias_not_materially_worse'])
+          assert result['bias_direction'] == 'overpredict'
+          print('Signed-error bias diagnostic guardrail validated.')
+          PY

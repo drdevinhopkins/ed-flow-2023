@@ -1,0 +1,92 @@
+name: Candidate policy leave-one-date-out CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_policy_leave_one_date_out.py'
+      - '.github/workflows/candidate-policy-loo-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-candidate-policy-loo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install lightweight dependencies
+        run: pip install pandas
+
+      - name: Verify complete-date-only leave-one-out selection
+        run: |
+          python - <<'PY'
+          import sys
+          import pandas as pd
+          sys.path.insert(0, 'scripts/evaluation/prospective')
+          from summarize_shadow_candidate_policy_leave_one_date_out import (
+              summarize_leave_one_date_out,
+              summarize_selection_stability,
+          )
+
+          rows = []
+          # Three complete dates agree candidate_hours_2_3_4 is best.
+          for date, bonus in [('2026-08-20', 0.0), ('2026-08-21', 0.1), ('2026-08-22', -0.1)]:
+              for policy, delta in [
+                  ('baseline', 0.0),
+                  ('candidate_hours_1', -1.0),
+                  ('candidate_hours_2_3_4', 2.0 + bonus),
+                  ('candidate_hours_1_2_3_4', 0.5),
+              ]:
+                  rows.append({
+                      'target_name': 'Workup_Delay_Burden',
+                      'horizon_band': 'h01_04',
+                      'forecast_issue_date': date,
+                      'issue_date_complete': True,
+                      'policy': policy,
+                      'mean_paired_mae_delta': delta,
+                      'mae_improvement_pct': delta * 10,
+                  })
+
+          # Catastrophically reversed but incomplete recent date: must be ignored.
+          for policy, delta in [
+              ('baseline', 0.0),
+              ('candidate_hours_1', 5.0),
+              ('candidate_hours_2_3_4', -20.0),
+              ('candidate_hours_1_2_3_4', -10.0),
+          ]:
+              rows.append({
+                  'target_name': 'Workup_Delay_Burden',
+                  'horizon_band': 'h01_04',
+                  'forecast_issue_date': '2026-08-27',
+                  'issue_date_complete': False,
+                  'policy': policy,
+                  'mean_paired_mae_delta': delta,
+                  'mae_improvement_pct': delta * 10,
+              })
+
+          loo = summarize_leave_one_date_out(pd.DataFrame(rows))
+          assert len(loo) == 3, loo
+          assert set(loo.held_out_issue_date) == {'2026-08-20','2026-08-21','2026-08-22'}
+          assert loo.selected_policy.eq('candidate_hours_2_3_4').all(), loo
+          assert loo.held_out_beats_baseline.all(), loo
+
+          summary = summarize_selection_stability(loo)
+          row = summary.iloc[0]
+          assert row.n_leave_one_complete_date_out_folds == 3
+          assert row.selected_policy_consistency_rate == 1.0
+          assert bool(row.exploratory_selection_stable_across_complete_dates)
+          assert not bool(row.loo_evidence_ready)
+          assert row.loo_status == 'insufficient_complete_issue_dates'
+          print(loo.to_string(index=False))
+          print(summary.to_string(index=False))
+          PY

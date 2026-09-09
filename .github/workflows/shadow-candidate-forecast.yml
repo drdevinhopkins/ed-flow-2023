@@ -1,0 +1,104 @@
+name: Shadow candidate forecast
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/shadow-candidate-forecast.yml'
+      - 'scripts/evaluation/prospective/run_shadow_candidate_forecast.py'
+      - 'scripts/evaluation/prospective/candidate_metric_routes.py'
+      - 'scripts/evaluation/backtests/backtest_candidate_metrics_cutoff.py'
+      - 'scripts/candidate_flow_metrics.py'
+
+permissions:
+  contents: read
+
+jobs:
+  shadow-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-shadow-candidate-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt', 'scripts/evaluation/prospective/run_shadow_candidate_forecast.py') }}
+          restore-keys: |
+            huggingface-chronos2-${{ runner.os }}-
+            huggingface-hourly-final-${{ runner.os }}-
+            huggingface-shadow-candidate-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+          pip install -r requirements.txt
+
+      - name: Validate current forecast inputs
+        run: python scripts/validate_forecast_inputs.py
+
+      - name: Generate isolated candidate shadow forecast
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python scripts/evaluation/prospective/run_shadow_candidate_forecast.py
+
+      - name: Verify candidate-only non-production output
+        run: |
+          test -s validation/prospective-candidates/latest-run/shadow-candidate-forecast.csv
+          test -s validation/prospective-candidates/latest-run/metadata.json
+          test ! -e forecast-v2.csv
+          test ! -e forecast-v2.1.csv
+          test ! -e chronos_forecast.csv
+          test ! -e ED_Hourly_Forecasts_Anomalies_v1.0.csv
+          python - <<'PY'
+          import json
+          import pandas as pd
+
+          path = 'validation/prospective-candidates/latest-run/shadow-candidate-forecast.csv'
+          frame = pd.read_csv(path)
+          expected_targets = {
+              'Inflow_Total', 'INFLOW_STRETCHER', 'INFLOW_AMBULANCES',
+              'AdmissionRequests_New', 'Workup_Delay_Burden'
+          }
+          assert len(frame) == 120, len(frame)
+          assert set(frame['target_name']) == expected_targets
+          assert frame.groupby('target_name').size().eq(24).all()
+          assert frame['horizon_hour'].min() == 1
+          assert frame['horizon_hour'].max() == 24
+          assert frame[['baseline_prediction', 'candidate_prediction']].notna().all().all()
+          assert frame[['baseline_lower', 'baseline_upper', 'candidate_lower', 'candidate_upper']].notna().all().all()
+          assert not frame[['forecast_run_id', 'target_name', 'target_ds', 'horizon_hour']].duplicated().any()
+          assert not frame['candidate_scenario'].str.contains('weather', case=False, na=False).any()
+          metadata = json.load(open('validation/prospective-candidates/latest-run/metadata.json'))
+          assert metadata['paired_rows'] == 120
+          assert metadata['production_routing_changed'] is False
+          print(frame.groupby(['target_name', 'candidate_scenario']).size())
+          print('Candidate shadow forecast validated: 5 targets x 24 hours; production artifacts untouched.')
+          PY
+
+      - name: Upload candidate shadow artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shadow-candidate-forecast
+          path: validation/prospective-candidates/latest-run/
+          if-no-files-found: warn
+          retention-days: 90

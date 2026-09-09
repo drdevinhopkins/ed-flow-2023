@@ -1,0 +1,95 @@
+name: Weather policy grid CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/weather-policy-grid-ci.yml'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_policy_grid.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_confidence.py'
+
+permissions:
+  contents: read
+
+jobs:
+  policy-grid:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install pandas numpy
+      - name: Verify policy subset ranking, complete-date stability, and evidence gate
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          rows=[]
+          # Aug 25-26: weather is harmful at h1, neutral at h2, beneficial at h3-h4.
+          # Because h2 is exactly neutral, policies {3,4} and {2,3,4} should tie.
+          for day in ['2026-08-25','2026-08-26']:
+              for h in [1,2,3,4]:
+                  actual=10.0
+                  baseline=12.0
+                  weather={1:13.0,2:12.0,3:10.5,4:10.0}[h]
+                  rows.append({
+                      'forecast_run_id':f'{day}-r{h}',
+                      'forecast_issued_at':f'{day}T12:00:00Z',
+                      'ds':f'{day} {12+h:02d}:00:00',
+                      'target_name':'Total_TBS','horizon_band':'h01_04','horizon_hour':h,
+                      'actual':actual,'baseline_prediction':baseline,'weather_prediction':weather,
+                  })
+          # Aug 27 is deliberately very harmful but is incomplete at the deterministic as-of.
+          # It must remain visible diagnostically without changing formal policy stability.
+          for h in [1,2,3,4]:
+              rows.append({
+                  'forecast_run_id':f'2026-08-27-r{h}',
+                  'forecast_issued_at':'2026-08-27T12:00:00Z',
+                  'ds':f'2026-08-27 {12+h:02d}:00:00',
+                  'target_name':'Total_TBS','horizon_band':'h01_04','horizon_hour':h,
+                  'actual':10.0,'baseline_prediction':12.0,'weather_prediction':15.0,
+              })
+          pd.DataFrame(rows).to_csv('/tmp/detail.csv',index=False)
+          PY
+          python scripts/evaluation/prospective/summarize_shadow_weather_policy_grid.py \
+            /tmp/detail.csv --output-dir /tmp/out --target Total_TBS --horizon-band h01_04 \
+            --as-of 2026-08-27T05:00:00-04:00
+          python - <<'PY'
+          import pandas as pd
+          f=pd.read_csv('/tmp/out/weather-policy-grid.csv')
+          # Pooled diagnostics include the incomplete harmful date, so do not assert the pooled winner.
+          by=pd.read_csv('/tmp/out/weather-policy-grid-by-issue-date.csv')
+          assert set(by['forecast_issue_date'].astype(str)) == {'2026-08-25','2026-08-26','2026-08-27'}
+          complete=by.groupby('forecast_issue_date')['issue_date_complete'].first().astype(bool)
+          assert complete.to_dict() == {
+              '2026-08-25': True,
+              '2026-08-26': True,
+              '2026-08-27': False,
+          }, complete.to_dict()
+
+          stability=pd.read_csv('/tmp/out/weather-policy-grid-issue-date-stability.csv')
+          expected={'weather_hours_3_4','weather_hours_2_3_4'}
+          assert set(expected).issubset(set(stability['policy']))
+          stable_best=stability['issue_date_mean_mae_improvement_pct'].max()
+          stable_tied=set(stability.loc[stability['issue_date_mean_mae_improvement_pct'].eq(stable_best),'policy'])
+          assert stable_tied == expected, {'stable_tied': sorted(stable_tied), 'stability': stability.head(4).to_dict('records')}
+          assert stability.loc[stability['policy'].isin(expected),'n_issue_dates'].eq(2).all()
+          assert stability.loc[stability['policy'].isin(expected),'issue_date_win_rate'].eq(1.0).all()
+          assert stability.loc[stability['policy'].isin(expected),'harmful_issue_date_rate'].eq(0.0).all()
+
+          # Strong-looking early policies must remain non-actionable with only two complete dates/eight hours.
+          required={
+              'selection_evidence_ready','directional_policy_candidate','policy_selection_status',
+              'issue_dates_remaining','unique_target_hours_remaining','span_days_remaining',
+              'issue_date_mean_improvement_pct_vs_current_weather_policy',
+          }
+          assert required.issubset(stability.columns), sorted(required-set(stability.columns))
+          assert not stability['selection_evidence_ready'].astype(bool).any()
+          assert stability['policy_selection_status'].eq('collecting').all()
+          assert stability['issue_dates_remaining'].min() == 26
+          assert stability['unique_target_hours_remaining'].min() == 92
+          assert stability['span_days_remaining'].min() >= 54.9
+          assert stability.loc[stability['policy'].isin(expected),'directional_policy_candidate'].astype(bool).all()
+          print('Policy-grid formal stability ignores incomplete dates and blocks selection until independent prospective evidence is sufficient.')
+          PY
