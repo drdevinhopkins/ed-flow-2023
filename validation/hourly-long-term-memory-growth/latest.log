@@ -1,0 +1,26 @@
+=== Global ranking ===
+history_label  history_hours           scenario  mean_relative_mae  median_relative_mae  mean_improvement_vs_max_baseline_pct  mean_improvement_vs_same_window_pct
+    max_8192h           8192      annual_memory           0.998006             1.011645                              0.199407                             0.199407
+    max_8192h           8192           baseline           1.000000             1.000000                              0.000000                             0.000000
+          90d           2160      annual_memory           1.014074             1.019660                             -1.407446                             1.820317
+    max_8192h           8192     annual_fourier           1.023238             1.002551                             -2.323836                            -2.323836
+          60d           1440           baseline           1.033194             1.019675                             -3.319375                             0.000000
+          90d           2160           baseline           1.034669             1.023217                             -3.466926                             0.000000
+          60d           1440      annual_memory           1.041422             1.028676                             -4.142200                            -0.896580
+    max_8192h           8192 annual_plus_growth           1.042710             1.029120                             -4.270985                            -4.270985
+    max_8192h           8192     secular_growth           1.057998             1.024304                             -5.799778                            -5.799778
+          60d           1440     annual_fourier           1.062224             1.031141                             -6.222419                            -2.756921
+          90d           2160     annual_fourier           1.076379             1.032629                             -7.637935                            -3.836509
+          90d           2160 annual_plus_growth           1.089809             1.051185                             -8.980891                            -5.217187
+          90d           2160     secular_growth           1.100634             1.075931                            -10.063397                            -6.189832
+          60d           1440 annual_plus_growth           1.104196             1.068665                            -10.419635                            -6.840364
+          60d           1440     secular_growth           1.115447             1.087786                            -11.544715                            -8.017914
+
+=== Best configuration per target ===
+ target_name history_label       scenario      mae  mae_improvement_vs_max_baseline_pct  mae_improvement_vs_same_window_pct
+    Overflow     max_8192h annual_fourier 3.125203                             0.676883                            0.676883
+     POD_TBS           90d secular_growth 2.406345                             1.603340                            2.239982
+       TTStr           90d secular_growth 8.632593                             2.122967                            6.723866
+   Total_TBS           60d annual_fourier 6.527944                             2.402271                            1.510295
+Vertical_TBS           60d annual_fourier 5.702857                             2.228984                            1.585967
+  WAITINGADM     max_8192h  annual_memory 3.136142                             7.726727                            7.726727
