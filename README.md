@@ -208,7 +208,7 @@ The validated daily weather representation adds raw weather plus engineered snow
 - `P(on-call activation within 6h)`
 - `P(on-call activation within 8h)`
 
-The CatBoost models use current ED state, recent trajectory, staffing structure, physician identity, scheduled on-call physician identity, and calendar/weather context.
+The CatBoost models use current ED state, recent trajectory, staffing structure, physician identity, scheduled on-call physician identity, and calendar/weather context. The first hourly workflow run at or after 04:00 `America/Montreal` retrains the models once each morning; all other hourly runs reuse the compatible daily artifacts. Label changes, feature-schema changes, missing or mismatched artifacts, a training-version change, or `ED_FLOW_ONCALL_FORCE_RETRAIN=1` trigger immediate retraining.
 
 Initial runtime AUROC was approximately 0.91 / 0.88 / 0.85 for 4h / 6h / 8h. Independent calibration validation and label-completeness checks remain open work.
 

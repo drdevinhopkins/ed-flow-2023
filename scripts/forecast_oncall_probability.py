@@ -1,20 +1,27 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
-import pickle
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
 
 import dropbox
 import holidays
 import numpy as np
-import requests
 import pandas as pd
-from catboost import CatBoostClassifier
+import requests
+from catboost import CatBoostClassifier, CatBoostError
 from catboost.utils import get_gpu_device_count
-from sklearn.isotonic import IsotonicRegression
 from dotenv import load_dotenv
+from oncall_model_cache import (
+    CACHE_SCHEMA_VERSION,
+    cache_policy_from_env,
+    evaluate_model_cache,
+    latest_daily_retrain_boundary,
+)
+from sklearn.isotonic import IsotonicRegression
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 from utils import upload
 
@@ -30,8 +37,7 @@ HORIZONS = (4, 6, 8)
 VALIDATION_FRACTION = 0.20
 RANDOM_SEED = 42
 STRETCHER_CAPACITY = 53.0
-CATBOOST_GPU_COUNT = get_gpu_device_count()
-CATBOOST_TASK_TYPE = "GPU" if CATBOOST_GPU_COUNT > 0 else "CPU"
+MODEL_TRAINING_VERSION = "catboost-700-depth7-lr004-isotonic-v1"
 
 HOURLY_DATA_URL = (
     "https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/"
@@ -251,6 +257,7 @@ def train_horizon(
     features: list[str],
     categorical: list[str],
     horizon: int,
+    task_type: str,
 ) -> tuple[CatBoostClassifier, IsotonicRegression, dict[str, object]]:
     target = f"oncall_within_{horizon}h"
     cat_indices = [features.index(c) for c in categorical]
@@ -265,9 +272,9 @@ def train_horizon(
         "auto_class_weights": "Balanced",
         "verbose": False,
         "allow_writing_files": False,
-        "task_type": CATBOOST_TASK_TYPE,
+        "task_type": task_type,
     }
-    if CATBOOST_TASK_TYPE == "GPU":
+    if task_type == "GPU":
         # Use only logical device 0. On jgh000533svaps the wrapper sets
         # CUDA_VISIBLE_DEVICES=0, so this maps to physical GPU 0 and cannot
         # consume GPUs reserved for Scribbler.
@@ -325,13 +332,9 @@ def upload_outputs(output_paths: Iterable[str]) -> None:
 
 def main() -> None:
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    if CATBOOST_TASK_TYPE == "GPU":
-        print(
-            f"CatBoost training device: GPU 0 "
-            f"({CATBOOST_GPU_COUNT} visible CatBoost GPU(s))"
-        )
-    else:
-        print("CatBoost training device: CPU (no CatBoost-compatible GPU visible)")
+    policy = cache_policy_from_env(os.environ)
+    label_file_sha256 = hashlib.sha256(ONCALL_LABELS_PATH.read_bytes()).hexdigest()
+
     df = add_horizon_targets(add_time_and_trend_features(load_dataset()))
     current = df.iloc[[-1]].copy()
 
@@ -350,50 +353,155 @@ def main() -> None:
 
     for col in categorical:
         df[col] = df[col].fillna("Unknown").astype(str)
+        current[col] = current[col].fillna("Unknown").astype(str)
 
-    train, validation = chronological_split(df)
-    probabilities: list[dict[str, object]] = []
+    evaluation_time_utc = datetime.now(UTC)
+    decision = evaluate_model_cache(
+        MODEL_DIR,
+        expected_features=features,
+        expected_categorical=categorical,
+        expected_horizons=HORIZONS,
+        expected_label_sha256=label_file_sha256,
+        expected_model_training_version=MODEL_TRAINING_VERSION,
+        now_utc=evaluation_time_utc,
+        force_retrain=policy.force_retrain,
+    )
+
+    models: dict[int, CatBoostClassifier] = {}
+    calibrators: dict[int, IsotonicRegression] = {}
     validation_metrics: list[dict[str, object]] = []
+    calibration_thresholds: dict[str, dict[str, list[float]]] = {}
+    model_sha256: dict[str, str] = {}
+    probabilities: list[dict[str, object]] = []
+    using_cache = decision.use_cache
+    retrain_reason = decision.reason
 
-    for horizon in HORIZONS:
-        model, calibrator, metrics = train_horizon(
-            train, validation, features, categorical, horizon
+    if using_cache:
+        try:
+            cache_metadata = decision.metadata or {}
+            calibration_thresholds = cache_metadata["calibration_thresholds"]
+            for horizon in HORIZONS:
+                model = CatBoostClassifier()
+                model.load_model(str(MODEL_DIR / f"oncall_within_{horizon}h.cbm"))
+                thresholds = calibration_thresholds[str(horizon)]
+                calibrator = IsotonicRegression(
+                    out_of_bounds="clip", y_min=0.0, y_max=1.0
+                )
+                calibrator.fit(thresholds["x"], thresholds["y"])
+                models[horizon] = model
+                calibrators[horizon] = calibrator
+            validation_metrics = list(
+                (decision.metadata or {}).get("validation_metrics", [])
+            )
+            if len(validation_metrics) != len(HORIZONS):
+                raise ValueError("cached validation metrics are incomplete")
+            for horizon in HORIZONS:
+                raw = float(models[horizon].predict_proba(current[features])[:, 1][0])
+                calibrated = float(calibrators[horizon].predict([raw])[0])
+                probabilities.append(
+                    {
+                        TS_COL: current[TS_COL].iloc[0],
+                        "horizon_hours": horizon,
+                        "raw_probability": raw,
+                        "calibrated_probability": calibrated,
+                        "oncall_physician_id": current["oncall_physician_id"].iloc[0]
+                        if "oncall_physician_id" in current.columns
+                        else "Unknown",
+                    }
+                )
+        except (
+            CatBoostError,
+            IndexError,
+            KeyError,
+            OSError,
+            TypeError,
+            ValueError,
+        ) as exc:
+            retrain_reason = f"cache load failed: {exc}"
+            print(f"Model cache load failed; retraining: {exc}")
+            models.clear()
+            calibrators.clear()
+            validation_metrics.clear()
+            probabilities.clear()
+            using_cache = False
+
+    if using_cache:
+        trained_at = (decision.metadata or {}).get("trained_at_utc", "unknown")
+        boundary = latest_daily_retrain_boundary(evaluation_time_utc)
+        print(
+            "On-call model cache: reused "
+            f"(trained_at_utc={trained_at}; daily_boundary_utc={boundary.isoformat()})"
         )
-        raw = float(model.predict_proba(current[features])[:, 1][0])
-        calibrated = float(calibrator.predict([raw])[0])
+    else:
+        print(f"On-call model cache: retraining ({retrain_reason})")
+        gpu_count = get_gpu_device_count()
+        task_type = "GPU" if gpu_count > 0 else "CPU"
+        if task_type == "GPU":
+            print(
+                f"CatBoost training device: GPU 0 "
+                f"({gpu_count} visible CatBoost GPU(s))"
+            )
+        else:
+            print("CatBoost training device: CPU (no CatBoost-compatible GPU visible)")
 
-        model.save_model(str(MODEL_DIR / f"oncall_within_{horizon}h.cbm"))
-        with open(MODEL_DIR / f"oncall_within_{horizon}h_calibrator.pkl", "wb") as f:
-            pickle.dump(calibrator, f)
-
-        probabilities.append(
-            {
-                TS_COL: current[TS_COL].iloc[0],
-                "horizon_hours": horizon,
-                "raw_probability": raw,
-                "calibrated_probability": calibrated,
-                "oncall_physician_id": current["oncall_physician_id"].iloc[0]
-                if "oncall_physician_id" in current.columns else "Unknown",
+        train, validation = chronological_split(df)
+        for horizon in HORIZONS:
+            model, calibrator, metrics = train_horizon(
+                train, validation, features, categorical, horizon, task_type
+            )
+            model_path = MODEL_DIR / f"oncall_within_{horizon}h.cbm"
+            model.save_model(str(model_path))
+            model_sha256[str(horizon)] = hashlib.sha256(
+                model_path.read_bytes()
+            ).hexdigest()
+            calibration_thresholds[str(horizon)] = {
+                "x": calibrator.X_thresholds_.astype(float).tolist(),
+                "y": calibrator.y_thresholds_.astype(float).tolist(),
             }
-        )
-        validation_metrics.append(metrics)
+            models[horizon] = model
+            calibrators[horizon] = calibrator
+            validation_metrics.append(metrics)
+
+        for horizon in HORIZONS:
+            raw = float(models[horizon].predict_proba(current[features])[:, 1][0])
+            calibrated = float(calibrators[horizon].predict([raw])[0])
+            probabilities.append(
+                {
+                    TS_COL: current[TS_COL].iloc[0],
+                    "horizon_hours": horizon,
+                    "raw_probability": raw,
+                    "calibrated_probability": calibrated,
+                    "oncall_physician_id": current["oncall_physician_id"].iloc[0]
+                    if "oncall_physician_id" in current.columns
+                    else "Unknown",
+                }
+            )
+
+        metadata = {
+            "cache_schema_version": CACHE_SCHEMA_VERSION,
+            "trained_at_utc": datetime.now(UTC).isoformat(),
+            "training_data_latest": pd.Timestamp(df[TS_COL].max()).isoformat(),
+            "label_file_sha256": label_file_sha256,
+            "model_training_version": MODEL_TRAINING_VERSION,
+            "model_sha256": model_sha256,
+            "features": features,
+            "categorical_features": categorical,
+            "horizons_hours": list(HORIZONS),
+            "validation_fraction": VALIDATION_FRACTION,
+            "validation_metrics": validation_metrics,
+            "calibration_thresholds": calibration_thresholds,
+            "note": (
+                "Probabilities are calibrated on a chronological holdout. They predict historical "
+                "on-call activation behavior, not a causal requirement for additional staffing."
+            ),
+        }
+        metadata_tmp = MODEL_DIR / "metadata.json.tmp"
+        metadata_tmp.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+        metadata_tmp.replace(MODEL_DIR / "metadata.json")
 
     pd.DataFrame(probabilities).to_csv("oncall_need_probability.csv", index=False)
     pd.DataFrame(validation_metrics).to_csv("oncall_need_probability_validation.csv", index=False)
     upload_outputs(("oncall_need_probability.csv", "oncall_need_probability_validation.csv"))
-
-    metadata = {
-        "features": features,
-        "categorical_features": categorical,
-        "horizons_hours": list(HORIZONS),
-        "validation_fraction": VALIDATION_FRACTION,
-        "note": (
-            "Probabilities are calibrated on a chronological holdout. They predict historical "
-            "on-call activation behavior, not a causal requirement for additional staffing."
-        ),
-    }
-    with open(MODEL_DIR / "metadata.json", "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=2)
 
     print("Saved oncall_need_probability.csv")
     print("Saved oncall_need_probability_validation.csv")
