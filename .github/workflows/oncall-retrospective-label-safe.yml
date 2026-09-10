@@ -1,0 +1,128 @@
+name: Label-safe retrospective on-call replay
+
+on:
+  workflow_dispatch:
+    inputs:
+      pressure_percentile_threshold:
+        description: Historical percentile used to define high-risk episodes
+        required: false
+        default: "99"
+      positive_delta_quantile:
+        description: Positive untreated-delta quantile defining meaningful deterioration
+        required: false
+        default: "0.50"
+  push:
+    branches:
+      - experiment/oncall-retrospective-replay
+    paths:
+      - scripts/experiments/oncall/**
+      - hourly_oncall_used_for_busy_since_2022.csv
+      - .github/workflows/oncall-retrospective-label-safe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pandas numpy catboost scikit-learn holidays dropbox python-dotenv requests
+
+      - name: Verify explicit label coverage
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, 'scripts')
+          sys.path.insert(0, 'scripts/experiments/oncall')
+          from retrospective_oncall_label_coverage import explicit_label_bounds
+          start, end = explicit_label_bounds()
+          print(f'Explicit label coverage: {start} through {end}')
+          assert str(end) == '2026-05-15 06:00:00', end
+          PY
+
+      - name: Run label-safe activation replay
+        env:
+          PRESSURE_THRESHOLD: ${{ github.event.inputs.pressure_percentile_threshold || '99' }}
+        run: |
+          mkdir -p artifacts/oncall-label-safe
+          python scripts/experiments/oncall/retrospective_oncall_label_safe_runner.py \
+            retrospective_oncall_pressure_analysis \
+            --horizon 6 \
+            --pressure-percentile-threshold "$PRESSURE_THRESHOLD" \
+            --bad-outcome-quantile 0.90 \
+            --outcome-hours 6 \
+            --major-core-count 3 \
+            --matches 5 \
+            --top-n 30 \
+            --output-dir artifacts/oncall-label-safe
+
+      - name: Run label-safe availability-adjusted replay
+        env:
+          PRESSURE_THRESHOLD: ${{ github.event.inputs.pressure_percentile_threshold || '99' }}
+        run: |
+          python scripts/experiments/oncall/retrospective_oncall_label_safe_runner.py \
+            retrospective_oncall_availability_adjusted \
+            --horizon 6 \
+            --pressure-percentile-threshold "$PRESSURE_THRESHOLD" \
+            --bad-outcome-quantile 0.90 \
+            --outcome-hours 6 \
+            --major-core-count 3 \
+            --matches 5 \
+            --top-n 30 \
+            --late-call-hour 21 \
+            --min-rest-buffer-hours 10 \
+            --output-dir artifacts/oncall-label-safe
+
+      - name: Run label-safe deterioration replay
+        env:
+          PRESSURE_THRESHOLD: ${{ github.event.inputs.pressure_percentile_threshold || '99' }}
+          POSITIVE_DELTA_QUANTILE: ${{ github.event.inputs.positive_delta_quantile || '0.50' }}
+        run: |
+          python scripts/experiments/oncall/retrospective_oncall_label_safe_runner.py \
+            retrospective_oncall_deterioration_risk \
+            --risk-percentile-threshold "$PRESSURE_THRESHOLD" \
+            --bad-outcome-quantile 0.90 \
+            --positive-delta-quantile "$POSITIVE_DELTA_QUANTILE" \
+            --outcome-hours 6 \
+            --matches 5 \
+            --top-n 30 \
+            --late-call-hour 21 \
+            --min-rest-buffer-hours 10 \
+            --output-dir artifacts/oncall-label-safe
+
+      - name: Summarize label-safe results
+        if: always()
+        run: |
+          echo '## Label-safe retrospective replay' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Explicit on-call labels end at 2026-05-15 06:00. No later hour is treated as a verified negative.' >> "$GITHUB_STEP_SUMMARY"
+          for f in \
+            oncall_pressure_performance.csv \
+            oncall_availability_adjusted_performance.csv \
+            oncall_deterioration_risk_performance.csv \
+            oncall_deterioration_risk_thresholds.csv; do
+            if test -f "artifacts/oncall-label-safe/$f"; then
+              echo "### $f" >> "$GITHUB_STEP_SUMMARY"
+              echo '```csv' >> "$GITHUB_STEP_SUMMARY"
+              cat "artifacts/oncall-label-safe/$f" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - name: Upload label-safe outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oncall-retrospective-label-safe
+          path: artifacts/oncall-label-safe/
+          if-no-files-found: warn
