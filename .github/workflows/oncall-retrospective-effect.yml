@@ -1,0 +1,107 @@
+name: Retrospective on-call matched effect
+
+on:
+  workflow_dispatch:
+    inputs:
+      matches:
+        description: Matched controls per observed activation
+        required: false
+        default: "5"
+      max_hour_distance:
+        description: Maximum clock-hour distance for matched controls
+        required: false
+        default: "2"
+      max_date_gap_days:
+        description: Maximum calendar distance for matched controls
+        required: false
+        default: "120"
+      bootstrap_reps:
+        description: Bootstrap repetitions for observational-effect confidence intervals
+        required: false
+        default: "2000"
+  push:
+    branches:
+      - experiment/oncall-retrospective-replay
+    paths:
+      - scripts/experiments/oncall/retrospective_oncall_replay_dataset.py
+      - scripts/experiments/oncall/retrospective_oncall_matched_effect.py
+      - scripts/experiments/oncall/retrospective_oncall_label_coverage.py
+      - scripts/experiments/oncall/retrospective_oncall_schedule_state.py
+      - scripts/experiments/oncall/retrospective_oncall_availability_adjusted.py
+      - scripts/forecast_oncall_probability.py
+      - hourly_oncall_used_for_busy_since_2022.csv
+      - .github/workflows/oncall-retrospective-effect.yml
+
+permissions:
+  contents: read
+
+jobs:
+  matched-effect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install analysis dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pandas numpy catboost scikit-learn holidays dropbox python-dotenv requests
+
+      - name: Build label-safe replay dataset
+        run: |
+          mkdir -p artifacts/oncall-retrospective-effect
+          python scripts/experiments/oncall/retrospective_oncall_replay_dataset.py \
+            --output-dir artifacts/oncall-retrospective-effect
+
+      - name: Estimate matched observational effect
+        env:
+          MATCHES: ${{ github.event.inputs.matches || '5' }}
+          MAX_HOUR_DISTANCE: ${{ github.event.inputs.max_hour_distance || '2' }}
+          MAX_DATE_GAP_DAYS: ${{ github.event.inputs.max_date_gap_days || '120' }}
+          BOOTSTRAP_REPS: ${{ github.event.inputs.bootstrap_reps || '2000' }}
+        run: |
+          python scripts/experiments/oncall/retrospective_oncall_matched_effect.py \
+            --horizons 2,4,6 \
+            --matches "$MATCHES" \
+            --max-hour-distance "$MAX_HOUR_DISTANCE" \
+            --max-date-gap-days "$MAX_DATE_GAP_DAYS" \
+            --bootstrap-reps "$BOOTSTRAP_REPS" \
+            --output-dir artifacts/oncall-retrospective-effect
+
+      - name: Publish analysis summary
+        if: always()
+        run: |
+          if test -f artifacts/oncall-retrospective-effect/oncall_replay_dataset_summary.csv; then
+            echo '### Replay dataset semantics' >> "$GITHUB_STEP_SUMMARY"
+            echo '```csv' >> "$GITHUB_STEP_SUMMARY"
+            cat artifacts/oncall-retrospective-effect/oncall_replay_dataset_summary.csv >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if test -f artifacts/oncall-retrospective-effect/oncall_matched_effect_summary.csv; then
+            echo '### Matched observational effect' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Negative values mean less subsequent congestion versus matched non-activation controls. These are observational associations, not causal estimates.' >> "$GITHUB_STEP_SUMMARY"
+            echo '```csv' >> "$GITHUB_STEP_SUMMARY"
+            cat artifacts/oncall-retrospective-effect/oncall_matched_effect_summary.csv >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if test -f artifacts/oncall-retrospective-effect/oncall_matched_effect_balance.csv; then
+            echo '### Post-match balance diagnostics' >> "$GITHUB_STEP_SUMMARY"
+            echo '```csv' >> "$GITHUB_STEP_SUMMARY"
+            head -n 16 artifacts/oncall-retrospective-effect/oncall_matched_effect_balance.csv >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload matched-effect outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oncall-retrospective-effect
+          path: artifacts/oncall-retrospective-effect/
+          if-no-files-found: warn
