@@ -25,6 +25,7 @@ on:
     paths:
       - scripts/experiments/oncall/retrospective_oncall_replay_dataset.py
       - scripts/experiments/oncall/retrospective_oncall_matched_effect.py
+      - scripts/experiments/oncall/retrospective_oncall_matched_effect_robustness.py
       - scripts/experiments/oncall/retrospective_oncall_label_coverage.py
       - scripts/experiments/oncall/retrospective_oncall_schedule_state.py
       - scripts/experiments/oncall/retrospective_oncall_availability_adjusted.py
@@ -60,7 +61,7 @@ jobs:
           python scripts/experiments/oncall/retrospective_oncall_replay_dataset.py \
             --output-dir artifacts/oncall-retrospective-effect
 
-      - name: Estimate matched observational effect
+      - name: Estimate broad matched observational effect
         env:
           MATCHES: ${{ github.event.inputs.matches || '5' }}
           MAX_HOUR_DISTANCE: ${{ github.event.inputs.max_hour_distance || '2' }}
@@ -75,6 +76,14 @@ jobs:
             --bootstrap-reps "$BOOTSTRAP_REPS" \
             --output-dir artifacts/oncall-retrospective-effect
 
+      - name: Estimate pretrend-aware common-support effect
+        env:
+          BOOTSTRAP_REPS: ${{ github.event.inputs.bootstrap_reps || '2000' }}
+        run: |
+          python scripts/experiments/oncall/retrospective_oncall_matched_effect_robustness.py \
+            --bootstrap-reps "$BOOTSTRAP_REPS" \
+            --output-dir artifacts/oncall-retrospective-effect
+
       - name: Publish analysis summary
         if: always()
         run: |
@@ -85,16 +94,28 @@ jobs:
             echo '```' >> "$GITHUB_STEP_SUMMARY"
           fi
           if test -f artifacts/oncall-retrospective-effect/oncall_matched_effect_summary.csv; then
-            echo '### Matched observational effect' >> "$GITHUB_STEP_SUMMARY"
+            echo '### Broad matched observational effect' >> "$GITHUB_STEP_SUMMARY"
             echo 'Negative values mean less subsequent congestion versus matched non-activation controls. These are observational associations, not causal estimates.' >> "$GITHUB_STEP_SUMMARY"
             echo '```csv' >> "$GITHUB_STEP_SUMMARY"
             cat artifacts/oncall-retrospective-effect/oncall_matched_effect_summary.csv >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
           fi
-          if test -f artifacts/oncall-retrospective-effect/oncall_matched_effect_balance.csv; then
-            echo '### Post-match balance diagnostics' >> "$GITHUB_STEP_SUMMARY"
+          if test -f artifacts/oncall-retrospective-effect/oncall_matched_effect_robustness_summary.csv; then
+            echo '### Pretrend-aware common-support robustness analysis' >> "$GITHUB_STEP_SUMMARY"
+            echo 'This is the preferred interpretation because it tightens baseline state/staffing overlap and includes pre-activation trajectories.' >> "$GITHUB_STEP_SUMMARY"
             echo '```csv' >> "$GITHUB_STEP_SUMMARY"
-            head -n 16 artifacts/oncall-retrospective-effect/oncall_matched_effect_balance.csv >> "$GITHUB_STEP_SUMMARY"
+            cat artifacts/oncall-retrospective-effect/oncall_matched_effect_robustness_summary.csv >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if test -f artifacts/oncall-retrospective-effect/oncall_matched_effect_robustness_balance.csv; then
+            echo '### Robustness balance diagnostics' >> "$GITHUB_STEP_SUMMARY"
+            echo '```csv' >> "$GITHUB_STEP_SUMMARY"
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import pandas as pd
+          p = 'artifacts/oncall-retrospective-effect/oncall_matched_effect_robustness_balance.csv'
+          df = pd.read_csv(p)
+          print(df.sort_values(['spec','abs_smd_after'], ascending=[True,False]).groupby('spec').head(8).to_csv(index=False))
+          PY
             echo '```' >> "$GITHUB_STEP_SUMMARY"
           fi
 
