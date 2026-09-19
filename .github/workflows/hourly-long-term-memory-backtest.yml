@@ -1,0 +1,142 @@
+name: Hourly annual memory and growth backtest
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - chronos2-history-window-backtest
+    paths:
+      - '.github/workflows/hourly-long-term-memory-backtest.yml'
+      - 'chronos-requirements.txt'
+      - 'scripts/hourly_long_term_features.py'
+      - 'scripts/backtest_hourly_long_term_features.py'
+      - 'scripts/summarize_hourly_long_term_features.py'
+      - 'scripts/backtest_hourly_history_windows.py'
+      - 'scripts/backtest_covariate_ablation.py'
+      - 'tests/test_hourly_long_term_features.py'
+
+permissions:
+  contents: write
+
+jobs:
+  cutoff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        cutoff_index: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - name: Check out experiment branch
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: chronos-requirements.txt
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-hourly-long-term-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt') }}
+          restore-keys: |
+            huggingface-hourly-long-term-${{ runner.os }}-
+            huggingface-hourly-history-${{ runner.os }}-
+            huggingface-hourly-final-${{ runner.os }}-
+            huggingface-chronos2-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+
+      - name: Compile and test long-term features
+        run: |
+          python -m py_compile scripts/hourly_long_term_features.py
+          python -m py_compile scripts/backtest_hourly_long_term_features.py
+          python -m py_compile scripts/summarize_hourly_long_term_features.py
+          python tests/test_hourly_long_term_features.py
+
+      - name: Run cutoff shard
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          out="validation-output-hourly-long-term/cutoff-${{ matrix.cutoff_index }}"
+          mkdir -p "$out"
+          python scripts/backtest_hourly_long_term_features.py \
+            --horizon 24 \
+            --num-cutoffs 8 \
+            --spacing-hours 1008 \
+            --cutoff-index ${{ matrix.cutoff_index }} \
+            --windows 1440 2160 8192 \
+            --scenarios baseline annual_fourier annual_memory secular_growth annual_plus_growth \
+            --output-dir "$out" \
+            2>&1 | tee "$out/run.log"
+
+      - name: Upload cutoff shard
+        uses: actions/upload-artifact@v4
+        with:
+          name: hourly-long-term-cutoff-${{ matrix.cutoff_index }}
+          path: validation-output-hourly-long-term/cutoff-${{ matrix.cutoff_index }}/*
+          if-no-files-found: error
+
+  aggregate:
+    needs: cutoff
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out experiment branch
+        uses: actions/checkout@v7
+        with:
+          ref: chronos2-history-window-backtest
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install aggregation dependencies
+        run: pip install pandas numpy
+
+      - name: Download cutoff shards
+        uses: actions/download-artifact@v5
+        with:
+          pattern: hourly-long-term-cutoff-*
+          path: validation-output-hourly-long-term/parts
+
+      - name: Aggregate results
+        run: |
+          mkdir -p validation-output-hourly-long-term/aggregate
+          python scripts/summarize_hourly_long_term_features.py \
+            --input-root validation-output-hourly-long-term/parts \
+            --output-dir validation-output-hourly-long-term/aggregate \
+            | tee validation-output-hourly-long-term/aggregate/latest.log
+
+      - name: Upload aggregate results
+        uses: actions/upload-artifact@v4
+        with:
+          name: hourly-long-term-memory-growth-aggregate
+          path: validation-output-hourly-long-term/aggregate/*
+          if-no-files-found: error
+
+      - name: Record aggregate results on branch
+        run: |
+          dest=validation/hourly-long-term-memory-growth
+          mkdir -p "$dest"
+          for file in summary.csv by_horizon_band.csv by_cutoff.csv global_ranking.csv winners_by_target.csv winners_by_target_horizon_band.csv latest.log; do
+            cp "validation-output-hourly-long-term/aggregate/$file" "$dest/$file"
+          done
+          printf 'run_id=%s\nrun_number=%s\nsha=%s\n' \
+            '${{ github.run_id }}' '${{ github.run_number }}' '${{ github.sha }}' \
+            > "$dest/run-id.txt"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f "$dest"
+          if ! git diff --cached --quiet; then
+            git commit -m "Record hourly annual-memory growth results [skip ci]"
+            git push origin HEAD:chronos2-history-window-backtest
+          fi
