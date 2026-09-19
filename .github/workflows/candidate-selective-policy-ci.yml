@@ -1,0 +1,112 @@
+name: Candidate selective-policy CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_selective_policies.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_complete_issue_dates.py'
+      - '.github/workflows/candidate-selective-policy-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-candidate-selective-policies:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install lightweight dependencies
+        run: pip install pandas numpy
+
+      - name: Verify selective counterfactual and complete-date stability
+        run: |
+          python - <<'PY'
+          import sys
+          import pandas as pd
+          sys.path.insert(0, 'scripts/evaluation/prospective')
+          from summarize_shadow_candidate_selective_policies import summarize, complete_date_stability
+
+          rows = []
+          # Complete date: candidate is harmful at h1 but helpful at h2-h4, so the
+          # best selective policy should retain baseline at h1 and use candidate h2-h4.
+          for run in range(4):
+              for hour, baseline_error, candidate_error in [
+                  (1, 1.0, 3.0),
+                  (2, 3.0, 1.0),
+                  (3, 4.0, 1.0),
+                  (4, 5.0, 1.0),
+              ]:
+                  actual = 10.0
+                  rows.append({
+                      'forecast_run_id': f'complete-{run}',
+                      'forecast_issued_at': f'2026-08-25T{12+run:02d}:00:00Z',
+                      'target_ds': f'2026-08-26T{hour:02d}:00:00',
+                      'target_name': 'Workup_Delay_Burden',
+                      'horizon_band': 'h01_04',
+                      'horizon_hour': hour,
+                      'candidate_scenario': 'staffing_current',
+                      'candidate_route_active': True,
+                      'actual': actual,
+                      'baseline_prediction': actual + baseline_error,
+                      'candidate_prediction': actual + candidate_error,
+                  })
+
+          # Incomplete recent date deliberately reverses the pattern. It may affect the
+          # exploratory pooled ranking, but it must not enter the formal complete-date rank.
+          for run in range(4):
+              for hour, baseline_error, candidate_error in [
+                  (1, 3.0, 1.0),
+                  (2, 1.0, 4.0),
+                  (3, 1.0, 4.0),
+                  (4, 1.0, 4.0),
+              ]:
+                  actual = 10.0
+                  rows.append({
+                      'forecast_run_id': f'incomplete-{run}',
+                      'forecast_issued_at': f'2026-08-27T{12+run:02d}:00:00Z',
+                      'target_ds': f'2026-08-28T{hour:02d}:00:00',
+                      'target_name': 'Workup_Delay_Burden',
+                      'horizon_band': 'h01_04',
+                      'horizon_hour': hour,
+                      'candidate_scenario': 'staffing_current',
+                      'candidate_route_active': True,
+                      'actual': actual,
+                      'baseline_prediction': actual + baseline_error,
+                      'candidate_prediction': actual + candidate_error,
+                  })
+
+          pooled, by_date = summarize(pd.DataFrame(rows))
+          annotated, stability = complete_date_stability(
+              by_date, pd.Timestamp('2026-08-28T02:00:00-04:00')
+          )
+
+          target = pooled[
+              pooled.target_name.eq('Workup_Delay_Burden')
+              & pooled.horizon_band.eq('h01_04')
+          ]
+          assert not target.empty
+          assert annotated.forecast_issue_date.nunique() == 2
+          complete_dates = annotated.loc[annotated.issue_date_complete, 'forecast_issue_date'].unique()
+          assert list(complete_dates) == ['2026-08-25'], complete_dates
+
+          formal = stability[
+              stability.target_name.eq('Workup_Delay_Burden')
+              & stability.horizon_band.eq('h01_04')
+          ]
+          winner = formal.sort_values(['complete_date_rank', 'policy']).iloc[0]
+          assert winner.policy == 'candidate_hours_2_3_4', winner
+          assert winner.n_complete_issue_dates == 1
+          assert winner.mean_issue_date_mae_delta > 0, winner
+          assert winner.n_unique_target_hours == 4
+          print(formal[['policy','mean_issue_date_mae_delta','complete_date_rank']].head().to_string(index=False))
+          PY

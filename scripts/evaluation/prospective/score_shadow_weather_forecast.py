@@ -8,9 +8,14 @@ artificially depress weather win rate.
 
 Directional accuracy criteria are reported immediately, but are deliberately separated
 from evidence readiness. A weather route is not considered promotion-evaluable until its
-prospective observations span at least 56 days and at least 28 distinct issue dates.
-When forecast intervals are available, weather interval coverage must also remain within
-5 percentage points of the paired baseline coverage before directional criteria can pass.
+prospective observations span at least 56 days, cover at least 28 distinct issue dates,
+include at least 100 matured rows where weather routing was actually active, and cover at
+least 100 unique realized target hours. The unique-hour requirement prevents overlapping
+intraday forecast runs from making repeated predictions for the same ED hour look like
+independent evidence. When forecast intervals are available, weather interval coverage
+must also remain within 5 percentage points of the paired baseline coverage. Weather must
+also avoid materially worsening systematic signed-error bias: absolute bias deterioration
+may not exceed 10% of the paired baseline MAE.
 """
 
 from __future__ import annotations
@@ -30,7 +35,10 @@ import backtest_covariate_ablation as base  # noqa: E402
 
 MIN_PROSPECTIVE_SPAN_DAYS = 56
 MIN_ISSUE_DATES = 28
+MIN_ACTIVE_ROWS = 100
+MIN_UNIQUE_TARGET_HOURS = 100
 MAX_INTERVAL_COVERAGE_DROP = 0.05
+MAX_ABS_BIAS_WORSENING_FRACTION_OF_BASELINE_MAE = 0.10
 
 
 def parse_args() -> argparse.Namespace:
@@ -50,6 +58,7 @@ def _summarize(detail: pd.DataFrame) -> pd.DataFrame:
         "n": ("actual", "size"),
         "n_runs": ("forecast_run_id", "nunique"),
         "n_issue_dates": ("forecast_issue_date", "nunique"),
+        "n_unique_target_hours": ("ds", "nunique"),
         "first_issued_at": ("forecast_issued_at", "min"),
         "last_issued_at": ("forecast_issued_at", "max"),
         "baseline_mae": ("baseline_absolute_error", "mean"),
@@ -95,16 +104,31 @@ def _summarize(detail: pd.DataFrame) -> pd.DataFrame:
         summary["interval_coverage_delta"] = np.nan
         summary["interval_coverage_ok"] = True
 
+    summary["baseline_abs_bias"] = summary["baseline_bias"].abs()
+    summary["weather_abs_bias"] = summary["weather_bias"].abs()
+    summary["absolute_bias_worsening"] = (
+        summary["weather_abs_bias"] - summary["baseline_abs_bias"]
+    )
+    summary["bias_worsening_tolerance"] = (
+        summary["baseline_mae"] * MAX_ABS_BIAS_WORSENING_FRACTION_OF_BASELINE_MAE
+    )
+    summary["bias_not_materially_worse"] = (
+        summary["absolute_bias_worsening"] <= summary["bias_worsening_tolerance"]
+    )
+
     summary["directional_criteria_met"] = (
         (summary["weather_mae"] < summary["baseline_mae"])
         & (summary["mean_paired_mae_delta"] > 0)
         & (summary["median_paired_mae_delta"] > 0)
         & (summary["weather_win_rate"] >= 0.55)
         & summary["interval_coverage_ok"]
+        & summary["bias_not_materially_worse"]
     )
     summary["promotion_evidence_ready"] = (
         (summary["prospective_span_days"] >= MIN_PROSPECTIVE_SPAN_DAYS)
         & (summary["n_issue_dates"] >= MIN_ISSUE_DATES)
+        & (summary["n"] >= MIN_ACTIVE_ROWS)
+        & (summary["n_unique_target_hours"] >= MIN_UNIQUE_TARGET_HOURS)
     )
     summary["promotion_status"] = np.select(
         [
