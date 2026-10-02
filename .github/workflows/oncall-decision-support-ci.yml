@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install lightweight test dependencies
-        run: python -m pip install pytest pandas requests
+        run: python -m pip install pytest pandas requests dropbox
       - name: Verify workload, label, cache and blurb safeguards
         run: >-
           python -m pytest -q
