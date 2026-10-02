@@ -31,6 +31,12 @@ The first run after deployment retrains once to create versioned cache metadata.
 
 ## Interpretation
 
-These probabilities estimate historical **activation behavior** under similar operational states. They should not be interpreted as a causal or normative statement that extra staffing is objectively required. That question is handled separately by the counterfactual impact model in `scripts/forecast_oncall_impact.py`.
+These probabilities estimate historical **activation behavior** under similar operational states. They should not be interpreted as a causal or normative statement that extra staffing is objectively required. The impact model is also associational and cannot establish that question reliably. Operational staffing review is handled independently in `scripts/automation/compute_blurb_facts.py`; neither model can veto a workload trigger.
 
-The historical label merge currently assumes that a missing row means no activation. If label capture was incomplete during any period, the training interval should be restricted to dates with verified-complete labels before deployment.
+Missing activation labels remain unknown. Training uses explicit inactive decision points with every clock hour in all 4/6/8-hour outcome windows observed. Gaps and the trailing unlabelled interval are excluded; zero is never imputed. The live origin remains the latest joined input hour, even when its activation status is unknown. Activation-history lag features retain missing values. Changing the label handling increments the training-spec version, invalidating older cached models.
+
+The output adds `activation_label_latest`, `current_activation_status`, and `probability_semantics`. Unknown live status must be checked operationally before interpreting a pre-activation probability. These fields do not infer activation from schedule membership.
+
+On 2026-10-01 the committed file contained 38,287 contiguous hourly labels from 2022-01-01 through **2026-05-15 06:00**. Complete timestamps do not verify capture accuracy. The recent activation history still needs to be obtained and independently verified. The impact script publishes an explicit unavailable status when its activation history has unknown hours, rather than inventing inactive states or moving its forecast origin back to the label cutoff.
+
+See [on-call staffing review](oncall_staffing_review.md) for provisional workload triggers, the observed-state replay, limitations and deployment checks. Independent probability calibration and causal validation of impact estimates remain open.

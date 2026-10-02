@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import pandas as pd
 import torch
 from chronos import BaseChronosPipeline, Chronos2Pipeline
+from oncall_labels import merge_activation_labels
 from utils import upload
 
 load_dotenv()
@@ -260,17 +261,23 @@ def load_inputs() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
 def add_historical_oncall_activation(hourly: pd.DataFrame) -> pd.DataFrame:
     labels = pd.read_csv(ONCALL_LABELS_PATH)
-    labels[TS_COL] = pd.to_datetime(labels[TS_COL], errors="coerce").dt.floor("h")
-    labels = labels.rename(columns={"oncall-used-for-busy": "oncall_active"})
-    labels = labels[[TS_COL, "oncall_active"]].dropna(subset=[TS_COL])
+    return merge_activation_labels(hourly, labels)
 
-    out = hourly.merge(labels, on=TS_COL, how="left")
 
-    # This assumes a missing row in the label file means "on-call was not activated".
-    # If historical label capture was incomplete, restrict the training window before using
-    # this script; do not silently train on an incompletely observed period.
-    out["oncall_active"] = out["oncall_active"].fillna(0).astype(float)
-    return out
+def publish_unavailable_impact(cutoff: pd.Timestamp, reason: str) -> None:
+    """Replace stale estimates with an explicit status; keep the hourly run alive."""
+    pd.DataFrame([{
+        "forecast_origin": cutoff, "target_name": "unavailable",
+        "estimated_improvement": float("nan"), "status": "unavailable",
+        "reason": reason,
+        "scenario": None, "oncall_active_hours": None, "hours_ahead": None,
+        "no_oncall_prediction": None, "with_oncall_prediction": None,
+    }]).to_csv("oncall_impact_summary.csv", index=False)
+    pd.DataFrame(columns=[TS_COL, "target_name", "scenario", "oncall_active_hours",
+                          "predictions", "0.1", "0.5", "0.9", "no_oncall_prediction", "estimated_improvement",
+                          "hours_ahead"]).to_csv("oncall_impact_forecast.csv", index=False)
+    upload_outputs(("oncall_impact_forecast.csv", "oncall_impact_summary.csv"))
+    print(f"On-call impact unavailable: {reason}")
 
 
 def make_future_base(
@@ -438,6 +445,17 @@ def main() -> None:
     )
     history = regularize_history(history, targets)
 
+    # Exclude hours preceding the first observed label, but never truncate the
+    # live origin back to May to hide missing recent labels.
+    first_label = history.loc[history["oncall_active"].notna(), TS_COL].min()
+    if pd.isna(first_label):
+        publish_unavailable_impact(history[TS_COL].max(), "No observed activation labels")
+        return
+    history = history[history[TS_COL] >= first_label].copy()
+    if history["oncall_active"].isna().any():
+        publish_unavailable_impact(history[TS_COL].max(), "Activation history has unknown hours")
+        return
+
     # Keep synthetic hourly rows so Chronos can infer a strict frequency. Fill each
     # missing covariate according to its semantics instead of dropping timestamps.
     for column in history.columns:
@@ -452,7 +470,7 @@ def main() -> None:
             history.loc[missing, column] = "None"
         elif column in {"is_qc_holiday", "is_jewish_holiday"}:
             continue
-        elif column == "oncall_active" or column.startswith("n_"):
+        elif column.startswith("n_"):
             history.loc[missing, column] = 0.0
         elif pd.api.types.is_numeric_dtype(history[column]):
             history[column] = pd.to_numeric(history[column], errors="coerce").interpolate(
@@ -482,6 +500,8 @@ def main() -> None:
     detail, summary = build_comparison(all_forecasts)
 
     detail.to_csv("oncall_impact_forecast.csv", index=False)
+    summary["forecast_origin"] = cutoff
+    summary["status"] = "associational"
     summary.to_csv("oncall_impact_summary.csv", index=False)
     upload_outputs(("oncall_impact_forecast.csv", "oncall_impact_summary.csv"))
 

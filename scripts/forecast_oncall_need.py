@@ -3,6 +3,7 @@ import pandas as pd
 import os
 from dotenv import load_dotenv
 import holidays
+from oncall_labels import merge_activation_labels
 
 load_dotenv()
 
@@ -21,7 +22,7 @@ def regularize_hourly(g: pd.DataFrame) -> pd.DataFrame:
     g[ID_COL] = sid
     for col in TARGETS:
         if col in g.columns:
-            g[col] = pd.to_numeric(g[col], errors="coerce").ffill().bfill()
+            g[col] = pd.to_numeric(g[col], errors="coerce")
     return g.reset_index()
 
 def add_holiday_flags(
@@ -89,11 +90,11 @@ TARGETS = ["oncall_busy"]
 # Load On-Call Busy Labels
 oncall_labels = pd.read_csv('../hourly_oncall_used_for_busy_since_2022.csv')
 oncall_labels['ds'] = pd.to_datetime(oncall_labels['ds'])
-oncall_labels = oncall_labels.rename(columns={'oncall-used-for-busy': 'oncall_busy'})
-
 # Merge on-call labels into main df
-df = df.merge(oncall_labels, on='ds', how='left').fillna({'oncall_busy': 0})
+df = merge_activation_labels(df, oncall_labels).rename(columns={'oncall_active': 'oncall_busy'})
 df['oncall_busy'] = df['oncall_busy'].astype(float)
+if df['oncall_busy'].isna().any():
+    raise ValueError('Legacy on-call forecast requires complete observed activation labels; missing is unknown.')
 
 df = df.copy()
 df[TS_COL] = pd.to_datetime(df[TS_COL], errors="coerce")

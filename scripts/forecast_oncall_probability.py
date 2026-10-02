@@ -15,6 +15,7 @@ import requests
 from catboost import CatBoostClassifier, CatBoostError
 from catboost.utils import get_gpu_device_count
 from dotenv import load_dotenv
+from oncall_labels import add_activation_targets, merge_activation_labels
 from oncall_model_cache import (
     CACHE_SCHEMA_VERSION,
     cache_policy_from_env,
@@ -37,7 +38,7 @@ HORIZONS = (4, 6, 8)
 VALIDATION_FRACTION = 0.20
 RANDOM_SEED = 42
 STRETCHER_CAPACITY = 53.0
-MODEL_TRAINING_VERSION = "catboost-700-depth7-lr004-isotonic-v1"
+MODEL_TRAINING_VERSION = "catboost-700-depth7-lr004-isotonic-explicit-labels-v2"
 
 HOURLY_DATA_URL = (
     "https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/"
@@ -167,17 +168,8 @@ def load_dataset() -> pd.DataFrame:
     weather = weather.dropna(subset=[TS_COL]).sort_values(TS_COL)
 
     labels = pd.read_csv(ONCALL_LABELS_PATH)
-    labels[TS_COL] = pd.to_datetime(labels[TS_COL], errors="coerce").dt.floor("h")
-    labels = labels.rename(columns={"oncall-used-for-busy": "oncall_active"})
-    labels = labels[[TS_COL, "oncall_active"]].dropna(subset=[TS_COL])
-
     df = hourly.merge(staffing, on=TS_COL, how="inner").merge(weather, on=TS_COL, how="inner")
-    df = df.merge(labels, on=TS_COL, how="left")
-
-    # Assumption inherited from the source label design: no label row means no activation.
-    # If the capture process was incomplete for any historical interval, restrict the dataset
-    # to the verified-complete period before interpreting the probabilities operationally.
-    df["oncall_active"] = pd.to_numeric(df["oncall_active"], errors="coerce").fillna(0).clip(0, 1)
+    df = merge_activation_labels(df, labels)
     df[ID_COL] = SERIES_ID
     df = add_holiday_flags(df)
     return df.sort_values(TS_COL).drop_duplicates(TS_COL, keep="last").reset_index(drop=True)
@@ -207,18 +199,12 @@ def add_time_and_trend_features(df: pd.DataFrame) -> pd.DataFrame:
         out[f"{col}_mean4"] = values.shift(1).rolling(4, min_periods=1).mean()
 
     out["oncall_active_lag1"] = out["oncall_active"].shift(1)
-    out["oncall_activations_prior_24h"] = out["oncall_active"].shift(1).rolling(24, min_periods=1).sum()
+    out["oncall_activations_prior_24h"] = out["oncall_active"].shift(1).rolling(24, min_periods=24).sum()
     return out
 
 
 def add_horizon_targets(df: pd.DataFrame) -> pd.DataFrame:
-    out = df.copy()
-    active = out["oncall_active"].astype(int)
-    for horizon in HORIZONS:
-        future_cols = [active.shift(-step) for step in range(1, horizon + 1)]
-        target_frame = pd.concat(future_cols, axis=1)
-        out[f"oncall_within_{horizon}h"] = target_frame.max(axis=1, skipna=False)
-    return out
+    return add_activation_targets(df, HORIZONS)
 
 
 def feature_columns(df: pd.DataFrame) -> tuple[list[str], list[str]]:
@@ -335,8 +321,17 @@ def main() -> None:
     policy = cache_policy_from_env(os.environ)
     label_file_sha256 = hashlib.sha256(ONCALL_LABELS_PATH.read_bytes()).hexdigest()
 
-    df = add_horizon_targets(add_time_and_trend_features(load_dataset()))
+    dataset = load_dataset()
+    # Reindex before lag/rolling features so gaps are clock hours, not compressed rows.
+    dataset = dataset.set_index(TS_COL).reindex(pd.date_range(
+        dataset[TS_COL].min(), dataset[TS_COL].max(), freq="h"
+    )).rename_axis(TS_COL).reset_index()
+    df = add_horizon_targets(add_time_and_trend_features(dataset))
     current = df.iloc[[-1]].copy()
+    labels_latest = df.loc[df["oncall_active"].notna(), TS_COL].max()
+    current_activation = current["oncall_active"].iloc[0]
+    activation_status = ("unknown" if pd.isna(current_activation) else
+                         "active" if current_activation == 1 else "inactive")
 
     # A decision-support probability is only meaningful before activation. Rows where on-call
     # is already active are excluded from model training, but the live row is selected from the
@@ -499,6 +494,10 @@ def main() -> None:
         metadata_tmp.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         metadata_tmp.replace(MODEL_DIR / "metadata.json")
 
+    for row in probabilities:
+        row["activation_label_latest"] = labels_latest
+        row["current_activation_status"] = activation_status
+        row["probability_semantics"] = "historical_activation_behavior"
     pd.DataFrame(probabilities).to_csv("oncall_need_probability.csv", index=False)
     pd.DataFrame(validation_metrics).to_csv("oncall_need_probability_validation.csv", index=False)
     upload_outputs(("oncall_need_probability.csv", "oncall_need_probability_validation.csv"))

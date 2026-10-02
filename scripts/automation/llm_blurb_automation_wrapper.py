@@ -59,6 +59,9 @@ def _json_facts(facts: dict) -> dict:
         "daily_inflow": facts.get("daily_inflow"),
         "anomalies": facts.get("anomalies", []),
         "oncall_recommendation": facts.get("oncall_recommendation"),
+        "staffing_review": facts.get("staffing_review"),
+        "remaining_today_peak_tbs": facts.get("remaining_today_peak_tbs"),
+        "remaining_today_peak_horizon": facts.get("remaining_today_peak_horizon"),
         "reassignment_trigger": facts.get("reassign_trigger"),
         "pod_pressure": facts.get("pod_pressure"),
     }
@@ -99,7 +102,8 @@ def llm_rewrite(facts: dict, deterministic_blurb: str, history: list[str]) -> st
             "Use about floor(Overflow / 7) overflow rooms when translating overflow.",
             "Put the midnight range in brackets after the midnight TBS number.",
             "If daily_inflow is present, mention the predicted total arrivals by midnight and, when useful, the expected additional arrivals.",
-            "If peak_time is on the next local calendar day, say today's peak appears to have passed.",
+            "Describe remaining_today_peak_tbs when supplied. A next-day peak does not establish that today's peak has passed or that pressure will resolve.",
+            "Preserve the staffing review action and availability uncertainty from the deterministic draft. Never reassure that staffing is adequate when review is required.",
             "Mention every listed current anomaly and every listed next_4h anomaly unless it is already clearly covered.",
             "Do not mention anomaly thresholds or other technical detection terms; say that the metric is outside its usual range or unusually high, using the supplied value.",
             "Do not mention individual physicians or weekend L1.",
@@ -130,6 +134,17 @@ def validate_blurb(candidate: str, facts: dict, deterministic_blurb: str) -> Non
     if "\n" in candidate or candidate.lower().startswith(("follow-up:", "blurb:", "handoff:")):
         raise ValueError("LLM blurb contains a heading or multiple text blocks")
     lowered = candidate.lower()
+    if "peak appears to have passed" in lowered:
+        raise ValueError("unsupported reassurance about today's peak")
+    if facts.get("oncall_recommendation") == "STAFFING REVIEW REQUIRED":
+        if "staffing review" not in lowered or any(term in lowered for term in (
+            "not currently needed", "not indicated", "no staffing change", "no staffing review"
+        )):
+            raise ValueError("required staffing review omitted or contradicted")
+        # Keep the exact deterministic action, including availability/late-hour
+        # qualifications. Fall back to the deterministic blurb on a mismatch.
+        if deterministic.staffing_review_sentence(facts) not in candidate:
+            raise ValueError("staffing review qualifications changed")
     forbidden = ("calibrated", "feature effect", "causal", "raw csv", "overlap shift")
     if any(term in lowered for term in forbidden):
         raise ValueError("LLM blurb contains forbidden technical wording")

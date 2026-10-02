@@ -1,0 +1,42 @@
+name: On-call decision support safeguards
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/oncall_labels.py'
+      - 'scripts/forecast_oncall*.py'
+      - 'scripts/automation/**'
+      - 'tests/test_oncall*.py'
+      - 'tests/test*blurb*.py'
+      - '.github/workflows/oncall-decision-support-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safeguards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install lightweight test dependencies
+        run: python -m pip install pytest pandas requests
+      - name: Verify workload, label, cache and blurb safeguards
+        run: >-
+          python -m pytest -q
+          tests/test_oncall_decision_support.py
+          tests/test_blurb_automation.py
+          tests/test_llm_blurb_automation.py
+          tests/test_blurb_workflow.py
+          tests/test_oncall_model_cache.py
+      - name: Compile changed on-call model entry points
+        run: >-
+          python -m py_compile
+          scripts/oncall_labels.py
+          scripts/forecast_oncall_probability.py
+          scripts/forecast_oncall_impact.py
+          scripts/forecast_oncall_need.py
+          scripts/evaluation/replay_oncall_review.py
