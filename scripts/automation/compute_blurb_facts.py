@@ -55,6 +55,72 @@ def _localize(ts):
     return ts.dt.tz_localize("America/Montreal") if ts.dt.tz is None else ts.dt.tz_convert("America/Montreal")
 
 
+def schedule_context(shifts: pd.DataFrame, data_hour: pd.Timestamp) -> dict:
+    """Schedule evidence is separate from confirmation of on-call availability."""
+    shifts = shifts.copy()
+    for column in ("shift_start", "shift_end"):
+        times = pd.to_datetime(shifts[column])
+        shifts[column] = (times.dt.tz_localize("America/Montreal", ambiguous="NaT", nonexistent="NaT")
+                          if times.dt.tz is None else times.dt.tz_convert("America/Montreal"))
+    is_oncall = shifts["shift_short_name"].isin(["OC1", "OC2", "WOC1", "WOC2", "WOC3"])
+    is_teaching = shifts["shift_short_name"].isin(["H1"])
+    now = shifts[(shifts.shift_start <= data_hour) & (shifts.shift_end > data_hour)]
+    oncall = now[is_oncall.loc[now.index]]
+    regular = now[~is_oncall.loc[now.index] & ~is_teaching.loc[now.index]]
+    later = shifts[(shifts.shift_start <= data_hour + pd.Timedelta(hours=4))
+                   & (shifts.shift_end > data_hour + pd.Timedelta(hours=4))
+                   & ~is_oncall & ~is_teaching]
+    next_day = data_hour.normalize() + pd.DateOffset(days=1)
+    morning = shifts[(shifts.shift_start >= next_day)
+                     & (shifts.shift_start < next_day + pd.Timedelta(hours=12)) & ~is_oncall]
+    return {
+        "scheduled_working_physicians_now": int(regular.user_id.nunique()),
+        "scheduled_working_physicians_in_4h": int(later.user_id.nunique()),
+        "scheduled_oncall_slots_now": int(oncall.user_id.nunique()),
+        "oncall_also_scheduled_regular_shift": bool(set(oncall.user_id) & set(regular.user_id)),
+        "oncall_has_next_morning_shift": bool(set(oncall.user_id) & set(morning.user_id)),
+        "availability": "unknown",
+    }
+
+
+def staffing_review(history: pd.DataFrame, future: pd.DataFrame,
+                    data_hour: pd.Timestamp, context: dict | None = None) -> dict:
+    """Provisional workload escalation, independent of activation/impact models.
+
+    Frames contain canonical Total_TBS only, indexed by local ds. Outcomes after
+    the decision hour must never appear in history. Availability is explicitly
+    confirmed context, not inferred from an empty schedule slot.
+    """
+    context = context or {}
+    recent = history.loc[history.index <= data_hour, "actual"]
+    recent = recent.reindex(pd.date_range(data_hour - pd.Timedelta(hours=2), data_hour, freq="h"))
+    now = recent.iloc[-1]
+    next_hours = future["forecast"].reindex(pd.date_range(
+        data_hour + pd.Timedelta(hours=1), periods=6, freq="h"
+    ))
+    count = int(next_hours.ge(45).sum())
+    reasons = []
+    if pd.notna(now) and now >= 50:
+        reasons.append(f"Current treatment backlog is {now:.0f} TBS (review threshold 50)")
+    if recent.notna().all() and recent.ge(45).all():
+        reasons.append("TBS has been at least 45 at three consecutive hourly observations")
+    if recent.notna().all() and now >= 40 and now - recent.iloc[0] >= 10:
+        reasons.append(f"TBS rose by {now - recent.iloc[0]:.0f} over two hours to {now:.0f}")
+    if next_hours.notna().all() and count >= 3:
+        reasons.append(f"Forecast TBS is at least 45 for {count} of the next 6 hourly endpoints")
+    availability = context.get("availability", "unknown")
+    if availability not in {"available", "unavailable", "already_active", "unknown"}:
+        availability = "unknown"
+    late = data_hour.hour >= 21 or data_hour.hour < 7
+    return {
+        "required": bool(reasons), "reasons": reasons, "thresholds_provisional": True,
+        "forecast_hours_ge_45_next_6h": count,
+        "forecast_hours_available_next_6h": int(next_hours.notna().sum()),
+        "availability": availability, "late_activation_window": late,
+        "schedule": context.get("schedule", {}),
+    }
+
+
 def compute(scratch: Path, data_hour: pd.Timestamp | None = None) -> dict:
     """Core readiness + fact computation.
 
@@ -92,18 +158,35 @@ def compute(scratch: Path, data_hour: pd.Timestamp | None = None) -> dict:
     if missing:
         failures.append(f"missing targets: {missing}")
 
-    onp = pd.read_csv(scratch / "oncall_need_probability.csv")
-    onp["ds"] = _localize(pd.to_datetime(onp["ds"]))
-    onp_hour = onp["ds"].max() if len(onp) else None
-    oni = pd.read_csv(scratch / "oncall_impact_summary.csv")
+    model_warnings = []
+    try:
+        onp = pd.read_csv(scratch / "oncall_need_probability.csv")
+        if not {"ds", "horizon_hours", "calibrated_probability"}.issubset(onp.columns):
+            raise ValueError("Missing probability fields")
+        onp["ds"] = _localize(pd.to_datetime(onp["ds"]))
+        onp = onp[onp["ds"].eq(data_hour)].copy()
+        onp["horizon_hours"] = pd.to_numeric(onp["horizon_hours"], errors="coerce")
+        onp["calibrated_probability"] = pd.to_numeric(onp["calibrated_probability"], errors="coerce")
+        onp = onp[onp.horizon_hours.isin([4, 6, 8]) & onp.calibrated_probability.between(0, 1)]
+        if onp.horizon_hours.duplicated().any():
+            raise ValueError("Duplicate probability horizons")
+        if not onp["ds"].eq(data_hour).any():
+            model_warnings.append("Activation probability is stale or unavailable")
+            onp = onp.iloc[:0]
+    except (OSError, ValueError, KeyError):
+        onp = pd.DataFrame(columns=["ds", "horizon_hours", "calibrated_probability"])
+        model_warnings.append("Activation probability is unavailable")
+    try:
+        oni = pd.read_csv(scratch / "oncall_impact_summary.csv")
+    except (OSError, ValueError):
+        oni = pd.DataFrame(columns=["estimated_improvement", "target_name"])
+        model_warnings.append("Associational impact is unavailable")
 
     # readiness: key hour must match what the data actually describes
     if cur_ds != data_hour:
         failures.append(f"current.csv latest hour {cur_ds} != data hour {data_hour}")
     if origin != data_hour:
         failures.append(f"forecast origin {origin} != data hour {data_hour}")
-    if onp_hour is None or onp_hour != data_hour:
-        failures.append(f"oncall need file hour {onp_hour} != data hour {data_hour}")
 
     result = {
         "ready": not failures, "failures": failures,
@@ -115,6 +198,7 @@ def compute(scratch: Path, data_hour: pd.Timestamp | None = None) -> dict:
         "oncall_all_low": False, "reassign_trigger": False, "pod_pressure": False,
         "oncall_recommendation": "NO CLEAR RECOMMENDATION",
         "oncall_probabilities": {}, "oncall_impact_summary": {},
+        "model_warnings": model_warnings,
     }
     if failures:
         return result
@@ -122,6 +206,11 @@ def compute(scratch: Path, data_hour: pd.Timestamp | None = None) -> dict:
     obs = f[(f["row_type"] == "observed") & (f["ds_local"] == data_hour)]
     for _, r in obs.iterrows():
         result["now"][r["target_name"]] = float(r["actual"])
+    missing_observed = [t for t in TARGETS if t not in result["now"] or pd.isna(result["now"][t])]
+    if missing_observed:
+        result["failures"].append(f"missing current canonical values: {missing_observed}")
+        result["ready"] = False
+        return result
     result["ttstr_occupancy"] = result["now"].get("TTStr", 0) / STRETCHER_CAPACITY * 100
 
     fut = f[(f["row_type"] == "forecast") & (f["horizon_hour"] > 0) & (f["horizon_hour"] <= 24)]
@@ -148,7 +237,34 @@ def compute(scratch: Path, data_hour: pd.Timestamp | None = None) -> dict:
         result["peak_horizon"] = int(pk.iloc[0]["horizon_hour"])
         result["peak_time"] = pk.iloc[0]["ds_local"]
 
-    midnight = (data_hour.normalize() + pd.Timedelta(hours=24)).tz_convert("America/Montreal")
+    today = fut[(fut["target_name"] == "Total_TBS")
+                & (fut["ds_local"].dt.date == data_hour.date())]
+    if not today.empty:
+        today_peak = today.sort_values("forecast", ascending=False).iloc[0]
+        result["remaining_today_peak_tbs"] = float(today_peak["forecast"])
+        result["remaining_today_peak_horizon"] = int(today_peak["horizon_hour"])
+    history_tbs = f[(f["row_type"] == "observed") & f["target_name"].eq("Total_TBS")].set_index("ds_local")
+    future_tbs = fut[fut["target_name"].eq("Total_TBS")].set_index("ds_local")
+    # Optional manually confirmed context is accepted only for the exact origin.
+    context_path = scratch / "oncall_operational_context.json"
+    try:
+        context = json.loads(context_path.read_text()) if context_path.exists() else {}
+        if not isinstance(context, dict):
+            raise ValueError("Operational context must be an object")
+    except (OSError, ValueError):
+        context = {}
+        result["model_warnings"].append("Confirmed operational context is unavailable")
+    if str(context.get("data_hour")) != data_hour.isoformat():
+        context = {}
+    schedule_path = scratch / "all_shifts.csv"
+    if schedule_path.exists():
+        try:
+            context["schedule"] = schedule_context(pd.read_csv(schedule_path), data_hour)
+        except (OSError, ValueError, KeyError):
+            result["model_warnings"].append("Staffing schedule context is unavailable")
+    result["staffing_review"] = staffing_review(history_tbs, future_tbs, data_hour, context)
+
+    midnight = data_hour.normalize() + pd.DateOffset(days=1)
     mid = f[(f["target_name"] == "Total_TBS") & (f["row_type"] == "forecast") & (f["ds_local"] == midnight)]
     if not mid.empty:
         mv = float(mid.iloc[0]["forecast"])
@@ -177,18 +293,33 @@ def compute(scratch: Path, data_hour: pd.Timestamp | None = None) -> dict:
         result["reassign_trigger"] = (v75 and g75) or ((v90 or g90) and not pod_pressure)
 
     if len(onp):
+        if "current_activation_status" in onp:
+            result["current_activation_status"] = str(onp.iloc[-1]["current_activation_status"])
+        if "activation_label_latest" in onp:
+            result["activation_label_latest"] = str(onp.iloc[-1]["activation_label_latest"])
+        onp = onp[onp["ds"].eq(data_hour)]
         onp = onp.dropna(subset=["horizon_hours", "calibrated_probability"]).copy()
         result["oncall_probabilities"] = {
             int(row["horizon_hours"]): float(row["calibrated_probability"])
             for _, row in onp.iterrows()
         }
-        result["oncall_all_low"] = bool((onp["calibrated_probability"] < 0.35).all())
+        result["oncall_all_low"] = bool(len(onp) and (onp["calibrated_probability"] < 0.35).all())
 
-    impact = oni.copy()
-    impact["estimated_improvement"] = pd.to_numeric(
-        impact.get("estimated_improvement"), errors="coerce"
-    )
-    impact = impact.dropna(subset=["estimated_improvement"])
+    try:
+        impact = oni.copy()
+        # Legacy files without an origin cannot be certified as current.
+        if not {"forecast_origin", "target_name", "estimated_improvement"}.issubset(impact.columns):
+            raise ValueError("Missing impact fields/origin")
+        impact_origin = _localize(pd.to_datetime(impact["forecast_origin"], errors="coerce"))
+        impact = impact[impact_origin.eq(data_hour)].copy()
+        impact["estimated_improvement"] = pd.to_numeric(impact["estimated_improvement"], errors="coerce")
+        impact = impact[impact.estimated_improvement.notna()
+                        & ~impact.estimated_improvement.isin([float("inf"), float("-inf")])]
+        if impact.empty:
+            raise ValueError("Impact estimates are unavailable or stale")
+    except (OSError, ValueError, KeyError):
+        impact = pd.DataFrame(columns=["target_name", "estimated_improvement"])
+        result["model_warnings"].append("Associational impact is unavailable or stale")
     if len(impact):
         values = impact["estimated_improvement"]
         positive_fraction = float((values > 0).mean())
@@ -199,19 +330,20 @@ def compute(scratch: Path, data_hour: pd.Timestamp | None = None) -> dict:
                           "worsens" if negative_fraction >= 0.50 else "mixed"),
             "positive_fraction": positive_fraction,
             "negative_fraction": negative_fraction,
-            "max_adverse_stretcher": (float(abs(stretcher.min()))
+            # Impact target is occupancy percentage points; convert to patients.
+            "max_adverse_stretcher": (float(abs(stretcher.min())) * STRETCHER_CAPACITY / 100
                                        if len(stretcher) and stretcher.min() < 0 else 0.0),
         }
-        pmax = max(result["oncall_probabilities"].values(), default=0.0)
-        benefit = positive_fraction >= 0.60
-        if pmax >= 0.50 and benefit:
-            result["oncall_recommendation"] = "USE"
-        elif pmax >= 0.20 and benefit:
-            result["oncall_recommendation"] = "CONSIDER"
-        elif not benefit and pmax < 0.50:
-            result["oncall_recommendation"] = "NOT INDICATED"
-        elif pmax < 0.05:
-            result["oncall_recommendation"] = "NOT INDICATED"
+    pmax = max(result["oncall_probabilities"].values(), default=0.0)
+    review = result["staffing_review"]
+    # Neither a low behavior probability nor an adverse associational contrast
+    # can veto a workload review. These models cannot justify automatic USE.
+    if review["required"]:
+        result["oncall_recommendation"] = "STAFFING REVIEW REQUIRED"
+    elif pmax >= 0.50 or (pmax >= 0.20 and result["oncall_impact_summary"].get("direction") == "improves"):
+        result["oncall_recommendation"] = "CONSIDER"
+    elif set(result["oncall_probabilities"]) == {4, 6, 8}:
+        result["oncall_recommendation"] = "NO ESCALATION DETECTED"
     return result
 
 
@@ -246,6 +378,9 @@ def _print_report(r: dict) -> None:
     else:
         print("  midnight not in forecast horizon")
     print("\n== ON-CALL ==")
+    print(f"  recommendation: {r['oncall_recommendation']}")
+    print(f"  staffing review: {r.get('staffing_review', {})}")
+    print(f"  model warnings: {r.get('model_warnings', [])}")
     print(f"  all horizons < 0.35: {r['oncall_all_low']}")
     print(f"  pod under unusual pressure (>=p75): {r['pod_pressure']}")
     print(f"  reassignment trigger met: {r['reassign_trigger']}")

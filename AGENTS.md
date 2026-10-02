@@ -104,7 +104,7 @@ Do not force a dramatic narrative when the forecast is stable.
 
 For `Overflow`, translate counts into ED operations when useful rather than reporting a number without context. Roughly 0–16 usually fits within the comfortably usable first two overflow rooms. Values just above 16 can be described as the first two overflow rooms plus minor spillover into prepod/additional overflow space. Higher values increasingly depend on staffing/opening rooms 3–5. Avoid wording such as "overcapacity rooms" when "overflow rooms" is clearer.
 
-For on-call conclusions, distinguish current need from likely later need. When the 4/6/8-hour calibrated need remains low and modeled activation shows no meaningful benefit, prefer wording such as: "On-call is not currently needed and, based on how the day is shaping up, is unlikely to be required this evening." If longer-horizon evidence is not reassuring, say only that on-call is not currently needed.
+For on-call conclusions, distinguish workload escalation, historical activation behavior and uncertain associational impact. A low activation probability or adverse impact contrast must never veto a sustained/high-backlog staffing review. Use the deterministic recommendation from `compute_blurb_facts.py`. `STAFFING REVIEW REQUIRED` means assess coverage, availability and usable treatment capacity; it does not mandate activation. `NO ESCALATION DETECTED` does not establish that on-call is unnecessary. Never infer availability or historical activation from an empty schedule slot. See `docs/oncall_staffing_review.md`.
 
 ## Skills
 

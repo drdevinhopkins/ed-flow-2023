@@ -139,12 +139,21 @@ def download_inputs(dbx):
     """Download the seven blurb inputs to SCRATCH. Returns origin or raises."""
     SCRATCH.mkdir(parents=True, exist_ok=True)
     files = [
-        "current.csv", "forecast-v2.1.csv", "oncall_need_probability.csv",
-        "oncall_impact_summary.csv", "forecast_variable_effects_hourly.csv",
+        "current.csv", "forecast-v2.1.csv", "forecast_variable_effects_hourly.csv",
         "blurb_reference_stats.json", "hourly_forecast_blurbs.csv",
     ]
     for name in files:
         (SCRATCH / name).write_bytes(download(dbx, "/" + name))
+    # Workload review remains possible when model evidence is unavailable.
+    for name in ("oncall_need_probability.csv", "oncall_impact_summary.csv"):
+        try:
+            (SCRATCH / name).write_bytes(download(dbx, "/" + name))
+        except Exception:
+            (SCRATCH / name).unlink(missing_ok=True)
+    try:
+        (SCRATCH / "all_shifts.csv").write_bytes(download(dbx, "/shiftadmin/all_shifts.csv"))
+    except Exception:
+        (SCRATCH / "all_shifts.csv").unlink(missing_ok=True)
     # The intraday arrival forecast is an optional additive companion. A missing
     # or suppressed artifact must not block the established blurb pipeline.
     try:
@@ -265,6 +274,20 @@ def anomaly_text(facts: dict, mentioned_targets: set[str]) -> str:
     return "Other areas to watch: " + "; ".join(clauses) + "."
 
 
+def staffing_review_sentence(facts: dict) -> str:
+    review = facts.get("staffing_review", {})
+    availability = review.get("availability", "unknown")
+    if availability == "unavailable":
+        sentence = "Staffing review is needed now; on-call is unavailable, so assess other coverage options."
+    elif availability == "already_active":
+        sentence = "Staffing review is needed now despite on-call already being active."
+    else:
+        sentence = "Staffing review is needed now; assess on-call availability and usable treatment capacity."
+    if review.get("late_activation_window"):
+        sentence += " The late hour limits activation; check next-morning duties."
+    return sentence
+
+
 def build_blurb(facts: dict) -> str:
     """Build a short, clinician-facing handoff from deterministic facts."""
     now = facts["now"]
@@ -283,11 +306,15 @@ def build_blurb(facts: dict) -> str:
 
     peak = facts.get("peak_tbs")
     horizon = facts.get("peak_horizon")
+    if facts.get("remaining_today_peak_tbs") is not None:
+        peak = facts["remaining_today_peak_tbs"]
+        horizon = facts["remaining_today_peak_horizon"]
     if peak is not None and horizon:
         peak_time = facts.get("peak_time")
         data_hour = facts.get("data_hour")
-        if peak_time is not None and data_hour is not None and peak_time.date() != data_hour.date():
-            s2 = "Today's peak appears to have passed."
+        if (facts.get("remaining_today_peak_tbs") is None and peak_time is not None
+                and data_hour is not None and peak_time.date() != data_hour.date()):
+            s2 = "The highest forecast backlog is on the next calendar day."
         elif peak > (tbs or 0) + 1:
             s2 = f"It should build toward about {int(round(peak))} TBS in roughly {horizon} hours."
         else:
@@ -310,12 +337,16 @@ def build_blurb(facts: dict) -> str:
         s3 = "There is no midnight estimate in this forecast."
 
     recommendation = facts.get("oncall_recommendation", "NO CLEAR RECOMMENDATION")
-    if recommendation == "USE":
+    if recommendation == "STAFFING REVIEW REQUIRED":
+        s4 = staffing_review_sentence(facts)
+    elif recommendation == "USE":
         s4 = "Use on-call."
     elif recommendation == "CONSIDER":
         s4 = "Consider using on-call."
     elif recommendation == "NOT INDICATED":
         s4 = "On-call is not currently needed."
+    elif recommendation == "NO ESCALATION DETECTED":
+        s4 = "No staffing escalation is flagged by the current evidence."
     else:
         s4 = "On-call need is unclear."
 
@@ -332,7 +363,8 @@ def build_blurb(facts: dict) -> str:
         else:
             s5 = "Vertical and POD both need attention; L1 can flex to the area under greatest pressure."
     else:
-        s5 = "No staffing change is needed right now."
+        s5 = ("" if recommendation == "STAFFING REVIEW REQUIRED"
+              else "No zone reassignment is flagged right now.")
 
     parts = [s1, s2]
     if s_daily:
@@ -340,7 +372,7 @@ def build_blurb(facts: dict) -> str:
     if s_anomaly:
         parts.append(s_anomaly)
     parts.extend([s3, s4, s5])
-    return " ".join(parts)
+    return " ".join(part for part in parts if part)
 
 
 def oncall_metadata(facts: dict) -> tuple[str, str]:
@@ -354,16 +386,43 @@ def oncall_metadata(facts: dict) -> tuple[str, str]:
     impact = facts.get("oncall_impact_summary", {})
     direction = impact.get("direction", "unknown")
     adverse = impact.get("max_adverse_stretcher", 0.0)
-    if rec == "NOT INDICATED" and direction == "worsens":
+    if rec == "STAFFING REVIEW REQUIRED":
+        review = facts.get("staffing_review", {})
+        rat = ("; ".join(review.get("reasons", [])) + ". "
+               f"On-call availability: {review.get('availability', 'unknown')}. "
+               f"Historical activation probability: {prob_text}; "
+               f"associational impact direction: {direction}. "
+               "These estimates do not veto staffing review or establish benefit. "
+               "Check scheduled coverage, sick-call use, treatment capacity and next-morning duties. "
+               "Workload thresholds are provisional.")
+    elif rec == "NO ESCALATION DETECTED":
+        rat = (f"No provisional workload trigger detected. Historical activation probability: {prob_text}; "
+               f"associational impact direction: {direction}. This does not establish that on-call is unnecessary.")
+    elif rec == "NOT INDICATED" and direction == "worsens":
         rat = (f"Calibrated need is {prob_text}; modeled activation worsens flow, "
                f"including up to {adverse:.1f} additional stretcher patients. Activation "
                "is not recommended.")
     elif rec in ("USE", "CONSIDER"):
-        rat = (f"Calibrated need is {prob_text}; modeled activation shows a meaningful "
-               f"flow benefit. Recommendation: {rec}.")
+        rat = (f"Historical activation probability: {prob_text}; associational impact direction: {direction}. "
+               "Review availability, coverage and treatment capacity; benefit is uncertain.")
     else:
-        rat = (f"Calibrated need is {prob_text}; modeled activation effect is {direction}. "
+        rat = (f"Historical activation probability: {prob_text}; associational impact direction: {direction}. "
                "Review the operational recommendation before deciding.")
+    if facts.get("current_activation_status") == "unknown":
+        rat += (f" Current activation status is unknown; latest observed label: "
+                f"{facts.get('activation_label_latest', 'unknown')}.")
+    if facts.get("model_warnings"):
+        rat += " " + "; ".join(facts["model_warnings"]) + "."
+    schedule = facts.get("staffing_review", {}).get("schedule", {})
+    if schedule:
+        rat += (f" Scheduled working physicians: {schedule['scheduled_working_physicians_now']} now, "
+                f"{schedule['scheduled_working_physicians_in_4h']} in 4h; "
+                f"scheduled on-call slots: {schedule['scheduled_oncall_slots_now']}. "
+                "A scheduled slot does not confirm availability or activation.")
+        if schedule.get("oncall_also_scheduled_regular_shift"):
+            rat += " The on-call physician is also scheduled in a regular role; verify sick-call coverage."
+        if schedule.get("oncall_has_next_morning_shift"):
+            rat += " The scheduled on-call physician has a next-morning shift."
     return rec, rat
 
 
@@ -453,7 +512,7 @@ def main() -> int:
     rec, rat = oncall_metadata(facts)
     send_rec, send_reason = send_metadata(origin)
     # If routine hour and on-call is newly active (not NOT INDICATED), escalate to ROUTINE_ONCALL.
-    if send_reason == "ROUTINE" and rec in ("USE", "CONSIDER"):
+    if send_reason == "ROUTINE" and rec in ("USE", "CONSIDER", "STAFFING REVIEW REQUIRED"):
         send_reason = "ROUTINE_ONCALL"
 
     generated_at = pd.Timestamp.now(tz="America/Montreal").strftime("%Y-%m-%d %H:%M:%S")
