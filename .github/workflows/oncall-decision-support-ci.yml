@@ -4,9 +4,12 @@ on:
   pull_request:
     paths:
       - 'scripts/oncall_labels.py'
+      - 'scripts/staffing_features.py'
+      - 'scripts/staffing_roles.py'
       - 'scripts/forecast_oncall*.py'
       - 'scripts/automation/**'
       - 'tests/test_oncall*.py'
+      - 'tests/test_staffing_features.py'
       - 'tests/test*blurb*.py'
       - '.github/workflows/oncall-decision-support-ci.yml'
   workflow_dispatch:
@@ -32,10 +35,13 @@ jobs:
           tests/test_llm_blurb_automation.py
           tests/test_blurb_workflow.py
           tests/test_oncall_model_cache.py
+          tests/test_staffing_features.py
       - name: Compile changed on-call model entry points
         run: >-
           python -m py_compile
           scripts/oncall_labels.py
+          scripts/staffing_roles.py
+          scripts/staffing_features.py
           scripts/forecast_oncall_probability.py
           scripts/forecast_oncall_impact.py
           scripts/forecast_oncall_need.py

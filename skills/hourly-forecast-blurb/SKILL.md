@@ -141,7 +141,7 @@ Use `blurb_reference_stats.json` to classify midnight Total TBS against the roll
 
 During afternoon/evening, compare canonical `Vertical_TBS` and `POD_TBS` current and near-term forecasts. Vertical is normally substantially busier than POD, so do not recommend redeployment merely because Vertical > POD.
 
-Use `blurb_reference_stats.json` `evening_vertical_vs_pod` to decide whether the imbalance is unusually severe and persistent. If POD itself is under unusual pressure or forecast to worsen substantially, do not strip POD coverage. When clearly actionable and staffing permits, the orange evening overlap shift (16:00–00:00) may be directed to focus on new patients in Vertical. The L1 shift (13:00–21:00) may be directed to prepod, POD, or Vertical according to where the need is greatest. Here, “overlap” describes shift timing across day/evening coverage, not a zone assignment.
+Use `blurb_reference_stats.json` `evening_vertical_vs_pod` to decide whether the imbalance is unusually severe and persistent. If POD itself is under unusual pressure or forecast to worsen substantially, do not strip POD coverage. When clearly actionable and staffing permits, the orange evening overlap shift (16:00–00:00) may be directed to focus on new patients in Vertical. From **October 1, 2026**, use the schedule context from `compute_blurb_facts.py`: with concurrent L2 on Monday–Thursday, keep L1 on Vertical/ambulatory and L2 on stretcher/POD. Without concurrent L2, L1 is flexible, including Friday. Use actual schedule hours; do not assert L1 is available or flexible when schedule evidence is missing. Preserve legacy roles before October 1: older L2 entries were four-hour training or return-to-practice shifts. See `docs/staffing_roles.md`.
 
 ## On-call
 

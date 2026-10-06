@@ -180,6 +180,41 @@ def test_schedule_presence_does_not_confirm_availability():
     assert context["oncall_has_next_morning_shift"]
 
 
+def test_blurb_schedule_context_preserves_new_l1_l2_assignments():
+    hour = pd.Timestamp("2026-10-06 15:00", tz="America/Montreal")
+    shifts = pd.DataFrame({"user_id": [1, 2], "shift_short_name": ["L1", "L2"],
+                           "shift_start": ["2026-10-06 12:00", "2026-10-06 13:00"],
+                           "shift_end": ["2026-10-06 21:00", "2026-10-06 21:00"]})
+    context = facts_module.schedule_context(shifts, hour)
+    assert context["l1_role"] == "vertical"
+    assert context["l2_role"] == "pod"
+    assert context["availability"] == "unknown"
+    facts = {"data_hour": hour, "staffing_review": {"schedule": context},
+             "reassign_trigger": True, "pod_pressure": True}
+    sentence = wrapper.zone_reassignment_sentence(facts)
+    assert "keep L1 on Vertical and L2 on POD" in sentence
+    assert "flex" not in sentence
+    # Preserve role assignments in the prose layer too.
+    llm = load("role_llm", "scripts/automation/llm_blurb_automation_wrapper.py")
+    with pytest.raises(ValueError, match="L1/L2"):
+        llm.validate_blurb("L1 can flex to POD.", facts, sentence)
+
+
+def test_friday_and_missing_schedule_blurbs_do_not_invent_l1_flexibility():
+    hour = pd.Timestamp("2026-10-09 15:00", tz="America/Montreal")
+    shifts = pd.DataFrame({"user_id": [1], "shift_short_name": ["L1"],
+                           "shift_start": ["2026-10-09 12:00"], "shift_end": ["2026-10-09 21:00"]})
+    context = facts_module.schedule_context(shifts, hour)
+    facts = {"data_hour": hour, "staffing_review": {"schedule": context},
+             "reassign_trigger": True, "pod_pressure": False}
+    assert "Use L1 flexibly" in wrapper.zone_reassignment_sentence(facts)
+    facts["staffing_review"] = {}
+    assert "L1" not in wrapper.zone_reassignment_sentence(facts)
+    facts["data_hour"] = pd.Timestamp("2026-10-09 21:00", tz="America/Montreal")
+    facts["staffing_review"] = {"schedule": facts_module.schedule_context(shifts, facts["data_hour"])}
+    assert "L1" not in wrapper.zone_reassignment_sentence(facts)
+
+
 def test_llm_cannot_omit_staffing_review_or_late_qualifications(tmp_path):
     llm = load("review_llm", "scripts/automation/llm_blurb_automation_wrapper.py")
     input_bundle(tmp_path, hour="2026-09-29 22:00")

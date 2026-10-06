@@ -24,6 +24,7 @@ from typing import Iterable, Sequence
 
 import numpy as np
 import pandas as pd
+from staffing_roles import resolve_hourly_roles
 
 TS_COL = "ds"
 LOCAL_TZ = "America/Montreal"
@@ -40,7 +41,7 @@ SHIFT_TYPES = {
     "H1": "teaching", "B1": "vertical", "L1": "overlap", "W5": "overlap",
     "L6": "overlap", "B2": "vertical",
 }
-ROLE_TYPES = ("flow", "pod", "vertical", "overlap", "teaching", "night", "oncall")
+ROLE_TYPES = ("flow", "pod", "vertical", "overlap", "teaching", "night", "oncall", "flexible")
 
 
 @dataclass(frozen=True)
@@ -86,7 +87,7 @@ def prepare_shifts(all_shifts_df: pd.DataFrame) -> pd.DataFrame:
 def expand_shift_hours(shifts: pd.DataFrame) -> pd.DataFrame:
     """Expand normalized shifts to [start, end) hourly physician-role rows."""
     rows: list[dict[str, object]] = []
-    for row in shifts.itertuples(index=False):
+    for shift_row_id, row in enumerate(shifts.itertuples(index=False)):
         for hour in pd.date_range(row.shift_start, row.shift_end, freq="h", inclusive="left"):
             since_start = float((hour - row.shift_start) / pd.Timedelta(hours=1))
             until_end = float((row.shift_end - hour) / pd.Timedelta(hours=1))
@@ -98,6 +99,7 @@ def expand_shift_hours(shifts: pd.DataFrame) -> pd.DataFrame:
                     "shift_short_name": row.shift_short_name,
                     "shift_start": row.shift_start,
                     "shift_end": row.shift_end,
+                    "shift_row_id": shift_row_id,
                     "hours_since_start": since_start,
                     "hours_until_end": until_end,
                 }
@@ -105,6 +107,7 @@ def expand_shift_hours(shifts: pd.DataFrame) -> pd.DataFrame:
     expanded = pd.DataFrame(rows)
     if expanded.empty:
         raise ValueError("No valid physician shift-hours could be built.")
+    expanded = resolve_hourly_roles(expanded)
     return expanded.sort_values([TS_COL, "physician_id", "shift_type"]).reset_index(drop=True)
 
 
@@ -133,6 +136,9 @@ def _role_counts(expanded: pd.DataFrame) -> pd.DataFrame:
     )
     counts["n_total_scheduled"] = counts.sum(axis=1)
     counts["scheduled_oncall"] = (counts["n_oncall"] > 0).astype(float)
+    for code, role in (("L1", "vertical"), ("L1", "flexible"), ("L2", "pod")):
+        matches = expanded.shift_short_name.eq(code) & expanded.shift_type.eq(role)
+        counts[f"n_{code.lower()}_{role}"] = matches.groupby(expanded[TS_COL]).sum().astype(float)
     return counts
 
 
@@ -148,6 +154,39 @@ def _transition_counts(shifts: pd.DataFrame, prefix: str, timestamp_col: str) ->
     base[f"n_{prefix}"] = base.sum(axis=1)
     base.index.name = TS_COL
     return base
+
+
+def _current_staffing(expanded: pd.DataFrame) -> pd.DataFrame:
+    oncall_ids = (
+        expanded.loc[expanded["shift_type"].eq("oncall")]
+        .groupby(TS_COL)["physician_id"]
+        .agg(lambda values: "|".join(sorted(set(values))))
+        .rename("oncall_physician_id")
+    )
+    current = _identity_matrix(expanded).join(_role_counts(expanded), how="outer").join(oncall_ids, how="left")
+    current["oncall_physician_id"] = current["oncall_physician_id"].fillna("None")
+    return current
+
+
+def build_legacy_staffing_identity(all_shifts_df: pd.DataFrame) -> pd.DataFrame:
+    """Legacy unprefixed physician matrix with shared roles and original rounding."""
+    shifts = all_shifts_df.copy()
+    for column in ("shift_start", "shift_end"):
+        values = pd.to_datetime(shifts[column], format="mixed", errors="coerce")
+        if values.dt.tz is not None:
+            values = values.dt.tz_convert(LOCAL_TZ).dt.tz_localize(None)
+        shifts[column] = values.dt.round("h")
+    expanded = expand_shift_hours(prepare_shifts(shifts))
+    identity = _identity_matrix(expanded)
+    identity.columns = identity.columns.str.removeprefix("physician__")
+    identity.columns.name = "user"
+    return identity
+
+
+def build_current_staffing_features(all_shifts_df: pd.DataFrame) -> pd.DataFrame:
+    """Shared lightweight current representation without continuity calculations."""
+    expanded = expand_shift_hours(prepare_shifts(all_shifts_df))
+    return _current_staffing(expanded).reset_index().sort_values(TS_COL).reset_index(drop=True)
 
 
 def _team_continuity(expanded: pd.DataFrame) -> pd.DataFrame:
@@ -180,8 +219,8 @@ def _team_continuity(expanded: pd.DataFrame) -> pd.DataFrame:
 def build_schedule_feature_frames(all_shifts_df: pd.DataFrame) -> StaffingFeatureFrames:
     """Build current, structural, and identity schedule feature families.
 
-    ``current`` reproduces the pre-existing staffing representation: per-physician
-    categorical role plus role counts and on-call identity.
+    ``current`` retains per-physician categorical roles, role counts and on-call
+    identity, with effective-dated conditional L1/L2 deployment.
 
     ``structure`` adds handoff, shift-phase, composition, continuity, and next-hour
     coverage features without using physician names.
@@ -191,18 +230,13 @@ def build_schedule_feature_frames(all_shifts_df: pd.DataFrame) -> StaffingFeatur
     identity = _identity_matrix(expanded)
     counts = _role_counts(expanded)
 
-    oncall_ids = (
-        expanded.loc[expanded["shift_type"].eq("oncall")]
-        .groupby(TS_COL)["physician_id"]
-        .agg(lambda values: "|".join(sorted(set(values))))
-        .rename("oncall_physician_id")
-    )
+    current = _current_staffing(expanded)
 
-    current = identity.join(counts, how="outer").join(oncall_ids, how="left")
-    current["oncall_physician_id"] = current["oncall_physician_id"].fillna("None")
-
-    starts = _transition_counts(shifts, "shift_starts", "shift_start")
-    ends = _transition_counts(shifts, "shift_ends", "shift_end")
+    # A role can change mid-shift when L2 arrives/leaves. Count real shift starts
+    # and ends using the role at the first/last active hour, not the legacy map.
+    ordered = expanded.sort_values(TS_COL)
+    starts = _transition_counts(ordered.drop_duplicates("shift_row_id", keep="first"), "shift_starts", "shift_start")
+    ends = _transition_counts(ordered.drop_duplicates("shift_row_id", keep="last"), "shift_ends", "shift_end")
 
     phase = expanded.groupby(TS_COL).agg(
         team_mean_hours_since_start=("hours_since_start", "mean"),

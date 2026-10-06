@@ -23,6 +23,9 @@ from pathlib import Path
 
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from staffing_roles import l1_l2_schedule_context
+
 STRETCHER_CAPACITY = 53
 ROUTINE_HOURS = {"07:00", "11:00", "15:00", "19:00"}
 TARGETS = [
@@ -74,6 +77,7 @@ def schedule_context(shifts: pd.DataFrame, data_hour: pd.Timestamp) -> dict:
     morning = shifts[(shifts.shift_start >= next_day)
                      & (shifts.shift_start < next_day + pd.Timedelta(hours=12)) & ~is_oncall]
     return {
+        **l1_l2_schedule_context(shifts, data_hour),
         "scheduled_working_physicians_now": int(regular.user_id.nunique()),
         "scheduled_working_physicians_in_4h": int(later.user_id.nunique()),
         "scheduled_oncall_slots_now": int(oncall.user_id.nunique()),

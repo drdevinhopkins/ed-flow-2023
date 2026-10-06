@@ -37,6 +37,9 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from staffing_roles import L1_L2_EFFECTIVE_DATE
+
 REPO = Path(os.environ.get("ED_FLOW_REPO", str(Path(__file__).resolve().parents[2])))
 # Use the interpreter that launched this wrapper. The shell workflow activates
 # the environment selected by the Dropbox watcher via ED_FLOW_VENV.
@@ -288,6 +291,36 @@ def staffing_review_sentence(facts: dict) -> str:
     return sentence
 
 
+def zone_reassignment_sentence(facts: dict) -> str:
+    if not facts["reassign_trigger"]:
+        return ("" if facts.get("oncall_recommendation") == "STAFFING REVIEW REQUIRED"
+                else "No zone reassignment is flagged right now.")
+    schedule = facts.get("staffing_review", {}).get("schedule", {})
+    data_hour = facts.get("data_hour")
+    if data_hour is not None:
+        hour = pd.Timestamp(data_hour)
+        if hour.tzinfo is not None:
+            hour = hour.tz_convert("America/Montreal").tz_localize(None)
+        if hour >= pd.Timestamp(L1_L2_EFFECTIVE_DATE):
+            if schedule.get("l1_l2_split"):
+                pressure = ("Vertical and POD both need attention" if facts["pod_pressure"]
+                            else "Vertical is much busier than POD")
+                return f"{pressure}; keep L1 on Vertical and L2 on POD, and assess additional coverage."
+            if schedule.get("l1_role") == "flexible":
+                return "Use L1 flexibly where pressure is greatest, while preserving needed POD coverage."
+            # Missing schedule evidence or no active L1: do not promise a flexible L1.
+            return "Assess available coverage for the pressured zones while preserving needed POD coverage."
+    weekend = getattr(data_hour, "dayofweek", -1) >= 5
+    if not facts["pod_pressure"]:
+        if weekend:
+            return "Vertical is much busier than POD; use the orange shift for new patients in Vertical."
+        return ("Vertical is much busier than POD; the orange shift can focus on new patients in "
+                "Vertical, while L1 can flex to the area under greatest pressure.")
+    if weekend:
+        return "Vertical and POD both need attention; use the available overlap coverage where pressure is greatest."
+    return "Vertical and POD both need attention; L1 can flex to the area under greatest pressure."
+
+
 def build_blurb(facts: dict) -> str:
     """Build a short, clinician-facing handoff from deterministic facts."""
     now = facts["now"]
@@ -350,21 +383,7 @@ def build_blurb(facts: dict) -> str:
     else:
         s4 = "On-call need is unclear."
 
-    weekend = getattr(facts.get("data_hour"), "dayofweek", -1) >= 5
-    if facts["reassign_trigger"] and not facts["pod_pressure"]:
-        if weekend:
-            s5 = "Vertical is much busier than POD; use the orange shift for new patients in Vertical."
-        else:
-            s5 = ("Vertical is much busier than POD; the orange shift can focus on new patients in "
-                  "Vertical, while L1 can flex to the area under greatest pressure.")
-    elif facts["reassign_trigger"] and facts["pod_pressure"]:
-        if weekend:
-            s5 = "Vertical and POD both need attention; use the available overlap coverage where pressure is greatest."
-        else:
-            s5 = "Vertical and POD both need attention; L1 can flex to the area under greatest pressure."
-    else:
-        s5 = ("" if recommendation == "STAFFING REVIEW REQUIRED"
-              else "No zone reassignment is flagged right now.")
+    s5 = zone_reassignment_sentence(facts)
 
     parts = [s1, s2]
     if s_daily:

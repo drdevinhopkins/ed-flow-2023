@@ -27,6 +27,7 @@ from forecast_oncall_impact import (
     build_staffing_features,
     derive_flow_metrics,
 )
+from staffing_features import sanitize_identity_for_cutoff
 
 FLOW_URL = (
     "https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/"
@@ -220,6 +221,7 @@ def scenario_frames(
         if column not in {"id", "ds"} and column in history.columns
     ]
     history, future = normalize_numeric_covariates(history, future)
+    history, future = sanitize_identity_for_cutoff(history, future)
     return (
         history[["id", "ds", *FLOW_TARGETS, *covariates]],
         future[["id", "ds", *covariates]],
