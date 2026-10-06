@@ -1,3 +1,4 @@
+from staffing_features import build_legacy_staffing_identity
 from chronos import BaseChronosPipeline, Chronos2Pipeline
 import pandas as pd
 import os
@@ -52,36 +53,14 @@ def add_holiday_flags(
         out["jewish_holiday_name"] = [ il_holidays.get(d, "no") if pd.notna(pd.Timestamp(d)) else "no" for d in dates_for_calendar ]
     return out
 
-shift_types_dict = {
-    'W1':'flow', 'X1':'pod', 'X3':'pod', 'X4':'vertical', 'X2':'vertical',
-    'WOC1':'oncall', 'WOC2':'oncall', 'WOC3':'oncall', 'X5':'pod', 'W3':'overlap',
-    'Y1':'pod', 'Y3':'pod', 'Y4':'vertical', 'Y2':'vertical', 'Y5':'pod',
-    'Z1':'night', 'Z2':'night', 'D1':'pod', 'R1':'pod', 'P1':'vertical',
-    'D2':'vertical', 'OC1':'oncall', 'OC2':'oncall', 'V1':'flow', 'A1':'pod',
-    'G1':'vertical', 'E1':'pod', 'R2':'pod', 'A2':'pod', 'P2':'vertical',
-    'E2':'vertical', 'N1':'night', 'N2':'night', 'L2':'overlap', 'L4':'overlap',
-    'H1':'teaching', 'B1':'vertical', 'L1':'overlap', 'W5':'overlap', 'L6':'overlap', 'B2':'vertical'
-}
-
 # Load hourly data
 df = pd.read_csv('https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/allDataWithCalculatedColumns.csv?rlkey=9mm4zwaugxyj2r4ooyd39y4nl&raw=1')
 df.ds = pd.to_datetime(df.ds, errors="coerce")
 df['id'] = 'jgh'
 
-# Load shift data
+# Load shift data and use the same effective-dated roles as the current models.
 all_shifts_df = pd.read_csv('https://www.dropbox.com/scl/fi/yeyr2a7pj6nry8i2q3m0c/all_shifts.csv?rlkey=q1su2h8fqxfnlu7t1l2qe1w0q&raw=1')
-all_shifts_df['shift_start'] = pd.to_datetime(all_shifts_df['shift_start']).dt.round('h')
-all_shifts_df['shift_end'] = pd.to_datetime(all_shifts_df['shift_end']).dt.round('h')
-all_shifts_df['shift_type'] = all_shifts_df['shift_short_name'].map(shift_types_dict)
-
-expanded_rows = []
-for _, row in all_shifts_df.iterrows():
-    hours = pd.date_range(row['shift_start'], row['shift_end'], freq='h', inclusive='left')
-    for h in hours:
-        expanded_rows.append({'ds': h, 'user': row['first_name']+row['last_name'], 'shift_type': row['shift_type'], 'shift_short_name': row['shift_short_name']})
-
-expanded_df = pd.DataFrame(expanded_rows)
-hourly_shifts_by_user_df = expanded_df.pivot_table(index='ds', columns='user', values='shift_type', aggfunc='first').fillna('NotWorking')
+hourly_shifts_by_user_df = build_legacy_staffing_identity(all_shifts_df)
 
 ID_COL = "id"
 TS_COL = "ds"
@@ -128,6 +107,10 @@ future_df_base = add_holiday_flags(future_df_base, ts_col='ds', include_names=Tr
 # Ensure common columns match for the pipeline
 common_columns = [col for col in future_df_base.columns if col in all_variable_df.columns]
 future_df_base = future_df_base[common_columns]
+
+for column in hourly_shifts_by_user_df.columns.intersection(future_df_base.columns):
+    seen = set(all_variable_df[column].dropna().astype(str))
+    future_df_base.loc[~future_df_base[column].astype(str).isin(seen), column] = 'NotWorking'
 
 # Predict On-Call Need
 print('Predicting On-Call Need for the next 24 hours...')

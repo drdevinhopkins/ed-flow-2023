@@ -107,6 +107,7 @@ def llm_rewrite(facts: dict, deterministic_blurb: str, history: list[str]) -> st
             "Mention every listed current anomaly and every listed next_4h anomaly unless it is already clearly covered.",
             "Do not mention anomaly thresholds or other technical detection terms; say that the metric is outside its usual range or unusually high, using the supplied value.",
             "Do not mention individual physicians or weekend L1.",
+            "Preserve the L1/L2 zone action in the deterministic draft. With the new split, L1 covers Vertical and L2 covers POD; do not describe L1 as flexible.",
         ],
     }
     headers = {"Content-Type": "application/json"}
@@ -146,6 +147,10 @@ def validate_blurb(candidate: str, facts: dict, deterministic_blurb: str) -> Non
         if deterministic.staffing_review_sentence(facts) not in candidate:
             raise ValueError("staffing review qualifications changed")
     forbidden = ("calibrated", "feature effect", "causal", "raw csv", "overlap shift")
+    schedule = facts.get("staffing_review", {}).get("schedule", {})
+    if facts.get("reassign_trigger") and schedule.get("l1_l2_split"):
+        if deterministic.zone_reassignment_sentence(facts) not in candidate:
+            raise ValueError("L1/L2 zone assignment changed")
     if any(term in lowered for term in forbidden):
         raise ValueError("LLM blurb contains forbidden technical wording")
     # Prevent unsupported numeric claims. Numbers in the deterministic draft

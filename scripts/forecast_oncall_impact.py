@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import pandas as pd
 import torch
 from chronos import BaseChronosPipeline, Chronos2Pipeline
+from staffing_features import build_current_staffing_features, sanitize_identity_for_cutoff
 from oncall_labels import merge_activation_labels
 from utils import upload
 
@@ -39,21 +40,6 @@ WEATHER_DATA_URL = (
     "weather.csv?rlkey=66c78m90aviamr0x0uu72pfr8&raw=1"
 )
 ONCALL_LABELS_PATH = REPO_ROOT / "hourly_oncall_used_for_busy_since_2022.csv"
-
-SHIFT_TYPES = {
-    "W1": "flow", "X1": "pod", "X3": "pod", "X4": "vertical", "X2": "vertical",
-    "WOC1": "oncall", "WOC2": "oncall", "WOC3": "oncall", "X5": "pod",
-    "W3": "overlap", "Y1": "pod", "Y3": "pod", "Y4": "vertical",
-    "Y2": "vertical", "Y5": "pod", "Z1": "night", "Z2": "night", "D1": "pod",
-    "R1": "pod", "P1": "vertical", "D2": "vertical", "OC1": "oncall",
-    "OC2": "oncall", "V1": "flow", "A1": "pod", "G1": "vertical", "E1": "pod",
-    "R2": "pod", "A2": "pod", "P2": "vertical", "E2": "vertical",
-    "N1": "night", "N2": "night", "L2": "overlap", "L4": "overlap",
-    "H1": "teaching", "B1": "vertical", "L1": "overlap", "W5": "overlap",
-    "L6": "overlap", "B2": "vertical",
-}
-
-ROLE_TYPES = ("flow", "pod", "vertical", "overlap", "teaching", "night", "oncall")
 
 
 def load_pipeline() -> Chronos2Pipeline:
@@ -152,66 +138,14 @@ def derive_flow_metrics(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
 
 
 def build_staffing_features(all_shifts_df: pd.DataFrame) -> pd.DataFrame:
-    """Preserve physician identity and add structural staffing covariates."""
+    """Shared zone rules and physician identities; preserve legacy hour rounding."""
     shifts = all_shifts_df.copy()
-    shifts["shift_start"] = pd.to_datetime(shifts["shift_start"], errors="coerce").dt.round("h")
-    shifts["shift_end"] = pd.to_datetime(shifts["shift_end"], errors="coerce").dt.round("h")
-    shifts["shift_type"] = shifts["shift_short_name"].map(SHIFT_TYPES)
-    shifts["physician_id"] = (
-        shifts["first_name"].fillna("").astype(str).str.strip()
-        + shifts["last_name"].fillna("").astype(str).str.strip()
-    )
-    shifts = shifts.dropna(subset=["shift_start", "shift_end", "shift_type"])
-    shifts = shifts[shifts["physician_id"] != ""]
-
-    expanded_rows: list[dict[str, object]] = []
-    for row in shifts.itertuples(index=False):
-        for hour in pd.date_range(row.shift_start, row.shift_end, freq="h", inclusive="left"):
-            expanded_rows.append(
-                {
-                    TS_COL: hour,
-                    "physician_id": row.physician_id,
-                    "shift_type": row.shift_type,
-                }
-            )
-
-    expanded = pd.DataFrame(expanded_rows)
-    if expanded.empty:
-        raise ValueError("No valid physician shift-hours could be built.")
-
-    # Identity is intentionally retained: each physician gets a categorical role/NotWorking feature.
-    physician_matrix = (
-        expanded.pivot_table(
-            index=TS_COL,
-            columns="physician_id",
-            values="shift_type",
-            aggfunc="first",
-        )
-        .fillna("NotWorking")
-        .add_prefix("physician__")
-    )
-
-    role_counts = (
-        expanded.groupby([TS_COL, "shift_type"])
-        .size()
-        .unstack(fill_value=0)
-        .reindex(columns=ROLE_TYPES, fill_value=0)
-        .add_prefix("n_")
-    )
-    role_counts["n_total_scheduled"] = role_counts.sum(axis=1)
-
-    # Explicitly expose who is scheduled on-call so Chronos can learn physician-specific
-    # differences in activation and downstream impact without relying only on sparse columns.
-    oncall_ids = (
-        expanded[expanded["shift_type"] == "oncall"]
-        .groupby(TS_COL)["physician_id"]
-        .agg(lambda values: "|".join(sorted(set(values))))
-        .rename("oncall_physician_id")
-    )
-
-    staffing = physician_matrix.join(role_counts, how="outer").join(oncall_ids, how="left")
-    staffing["oncall_physician_id"] = staffing["oncall_physician_id"].fillna("None")
-    return staffing.reset_index().sort_values(TS_COL)
+    for column in ("shift_start", "shift_end"):
+        values = pd.to_datetime(shifts[column], format="mixed", errors="coerce")
+        if values.dt.tz is not None:
+            values = values.dt.tz_convert("America/Montreal").dt.tz_localize(None)
+        shifts[column] = values.dt.round("h")
+    return build_current_staffing_features(shifts)
 
 
 def regularize_history(df: pd.DataFrame, targets: list[str]) -> pd.DataFrame:
@@ -486,6 +420,7 @@ def main() -> None:
     print(f"Targets: {', '.join(targets)}")
 
     future_base = make_future_base(history, staffing, weather)
+    history, future_base = sanitize_identity_for_cutoff(history, future_base)
 
     pipeline = load_pipeline()
     forecasts = [

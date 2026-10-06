@@ -16,7 +16,105 @@ from staffing_features import (  # noqa: E402
     build_schedule_feature_frames,
     fit_physician_effect_profiles,
     sanitize_identity_for_cutoff,
+    prepare_shifts,
+    expand_shift_hours,
+    build_current_staffing_features,
+    build_legacy_staffing_identity,
 )
+from staffing_roles import l1_l2_schedule_context, resolve_hourly_roles
+
+
+def test_l1_l2_effective_date_and_concurrent_hours() -> None:
+    old = pd.Timestamp("2026-09-30")
+    new = pd.Timestamp("2026-10-01")
+    friday = pd.Timestamp("2026-10-02")
+    shifts = pd.DataFrame([
+        _shift("OldL1", old + pd.Timedelta(hours=12), old + pd.Timedelta(hours=21), "L1"),
+        _shift("OldL2", old + pd.Timedelta(hours=13), old + pd.Timedelta(hours=17), "L2"),
+        _shift("NewL1", new + pd.Timedelta(hours=12), new + pd.Timedelta(hours=21), "L1"),
+        _shift("NewL2", new + pd.Timedelta(hours=13), new + pd.Timedelta(hours=18), "L2"),
+        _shift("FridayL1", friday + pd.Timedelta(hours=12), friday + pd.Timedelta(hours=21), "L1"),
+    ])
+    frames = build_schedule_feature_frames(shifts)
+    s = frames.structure.set_index("ds")
+    identity = frames.identity.set_index("ds")
+    assert identity.loc[old + pd.Timedelta(hours=14), "physician__OldL1Doctor"] == "overlap"
+    assert identity.loc[old + pd.Timedelta(hours=14), "physician__OldL2Doctor"] == "overlap"
+    assert identity.loc[new + pd.Timedelta(hours=12), "physician__NewL1Doctor"] == "flexible"
+    assert identity.loc[new + pd.Timedelta(hours=13), "physician__NewL1Doctor"] == "vertical"
+    assert identity.loc[new + pd.Timedelta(hours=13), "physician__NewL2Doctor"] == "pod"
+    assert identity.loc[new + pd.Timedelta(hours=18), "physician__NewL1Doctor"] == "flexible"
+    assert identity.loc[friday + pd.Timedelta(hours=14), "physician__FridayL1Doctor"] == "flexible"
+    assert s.loc[new + pd.Timedelta(hours=13), "n_total_scheduled"] == 2
+    assert s.loc[new + pd.Timedelta(hours=13), "n_l1_vertical"] == 1
+    assert s.loc[new + pd.Timedelta(hours=13), "n_l2_pod"] == 1
+    assert s.loc[old + pd.Timedelta(hours=14), "n_flexible"] == 0
+    assert s.loc[new + pd.Timedelta(hours=12), "delta_n_vertical_next_1h"] == 1
+    assert s.loc[new + pd.Timedelta(hours=13), "n_shift_starts_pod"] == 1
+    assert s.loc[new + pd.Timedelta(hours=13), "n_shift_starts_vertical"] == 0
+    assert s.loc[new + pd.Timedelta(hours=18), "n_shift_ends_pod"] == 1
+    expanded = expand_shift_hours(prepare_shifts(shifts))
+    assert set(expanded.shift_short_name) == {"L1", "L2"}
+    assert expanded.loc[expanded.physician_id.eq("OldL2Doctor"), "role_assignment_rule"].eq("legacy").all()
+    pd.testing.assert_frame_equal(build_current_staffing_features(shifts), frames.current)
+    legacy = build_legacy_staffing_identity(shifts).add_prefix("physician__").reset_index()
+    legacy.columns.name = frames.identity.columns.name
+    pd.testing.assert_frame_equal(legacy, frames.identity)
+
+
+def test_l2_alone_and_unexpected_friday_do_not_impute_l1() -> None:
+    shifts = pd.DataFrame([
+        _shift("Alone", pd.Timestamp("2026-10-05 13:00"), pd.Timestamp("2026-10-05 21:00"), "L2"),
+        _shift("Friday", pd.Timestamp("2026-10-09 13:00"), pd.Timestamp("2026-10-09 21:00"), "L2"),
+    ])
+    current = build_current_staffing_features(shifts).set_index("ds")
+    assert current.loc["2026-10-05 15:00", "n_pod"] == 1
+    assert current.loc["2026-10-05 15:00", "n_l1_vertical"] == 0
+    assert current.loc["2026-10-09 15:00", "n_overlap"] == 1
+
+
+def test_role_rules_use_montreal_weekday_and_exclude_end_hour() -> None:
+    shifts = pd.DataFrame([
+        _shift("L1", pd.Timestamp("2026-10-01 16:00Z"), pd.Timestamp("2026-10-02 01:00Z"), "L1"),
+        _shift("L2", pd.Timestamp("2026-10-01 17:00Z"), pd.Timestamp("2026-10-02 01:00Z"), "L2"),
+    ])
+    current = build_current_staffing_features(shifts).set_index("ds")
+    assert current.loc["2026-10-01 20:00", "n_vertical"] == 1
+    context = l1_l2_schedule_context(shifts, pd.Timestamp("2026-10-02 00:00Z"))
+    assert context["l1_l2_split"]
+    context = l1_l2_schedule_context(shifts, pd.Timestamp("2026-10-02 01:00Z"))
+    assert context["l1_role"] == "absent"
+    assert context["l2_role"] == "absent"
+
+
+def test_effect_scores_follow_resolved_physician_roles() -> None:
+    day = pd.Timestamp("2026-10-05")
+    shifts = pd.DataFrame([
+        _shift("One", day + pd.Timedelta(hours=12), day + pd.Timedelta(hours=21), "L1"),
+        _shift("Two", day + pd.Timedelta(hours=13), day + pd.Timedelta(hours=21), "L2"),
+    ])
+    profiles = pd.DataFrame({"physician_id": ["OneDoctor", "OneDoctor", "TwoDoctor"],
+                             "shift_type": ["flexible", "vertical", "pod"],
+                             "effect__Total_TBS": [1., 2., 3.]})
+    scores = build_effect_score_features(shifts, profiles, ["Total_TBS"]).set_index("ds")
+    assert scores.loc[day + pd.Timedelta(hours=12), "staff_effect__Total_TBS_sum"] == 1
+    assert scores.loc[day + pd.Timedelta(hours=13), "staff_effect__Total_TBS_sum"] == 5
+
+
+def test_oncall_builders_share_role_semantics_without_loading_models() -> None:
+    # Run the real lightweight entry-point functions without importing GPU/model dependencies.
+    import ast
+    day = pd.Timestamp("2026-10-05")
+    shifts = pd.DataFrame([
+        _shift("One", day + pd.Timedelta(hours=12), day + pd.Timedelta(hours=21), "L1"),
+        _shift("Two", day + pd.Timedelta(hours=13), day + pd.Timedelta(hours=21), "L2"),
+    ])
+    for name in ("forecast_oncall_impact.py", "forecast_oncall_probability.py"):
+        tree = ast.parse((Path(__file__).parents[1] / "scripts" / name).read_text())
+        function = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "build_staffing_features")
+        namespace = {"pd": pd, "build_current_staffing_features": build_current_staffing_features}
+        exec(compile(ast.Module(body=[function], type_ignores=[]), name, "exec"), namespace)
+        pd.testing.assert_frame_equal(namespace["build_staffing_features"](shifts), build_current_staffing_features(shifts))
 
 
 def _shift(first: str, start: pd.Timestamp, end: pd.Timestamp, code: str = "A1") -> dict[str, object]:
@@ -131,6 +229,11 @@ def test_unseen_identity_category_is_sanitized() -> None:
 
 
 def main() -> None:
+    test_l1_l2_effective_date_and_concurrent_hours()
+    test_l2_alone_and_unexpected_friday_do_not_impute_l1()
+    test_role_rules_use_montreal_weekday_and_exclude_end_hour()
+    test_effect_scores_follow_resolved_physician_roles()
+    test_oncall_builders_share_role_semantics_without_loading_models()
     test_structural_handoff_features()
     test_physician_effect_direction_and_leakage_boundary()
     test_unseen_identity_category_is_sanitized()

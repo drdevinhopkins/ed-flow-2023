@@ -132,9 +132,9 @@ Future specialized workflows should be added as separate skills rather than expa
 
 ## Staffing recommendations in hourly blurbs
 
-When Vertical is unusually more pressured than POD and the reassignment gate is met, the orange evening overlap shift (16:00–00:00) may be directed to focus on new patients in Vertical. The L1 shift (13:00–21:00) is flexible and may be directed to prepod, POD, or Vertical according to where the need is greatest. Here, “overlap” describes shift timing across day/evening coverage, not a zone assignment.
+When Vertical is unusually more pressured than POD and the reassignment gate is met, the orange evening overlap shift (16:00–00:00) may be directed to focus on new patients in Vertical. From **October 1, 2026**, during Monday–Thursday hours with L2 scheduled, L2 covers stretcher/POD patients and L1 covers Vertical/ambulatory. Without concurrent L2, L1 is flexible (including Friday). Use actual scheduled start/end times, not a hardcoded L1 start time. Before October 1, preserve historical roles: L2 entries were four-hour training or return-to-practice shifts. See `docs/staffing_roles.md` and the shared rules in `scripts/staffing_roles.py`.
 
-If POD is also under unusual pressure, do not imply that POD coverage should be stripped; describe L1 as the flexible resource and direct staff according to the current pressure point.
+If POD is also under unusual pressure, do not imply that POD coverage should be stripped. With concurrent L2, preserve L1 on Vertical and L2 on POD; only describe L1 as flexible when the schedule supports that assignment.
 
 On-call recommendations must be self-contained: state the recommendation, calibrated need probabilities by horizon when available, and whether modeled activation improves, worsens, or has a mixed effect on flow. Do not tell receiving physicians to review a raw impact-summary file.
 
