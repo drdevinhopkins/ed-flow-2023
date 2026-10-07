@@ -28,6 +28,7 @@ import torch
 from chronos import BaseChronosPipeline, Chronos2Pipeline
 
 from holiday_features import add_holiday_features
+from daily_arrival_quality import build_daily_inflow_outputs
 
 FLOW_URL = (
     "https://www.dropbox.com/scl/fi/s83jig4zews1xz7vhezui/"
@@ -62,46 +63,25 @@ def parse_ds(series: pd.Series) -> pd.Series:
 def load_daily_visits(flow_url: str = FLOW_URL) -> pd.DataFrame:
     """Load hourly inflow and aggregate complete Montreal calendar days.
 
-    A valid day has 23, 24, or 25 hourly rows to permit DST transitions, and every row
-    must contain a numeric ``Inflow_Total``. Incomplete internal days are retained on the
-    daily calendar with a missing target; they are never filled or interpolated. Leading
-    and trailing partial days outside the first/last complete day are discarded.
+    Use the shared exact-clock-coverage policy. Ordinary single-hour gaps remain
+    missing; naive DST dates require source verification. Leading and trailing
+    unverified days outside the first/last verified day are discarded.
     """
     raw = pd.read_csv(flow_url, usecols=["ds", "Inflow_Total"])
 
-    # De-duplicate source timestamps before converting to local wall-clock. Offset-aware
-    # timestamps around the autumn DST transition remain distinct at this stage.
-    raw = raw.drop_duplicates("ds", keep="last")
-    raw["ds"] = parse_ds(raw["ds"])
-    raw["Inflow_Total"] = pd.to_numeric(raw["Inflow_Total"], errors="coerce")
-    raw = raw.dropna(subset=["ds"]).sort_values("ds")
-    raw["day"] = raw["ds"].dt.normalize()
-
-    grouped = raw.groupby("day", as_index=False).agg(
-        daily_visits=("Inflow_Total", lambda values: values.sum(min_count=1)),
-        observed_rows=("ds", "size"),
-        numeric_rows=("Inflow_Total", "count"),
-    )
-    grouped = grouped.rename(columns={"day": "ds"}).sort_values("ds").reset_index(drop=True)
-    grouped["is_complete"] = (
-        grouped["observed_rows"].between(23, 25)
-        & grouped["numeric_rows"].eq(grouped["observed_rows"])
-        & grouped[TARGET].notna()
-    )
-
-    complete = grouped.loc[grouped["is_complete"]]
+    daily, quality = build_daily_inflow_outputs(raw)
+    daily = daily.rename(columns={"Daily_Inflow_Total": TARGET})
+    daily = daily.merge(quality[["ds", "observed_rows", "valid_inflow_rows", "audit_eligible"]],
+                        on="ds", how="left", validate="one_to_one")
+    daily = daily.rename(columns={"valid_inflow_rows": "numeric_rows", "audit_eligible": "is_complete"})
+    complete = daily.loc[daily["is_complete"]]
     if complete.empty:
         raise ValueError("No complete daily inflow observations found")
 
     first_complete = complete["ds"].min()
     last_complete = complete["ds"].max()
-    index = pd.date_range(first_complete, last_complete, freq="D", name="ds")
-    daily = grouped.set_index("ds").reindex(index).reset_index()
-    daily["observed_rows"] = daily["observed_rows"].fillna(0).astype(int)
-    daily["numeric_rows"] = daily["numeric_rows"].fillna(0).astype(int)
-    daily["is_complete"] = daily["is_complete"].fillna(False).astype(bool)
-    daily[TARGET] = pd.to_numeric(daily[TARGET], errors="coerce").where(daily["is_complete"])
-    daily[TARGET] = daily[TARGET].astype("float64")
+    daily = daily.loc[daily["ds"].between(first_complete, last_complete)].copy()
+    daily.attrs["target_quality_version"] = quality["quality_version"].iloc[0]
     return daily[["ds", TARGET, "observed_rows", "numeric_rows", "is_complete"]]
 
 

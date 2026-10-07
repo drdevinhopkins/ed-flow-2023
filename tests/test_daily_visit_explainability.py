@@ -157,6 +157,23 @@ def test_enriched_output_ranks_driver_effects() -> None:
     assert enriched["explainability_method"].eq(explain.EXPLAINABILITY_METHOD).all()
 
 
+def test_explanation_baseline_uses_full_verified_history_but_never_future_actuals() -> None:
+    history, future = synthetic_frames()
+    # The model can have a short contiguous context while the comparator retains
+    # older verified observations; a changed future actual must not leak in.
+    model_history = history.tail(37)
+    full = pd.concat([history, pd.DataFrame({"ds": future.ds, forecast.TARGET: 99999.0})])
+    formatted = pd.DataFrame({"ds": future.ds, "daily_visits_prediction": 240.0,
+                              "data_cutoff": history.ds.max(), "horizon_day": np.arange(1, 8)})
+    explanations = pd.DataFrame({"ds": future.ds, "horizon_day": np.arange(1, 8),
+                                  "driver_group": "temperature", "effect_visits": 1.0,
+                                  "representative_feature": "temp_mean", "feature_value": 30.0,
+                                  "neutral_value": 18.0})
+    enriched = explain.enrich_forecast(formatted, model_history, explanations, baseline_history=full)
+    expected = explain.weekday_baseline(history, future.ds)
+    assert np.allclose(enriched.seasonal_weekday_baseline, expected)
+
+
 if __name__ == "__main__":
     test_neutral_future_is_complete_and_event_free()
     test_weekday_baseline_uses_recent_same_weekdays()

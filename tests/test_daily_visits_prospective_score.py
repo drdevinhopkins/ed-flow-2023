@@ -109,10 +109,50 @@ def test_earliest_issue_selection_logic() -> None:
         snapshot_name="late.csv",
     )
     archive = pd.concat([late, early], ignore_index=True)
-    issue_times = archive.groupby("data_cutoff")["forecast_generated_at_utc"].transform("min")
-    chosen = archive.loc[archive["forecast_generated_at_utc"].eq(issue_times)]
+    chosen = score.select_earliest_issues(archive)
     assert chosen["snapshot_name"].eq("early.csv").all()
     assert len(chosen) == 7
+
+
+def test_unverified_outcomes_and_baselines_cannot_enter_comparisons() -> None:
+    actuals = synthetic_actuals()
+    cutoff = pd.Timestamp("2026-04-30")
+    target = cutoff + pd.Timedelta(days=1)
+    baseline_day = cutoff - pd.Timedelta(days=6)  # same weekday as D+1
+    actuals.loc[actuals.ds.isin([target, baseline_day]), "actual"] = np.nan
+    actuals.attrs["target_quality_version"] = score.QUALITY_VERSION
+    archive = score.normalize_snapshot(synthetic_snapshot(cutoff, "2026-05-01T10:15:00Z"),
+                                       snapshot_name="original.csv")
+    detail = score.score_archive(archive, actuals)
+    assert len(detail) == 6 and not detail.ds.eq(target).any()
+    expected = actuals.loc[(actuals.ds <= cutoff) & actuals.actual.notna()
+                          & actuals.ds.dt.weekday.eq(target.weekday()), "actual"].tail(8).mean()
+    assert np.isclose(score.same_weekday_baseline(actuals, cutoff=cutoff, target_date=target), expected)
+    retained = archive.set_index("ds").loc[detail.ds]
+    assert np.array_equal(detail.daily_visits_prediction, retained.daily_visits_prediction)
+    assert detail.actual_quality_version.eq(score.QUALITY_VERSION).all()
+
+
+def test_corrected_actuals_do_not_relabel_legacy_forecasts_as_validated() -> None:
+    actuals = synthetic_actuals()
+    actuals.attrs["target_quality_version"] = score.QUALITY_VERSION
+    frames = [score.normalize_snapshot(synthetic_snapshot(cutoff, str(cutoff + pd.Timedelta(days=1)) + "Z"),
+                                       snapshot_name=f"{cutoff.date()}.csv")
+              for cutoff in pd.date_range("2026-03-01", periods=29)]
+    archive = pd.concat(frames, ignore_index=True)
+    legacy_detail = score.score_archive(archive, actuals)
+    legacy = score.summarize_by_horizon(legacy_detail)
+    assert legacy.collection_ready.all() and legacy.actual_quality_verified.all()
+    assert not legacy.evidence_ready.any()
+    archive["target_quality_version"] = score.QUALITY_VERSION
+    verified_detail = score.score_archive(archive, actuals)
+    assert score.summarize_by_horizon(verified_detail).evidence_ready.all()
+    # A short new collection cannot borrow the legacy collection's size/span.
+    mixed = pd.concat([legacy_detail, verified_detail.loc[verified_detail.data_cutoff >= "2026-03-25"]])
+    grouped = score.summarize_by_quality_version(mixed)
+    assert not grouped.evidence_ready.any()
+    corrected = grouped.loc[grouped.forecast_quality_version.eq(score.QUALITY_VERSION)]
+    assert corrected.n_issue_dates.eq(5).all()
 
 
 if __name__ == "__main__":

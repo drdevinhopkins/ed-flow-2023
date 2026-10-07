@@ -14,6 +14,12 @@ that forecast's data cutoff.
 Outputs:
 - ``daily_visits_prospective_detail.csv``: one matured forecast-date row per issue/horizon.
 - ``daily_visits_prospective_horizon_summary.csv``: D+1..D+7 plus an all-horizons row.
+- ``daily_visits_prospective_quality_summary.csv``: separate input-quality collections.
+
+Actuals and comparator dates require verified hourly coverage. Historical forecasts
+remain unchanged and are labeled legacy when they lack input-quality metadata.
+``evidence_ready`` requires a sufficient collection with verified actuals and the
+corrected forecast-input version; it does not itself imply an accuracy go decision.
 
 This script is evaluation only; it never changes the operational forecast itself.
 """
@@ -23,6 +29,7 @@ from __future__ import annotations
 import argparse
 import io
 import os
+import sys
 from pathlib import Path
 
 import dropbox
@@ -30,10 +37,16 @@ import numpy as np
 import pandas as pd
 import requests
 
+SCRIPTS = Path(__file__).resolve().parents[2]
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
+from daily_arrival_quality import QUALITY_VERSION, load_verified_daily, verified_daily_targets
+
 SNAPSHOT_FOLDER = "/daily_visits_forecast_snapshots"
 DAILY_INFLOW_PATH = "/daily_inflow.csv"
 DEFAULT_DETAIL_OUTPUT = Path("daily_visits_prospective_detail.csv")
 DEFAULT_SUMMARY_OUTPUT = Path("daily_visits_prospective_horizon_summary.csv")
+DEFAULT_QUALITY_SUMMARY_OUTPUT = Path("daily_visits_prospective_quality_summary.csv")
 MIN_ISSUE_DATES = 28
 MIN_PROSPECTIVE_SPAN_DAYS = 28
 BASELINE_WEEKS = 8
@@ -78,22 +91,8 @@ def _download_csv(dbx: dropbox.Dropbox, path: str) -> pd.DataFrame:
 
 
 def load_actual_daily(dbx: dropbox.Dropbox) -> pd.DataFrame:
-    raw = _download_csv(dbx, DAILY_INFLOW_PATH)
-    required = {"ds", "Daily_Inflow_Total"}
-    missing = required - set(raw.columns)
-    if missing:
-        raise ValueError(f"{DAILY_INFLOW_PATH} missing columns: {sorted(missing)}")
-
-    out = raw[["ds", "Daily_Inflow_Total"]].copy()
-    out["ds"] = pd.to_datetime(out["ds"], errors="coerce").dt.normalize()
-    out["actual"] = pd.to_numeric(out["Daily_Inflow_Total"], errors="coerce")
-    out = (
-        out.drop(columns=["Daily_Inflow_Total"])
-        .dropna(subset=["ds"])
-        .sort_values("ds")
-        .drop_duplicates("ds", keep="last")
-        .reset_index(drop=True)
-    )
+    raw, _quality = load_verified_daily(dbx)
+    out = raw.rename(columns={"Daily_Inflow_Total": "actual"})
     if out["actual"].notna().sum() == 0:
         raise ValueError(f"{DAILY_INFLOW_PATH} contains no usable actual arrivals")
     return out
@@ -147,6 +146,17 @@ def normalize_snapshot(frame: pd.DataFrame, *, snapshot_name: str) -> pd.DataFra
     return out
 
 
+def select_earliest_issues(archive: pd.DataFrame) -> pd.DataFrame:
+    """Select the original issue per cutoff for both Dropbox and local replay."""
+    issue_times = archive.groupby("data_cutoff")["forecast_generated_at_utc"].transform("min")
+    return (
+        archive.loc[archive["forecast_generated_at_utc"].eq(issue_times)]
+        .sort_values(["data_cutoff", "forecast_generated_at_utc", "snapshot_name", "horizon_day"])
+        .drop_duplicates(["data_cutoff", "horizon_day"], keep="first")
+        .reset_index(drop=True)
+    )
+
+
 def load_forecast_archive(dbx: dropbox.Dropbox) -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
     skipped: list[str] = []
@@ -168,14 +178,7 @@ def load_forecast_archive(dbx: dropbox.Dropbox) -> pd.DataFrame:
     archive = pd.concat(frames, ignore_index=True)
     # One operational issue per data cutoff. Keep the earliest forecast so repeated/manual
     # runs cannot retrospectively improve the prospective score.
-    issue_times = archive.groupby("data_cutoff")["forecast_generated_at_utc"].transform("min")
-    archive = archive.loc[archive["forecast_generated_at_utc"].eq(issue_times)].copy()
-    # Defend against duplicate files containing the exact same earliest issue.
-    archive = (
-        archive.sort_values(["data_cutoff", "forecast_generated_at_utc", "snapshot_name", "horizon_day"])
-        .drop_duplicates(["data_cutoff", "horizon_day"], keep="first")
-        .reset_index(drop=True)
-    )
+    archive = select_earliest_issues(archive)
     if skipped:
         print(f"Skipped {len(skipped)} invalid/legacy snapshot(s); first: {skipped[0]}")
     return archive
@@ -204,6 +207,10 @@ def same_weekday_baseline(
 
 
 def score_archive(archive: pd.DataFrame, actuals: pd.DataFrame) -> pd.DataFrame:
+    archive = archive.copy()
+    if "target_quality_version" not in archive:
+        archive["target_quality_version"] = "legacy_unverified"
+    archive["target_quality_version"] = archive["target_quality_version"].fillna("legacy_unverified")
     actual_lookup = actuals[["ds", "actual"]].dropna(subset=["actual"])
     detail = archive.merge(actual_lookup, on="ds", how="left", validate="many_to_one")
     detail = detail.loc[detail["actual"].notna()].copy()
@@ -220,6 +227,8 @@ def score_archive(archive: pd.DataFrame, actuals: pd.DataFrame) -> pd.DataFrame:
             )
         )
     detail["baseline_prediction"] = baselines
+    # Outcomes lacking any verified cutoff-safe baseline cannot enter comparisons.
+    detail = detail.loc[np.isfinite(detail["baseline_prediction"])].copy()
 
     detail["forecast_error"] = detail["daily_visits_prediction"] - detail["actual"]
     detail["baseline_error"] = detail["baseline_prediction"] - detail["actual"]
@@ -239,6 +248,7 @@ def score_archive(archive: pd.DataFrame, actuals: pd.DataFrame) -> pd.DataFrame:
     detail["absolute_error_improvement"] = (
         detail["baseline_absolute_error"] - detail["forecast_absolute_error"]
     )
+    detail["actual_quality_version"] = actuals.attrs.get("target_quality_version", "unverified")
     return detail.sort_values(["data_cutoff", "horizon_day"]).reset_index(drop=True)
 
 
@@ -259,6 +269,12 @@ def _summary_row(group: pd.DataFrame, horizon_label: str) -> dict[str, object]:
     forecast_wape = float(group["forecast_absolute_error"].sum() / actual_sum) if actual_sum else np.nan
     baseline_wape = float(group["baseline_absolute_error"].sum() / actual_sum) if actual_sum else np.nan
 
+    quality_verified = (n > 0 and "actual_quality_version" in group
+                        and group["actual_quality_version"].eq(QUALITY_VERSION).all())
+    forecast_verified = (n > 0 and "target_quality_version" in group
+                         and group["target_quality_version"].eq(QUALITY_VERSION).all())
+    versions = group["target_quality_version"].unique() if n else []
+    collection_ready = n_issue_dates >= MIN_ISSUE_DATES and span_days >= MIN_PROSPECTIVE_SPAN_DAYS
     return {
         "horizon": horizon_label,
         "n": n,
@@ -285,9 +301,12 @@ def _summary_row(group: pd.DataFrame, horizon_label: str) -> dict[str, object]:
         "interval_80_low_miss_rate": float(group["interval_80_low_miss"].mean()) if n else np.nan,
         "interval_80_high_miss_rate": float(group["interval_80_high_miss"].mean()) if n else np.nan,
         "interval_80_mean_width": float(group["interval_80_width"].mean()) if n else np.nan,
-        "evidence_ready": (
-            n_issue_dates >= MIN_ISSUE_DATES and span_days >= MIN_PROSPECTIVE_SPAN_DAYS
-        ),
+        "collection_ready": collection_ready,
+        "actual_quality_verified": quality_verified,
+        "actual_quality_version": QUALITY_VERSION if quality_verified else "unverified",
+        "forecast_quality_version": str(versions[0]) if len(versions) == 1 else "mixed_or_empty",
+        "forecast_quality_verified": forecast_verified,
+        "evidence_ready": collection_ready and quality_verified and forecast_verified,
     }
 
 
@@ -298,6 +317,15 @@ def summarize_by_horizon(detail: pd.DataFrame) -> pd.DataFrame:
         rows.append(_summary_row(group, f"D+{horizon_day}"))
     rows.append(_summary_row(detail, "all"))
     return pd.DataFrame(rows)
+
+
+def summarize_by_quality_version(detail: pd.DataFrame) -> pd.DataFrame:
+    """Do not use legacy training semantics to promote the corrected input route."""
+    if detail.empty:
+        return summarize_by_horizon(detail)
+    return pd.concat([summarize_by_horizon(group)
+                      for _, group in detail.groupby("target_quality_version", sort=True)],
+                     ignore_index=True)
 
 
 def _upload_csv(dbx: dropbox.Dropbox, local_path: Path, remote_name: str) -> None:
@@ -314,22 +342,46 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--detail-output", type=Path, default=DEFAULT_DETAIL_OUTPUT)
     parser.add_argument("--summary-output", type=Path, default=DEFAULT_SUMMARY_OUTPUT)
+    parser.add_argument("--quality-summary-output", type=Path, default=DEFAULT_QUALITY_SUMMARY_OUTPUT)
     parser.add_argument("--no-dropbox-output", action="store_true")
+    parser.add_argument("--daily-csv", type=Path)
+    parser.add_argument("--hourly-csv", type=Path)
+    parser.add_argument("--archive-dir", type=Path, help="Local immutable forecast snapshots")
+    parser.add_argument("--now", help="Aware audit timestamp for reproducible local replay")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    dbx = _dropbox_client()
-    actuals = load_actual_daily(dbx)
-    archive = load_forecast_archive(dbx)
+    local = any([args.daily_csv, args.hourly_csv, args.archive_dir, args.now])
+    if local:
+        if not all([args.daily_csv, args.hourly_csv, args.archive_dir, args.no_dropbox_output]):
+            raise ValueError("Local replay requires daily-csv, hourly-csv, archive-dir and no-dropbox-output")
+        daily, _ = verified_daily_targets(
+            pd.read_csv(args.daily_csv), pd.read_csv(args.hourly_csv),
+            now=pd.Timestamp(args.now) if args.now else None,
+        )
+        actuals = daily.rename(columns={"Daily_Inflow_Total": "actual"})
+        frames = [normalize_snapshot(pd.read_csv(path), snapshot_name=path.name)
+                  for path in sorted(args.archive_dir.glob("daily_visits_forecast_*.csv"))]
+        if not frames:
+            raise ValueError("No local immutable forecast snapshots")
+        archive = select_earliest_issues(pd.concat(frames, ignore_index=True))
+        dbx = None
+    else:
+        dbx = _dropbox_client()
+        actuals = load_actual_daily(dbx)
+        archive = load_forecast_archive(dbx)
     detail = score_archive(archive, actuals)
     summary = summarize_by_horizon(detail)
+    quality_summary = summarize_by_quality_version(detail)
 
     args.detail_output.parent.mkdir(parents=True, exist_ok=True)
     args.summary_output.parent.mkdir(parents=True, exist_ok=True)
+    args.quality_summary_output.parent.mkdir(parents=True, exist_ok=True)
     detail.to_csv(args.detail_output, index=False)
     summary.to_csv(args.summary_output, index=False)
+    quality_summary.to_csv(args.quality_summary_output, index=False)
 
     matured_origins = detail["data_cutoff"].nunique() if not detail.empty else 0
     print(
@@ -341,6 +393,7 @@ def main() -> None:
     if not args.no_dropbox_output:
         _upload_csv(dbx, args.detail_output, args.detail_output.name)
         _upload_csv(dbx, args.summary_output, args.summary_output.name)
+        _upload_csv(dbx, args.quality_summary_output, args.quality_summary_output.name)
         print("Uploaded prospective daily-arrivals score outputs to Dropbox")
 
 

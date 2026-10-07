@@ -1,0 +1,43 @@
+name: Daily target quality CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/daily_arrival_quality.py'
+      - 'scripts/get_current.py'
+      - 'scripts/evaluation/audit_flow_history.py'
+      - 'scripts/evaluation/prospective/score_daily_visits_forecast.py'
+      - 'scripts/forecast_daily_visits*.py'
+      - 'scripts/explain_daily_visits_forecast.py'
+      - 'scripts/backtest_holiday_features.py'
+      - 'tests/test_daily*.py'
+      - 'tests/test_flow_history_audit.py'
+      - '.github/workflows/daily-target-quality-ci.yml'
+      - '.github/workflows/daily-visits-forecast.yml'
+  push:
+    branches: [fix/daily-target-completeness]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: chronos-requirements.txt
+      - name: Install CPU test dependencies
+        run: |
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r chronos-requirements.txt pytest tqdm
+      - name: Verify daily contracts without credentials or model inference
+        run: |
+          python -m py_compile scripts/get_current.py scripts/daily_arrival_quality.py scripts/forecast_daily_visits_from_daily.py
+          python -m pytest -q tests/test_daily_arrival_quality.py tests/test_flow_history_audit.py tests/test_daily_visits_prospective_score.py tests/test_daily_visit_forecast.py tests/test_daily_visit_explainability.py tests/test_daily_visit_backtest.py tests/test_daily_arrival_outlook.py

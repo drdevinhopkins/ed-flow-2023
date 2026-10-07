@@ -51,6 +51,7 @@ from daily_weather_feature_set import (
 )
 from live_weather_forecast import build_operational_weather
 from utils import upload
+from daily_arrival_quality import target_history_fingerprint
 from weather_features import add_weather_features, aggregate_hourly_weather, fit_climatology
 
 DEFAULT_HORIZON_DAYS = 7
@@ -415,6 +416,8 @@ def main() -> None:
         history_days=history_days,
         generated_at=generated_at,
     )
+    output["target_quality_version"] = daily.attrs.get("target_quality_version", "unverified")
+    output["target_history_sha256"] = target_history_fingerprint(history)
     weather_snapshot = build_weather_snapshot(
         future,
         cutoff=cutoff,

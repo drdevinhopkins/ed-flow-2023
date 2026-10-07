@@ -33,6 +33,7 @@ from daily_weather_feature_set import (
     SURFACE_CONDITION_COLUMNS,
 )
 from forecast_daily_visits_from_daily import load_daily_visits_from_dropbox
+from daily_arrival_quality import verify_explanation_context
 
 DEFAULT_FORECAST = Path("daily_visits_forecast.csv")
 DEFAULT_WEATHER_SNAPSHOT = Path("daily_visits_weather_snapshot.csv")
@@ -270,10 +271,15 @@ def enrich_forecast(
     formatted_forecast: pd.DataFrame,
     history: pd.DataFrame,
     explanations: pd.DataFrame,
+    *,
+    baseline_history: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     out = formatted_forecast.copy()
     out["ds"] = pd.to_datetime(out["ds"]).dt.normalize()
-    out["seasonal_weekday_baseline"] = weekday_baseline(history, out["ds"])
+    baseline_source = history if baseline_history is None else baseline_history
+    cutoff = pd.to_datetime(out["data_cutoff"]).max()
+    baseline_source = baseline_source.loc[baseline_source["ds"].le(cutoff)]
+    out["seasonal_weekday_baseline"] = weekday_baseline(baseline_source, out["ds"])
     out["delta_vs_weekday_baseline"] = (
         _prediction_values(out).to_numpy() - out["seasonal_weekday_baseline"].to_numpy()
     )
@@ -397,6 +403,7 @@ def main() -> None:
     )
     if rebuilt_cutoff != cutoff:
         raise ValueError("Rebuilt forecast context cutoff does not match persisted forecast")
+    verify_explanation_context(formatted, history)
 
     future = future_from_snapshot(snapshot)
     if future["ds"].tolist() != formatted["ds"].tolist():
@@ -414,7 +421,7 @@ def main() -> None:
         horizon_days=horizon_days,
         context_days=args.context_days,
     )
-    explained = enrich_forecast(formatted, history, explanations)
+    explained = enrich_forecast(formatted, history, explanations, baseline_history=daily)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.long_output.parent.mkdir(parents=True, exist_ok=True)

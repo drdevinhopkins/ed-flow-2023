@@ -178,8 +178,10 @@ jobs:
           assert forecast['daily_visits_prediction'].notna().all()
           assert (forecast['weather_feature_set'] == 'raw_plus_snow').all()
           assert forecast['horizon_day'].tolist() == list(range(1, 8))
-          assert forecast['history_days'].min() >= 120
-          assert not forecast['short_context_warning'].astype(bool).any()
+          assert forecast['history_days'].min() >= 28
+          assert forecast['short_context_warning'].eq(forecast['history_days'] < 120).all()
+          assert forecast['target_quality_version'].eq('daily-arrivals-quality-v1').all()
+          assert forecast['target_history_sha256'].str.fullmatch(r'[0-9a-f]{64}').all()
           assert forecast['temp_mean'].notna().all()
           assert forecast['wind_max'].notna().all()
           assert forecast['snowfall_sum'].notna().all()
