@@ -155,6 +155,44 @@ def test_corrected_actuals_do_not_relabel_legacy_forecasts_as_validated() -> Non
     assert corrected.n_issue_dates.eq(5).all()
 
 
+def test_local_replay_cannot_publish_or_overwrite_source_files(monkeypatch, tmp_path) -> None:
+    from types import SimpleNamespace
+    import pytest
+    daily = tmp_path / "daily.csv"
+    hourly = tmp_path / "hourly.csv"
+    daily.write_text("source sentinel")
+    args = SimpleNamespace(daily_csv=daily, hourly_csv=hourly, archive_dir=tmp_path,
+                           now=None, no_dropbox_output=False, detail_output=tmp_path / "detail.csv",
+                           summary_output=tmp_path / "summary.csv", quality_summary_output=tmp_path / "quality.csv")
+    monkeypatch.setattr(score, "parse_args", lambda: args)
+    with pytest.raises(ValueError, match="no-dropbox-output"):
+        score.main()
+    args.no_dropbox_output = True
+    args.detail_output = daily
+    with pytest.raises(ValueError, match="overwrite"):
+        score.main()
+    assert daily.read_text() == "source sentinel"
+    args.detail_output = tmp_path / "detail.csv"
+    args.summary_output = args.detail_output
+    with pytest.raises(ValueError, match="distinct"):
+        score.main()
+
+
+def test_local_replay_cannot_overwrite_immutable_snapshot(monkeypatch, tmp_path) -> None:
+    from types import SimpleNamespace
+    import pytest
+    snapshot = tmp_path / "daily_visits_forecast_original.csv"
+    snapshot.write_text("immutable sentinel")
+    args = SimpleNamespace(daily_csv=tmp_path / "daily.csv", hourly_csv=tmp_path / "hourly.csv",
+                           archive_dir=tmp_path, now=None, no_dropbox_output=True,
+                           detail_output=snapshot, summary_output=tmp_path / "summary.csv",
+                           quality_summary_output=tmp_path / "quality.csv")
+    monkeypatch.setattr(score, "parse_args", lambda: args)
+    with pytest.raises(ValueError, match="snapshots"):
+        score.main()
+    assert snapshot.read_text() == "immutable sentinel"
+
+
 if __name__ == "__main__":
     test_normalize_snapshot_contract()
     test_same_weekday_baseline_is_cutoff_safe()

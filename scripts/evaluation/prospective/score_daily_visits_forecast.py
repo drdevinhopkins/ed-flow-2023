@@ -357,13 +357,20 @@ def main() -> None:
     if local:
         if not all([args.daily_csv, args.hourly_csv, args.archive_dir, args.no_dropbox_output]):
             raise ValueError("Local replay requires daily-csv, hourly-csv, archive-dir and no-dropbox-output")
+        inputs = {args.daily_csv.resolve(), args.hourly_csv.resolve()}
+        snapshots = sorted(args.archive_dir.glob("daily_visits_forecast_*.csv"))
+        inputs.update(path.resolve() for path in snapshots)
+        outputs = [path.resolve() for path in
+                   [args.detail_output, args.summary_output, args.quality_summary_output]]
+        if inputs.intersection(outputs) or len(set(outputs)) != len(outputs):
+            raise ValueError("Replay outputs must be distinct and must not overwrite inputs or snapshots")
         daily, _ = verified_daily_targets(
             pd.read_csv(args.daily_csv), pd.read_csv(args.hourly_csv),
             now=pd.Timestamp(args.now) if args.now else None,
         )
         actuals = daily.rename(columns={"Daily_Inflow_Total": "actual"})
         frames = [normalize_snapshot(pd.read_csv(path), snapshot_name=path.name)
-                  for path in sorted(args.archive_dir.glob("daily_visits_forecast_*.csv"))]
+                  for path in snapshots]
         if not frames:
             raise ValueError("No local immutable forecast snapshots")
         archive = select_earliest_issues(pd.concat(frames, ignore_index=True))
