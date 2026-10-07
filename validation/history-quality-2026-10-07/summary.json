@@ -1,0 +1,32 @@
+{
+  "audit_at_utc": "2026-10-07T21:00:48.437708+00:00",
+  "timezone": "America/Montreal",
+  "hourly_start": "2021-01-01T01:00:00",
+  "hourly_end": "2026-10-07T16:00:00",
+  "hourly_rows": 50342,
+  "duplicate_hourly_rows": 0,
+  "invalid_inflow_rows": 0,
+  "missing_internal_clock_hours": 194,
+  "gap_episodes": 86,
+  "missing_slots_on_dst_dates": 5,
+  "ordinary_incomplete_previous_days": 69,
+  "ordinary_incomplete_days_in_1095_day_context": 53,
+  "published_ordinary_incomplete_totals": 69,
+  "published_sum_mismatches": 0,
+  "contiguous_audit_eligible_previous_days": 37,
+  "latest_published_daily_date": "2026-10-06T00:00:00",
+  "daily_dates_without_hourly_source": 0,
+  "interpretation": "Clock coverage audit only; no arrivals imputed or production files changed. DST and reporting-interval conventions need source verification.",
+  "input_sha256": {
+    "hourly": "e2838efed57899d1a0a24ae29946516eb7370909fab62ccf2d47fb9928fe0d78",
+    "daily": "982fb96e0ecdf4c25d566b3329b958ec091a200eca720de5b9a1748ec8f038cf",
+    "scored_detail": "fffa2489b6ca23d2785161681e62265119ca29fd2d435a3d7b6037cb85bc227d"
+  },
+  "scored_rows": 277,
+  "scored_actual_rows_requiring_review": 7,
+  "scored_actual_dates_requiring_review": [
+    "2026-08-30"
+  ],
+  "scored_baseline_rows_requiring_review": 74,
+  "scored_actual_mismatches": 0
+}
