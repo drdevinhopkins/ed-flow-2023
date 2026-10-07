@@ -79,6 +79,22 @@ class HistoryAuditTests(unittest.TestCase):
         self.assertEqual(summary["ordinary_incomplete_previous_days"], 0)
         self.assertEqual(summary["contiguous_audit_eligible_previous_days"], 1)
 
+    def test_first_day_internal_gap_is_not_a_leading_boundary(self):
+        hourly = source().drop(index=6)
+        summary, quality, _ = self.audit(hourly)
+        self.assertEqual(quality.iloc[0].quality_status, "incomplete_or_invalid")
+        self.assertEqual(summary["ordinary_incomplete_previous_days"], 1)
+        self.assertEqual(summary["ordinary_incomplete_days_in_1095_day_context"], 1)
+        self.assertEqual(summary["published_ordinary_incomplete_totals"], 1)
+
+    def test_first_day_invalid_inflow_is_not_a_leading_boundary(self):
+        hourly = source()
+        hourly.loc[6, "Inflow_Total"] = np.nan
+        summary, quality, _ = self.audit(hourly)
+        self.assertEqual(quality.iloc[0].quality_status, "incomplete_or_invalid")
+        self.assertEqual(summary["ordinary_incomplete_previous_days"], 1)
+        self.assertEqual(summary["published_ordinary_incomplete_totals"], 1)
+
     def test_daily_mismatch_or_no_hourly_source_is_reported(self):
         hourly = source()
         daily = totals(hourly)

@@ -77,7 +77,8 @@ def audit_history(hourly: pd.DataFrame, daily: pd.DataFrame, *, now: pd.Timestam
     result["quality_status"] = "complete_clock_coverage"
     result.loc[~result["clock_coverage_complete"], "quality_status"] = "incomplete_or_invalid"
     result.loc[result["dst_transition"], "quality_status"] = "dst_requires_verification"
-    result.loc[(result["ds"].eq(dates.min())) & ~result["clock_coverage_complete"],
+    result.loc[(result["ds"].eq(dates.min())) & (h["ds"].min() > dates.min())
+               & ~result["clock_coverage_complete"],
                "quality_status"] = "leading_partial"
     result.loc[result["ds"].ge(today), "quality_status"] = "current_day_partial"
     # This flag is a conservative audit eligibility rule, not a new model route.

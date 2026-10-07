@@ -108,6 +108,7 @@ forecast. Do not interpret backfilled historical observations as prospective
 forecasts for the missed issue dates.
 
 Only quality diagnostics and this report are committed. Raw source files and
-complete daily histories remain outside the repository. Ten regression tests
+complete daily histories remain outside the repository. Twelve regression tests
 cover single-hour gaps, absent days, duplicates, invalid counts, DST, boundary
-days, daily mismatches, timestamp validation and cutoff-safe scoring tracing.
+days, internal gaps/invalid counts on the first date, daily mismatches, timestamp
+validation and cutoff-safe scoring tracing.
