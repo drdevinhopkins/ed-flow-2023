@@ -90,6 +90,7 @@ jobs:
           path: |
             daily_visits_prospective_detail.csv
             daily_visits_prospective_horizon_summary.csv
+            daily_visits_prospective_quality_summary.csv
             daily_visits_prospective_score.log
 
       - name: Record latest branch score
@@ -99,6 +100,7 @@ jobs:
           mkdir -p validation/daily-visits-prospective
           cp daily_visits_prospective_detail.csv validation/daily-visits-prospective/latest-detail.csv
           cp daily_visits_prospective_horizon_summary.csv validation/daily-visits-prospective/latest-summary.csv
+          cp daily_visits_prospective_quality_summary.csv validation/daily-visits-prospective/latest-quality-summary.csv
           tail -n 300 daily_visits_prospective_score.log > validation/daily-visits-prospective/latest.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

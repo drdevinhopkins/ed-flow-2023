@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import constants
 from utils import upload
 import dropbox
+from daily_arrival_quality import build_daily_inflow_outputs
 
 load_dotenv()
 
@@ -121,18 +122,15 @@ print(allData.tail(5))
 
 # Group by date (dropping the time component) and sum Inflow_Total
 
-daily_inflow = (
-    allData.groupby(allData['ds'].dt.date)['Inflow_Total']
-    .sum()
-    .reset_index(name='Daily_Inflow_Total')
-)
-
-daily_inflow = daily_inflow[:-1]
+daily_inflow, daily_quality = build_daily_inflow_outputs(allData)
 print(daily_inflow.tail(5))
 daily_inflow.to_csv('daily_inflow.csv', index=False)
 daily_inflow.to_excel('daily_inflow.xlsx', index_label="index")
+daily_quality.to_csv('daily_inflow_quality.csv', index=False)
 
 upload(dbx, 'daily_inflow.csv', '', '',
             'daily_inflow.csv', overwrite=True)
 upload(dbx, 'daily_inflow.xlsx', '', '',
             'daily_inflow.xlsx', overwrite=True)
+upload(dbx, 'daily_inflow_quality.csv', '', '',
+            'daily_inflow_quality.csv', overwrite=True)

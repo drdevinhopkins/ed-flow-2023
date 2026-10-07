@@ -126,6 +126,24 @@ def test_frames_are_complete_and_future_known() -> None:
     assert "pressure_change_1d" not in future.columns
 
 
+def test_incomplete_target_limits_context_and_preserves_short_context_warning() -> None:
+    from forecast_daily_visits import format_output
+    daily = synthetic_daily()
+    daily.loc[len(daily) - 38, "daily_visits"] = np.nan
+    cutoff, history, future = build_forecast_frames(daily, synthetic_hourly_weather())
+    assert len(history) == 37 and history["daily_visits"].notna().all()
+    predictions = pd.DataFrame({"ds": future.ds, "predictions": 240.0})
+    formatted = format_output(predictions, future, cutoff=cutoff, history_days=len(history),
+                              generated_at=pd.Timestamp("2026-01-01T12:00:00Z"))
+    assert formatted.history_days.eq(37).all()
+    assert formatted.short_context_warning.all()
+    assert formatted.validated_context_threshold_days.eq(120).all()
+    daily.loc[len(daily) - 28, "daily_visits"] = np.nan
+    import pytest
+    with pytest.raises(ValueError, match="need 28"):
+        build_forecast_frames(daily, synthetic_hourly_weather())
+
+
 if __name__ == "__main__":
     test_feature_contract()
     test_frames_are_complete_and_future_known()

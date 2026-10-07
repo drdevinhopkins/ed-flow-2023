@@ -112,3 +112,7 @@ complete daily histories remain outside the repository. Twelve regression tests
 cover single-hour gaps, absent days, duplicates, invalid counts, DST, boundary
 days, internal gaps/invalid counts on the first date, daily mismatches, timestamp
 validation and cutoff-safe scoring tracing.
+
+The follow-on [daily target correction](daily_target_quality.md) documents the
+shared completeness policy, mixed-version rollout checks and corrected replay.
+The published results above remain the original audit's historical evidence.
