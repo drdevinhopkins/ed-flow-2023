@@ -42,6 +42,13 @@ python scripts/experiments/arrival_day/run_interval_day.py targets \
   --output-dir /path/to/new-target-review
 ```
 
+The verified research environment uses the versions in
+`scripts/experiments/arrival_day/constraints.txt`. Install with
+`python -m pip install -r chronos-requirements.txt -c scripts/experiments/arrival_day/constraints.txt scikit-learn`.
+The isolated CI applies these constraints; production dependency files are unchanged.
+Unconstrained CI installed scikit-learn 1.9.1 and failed on the synthetic fit's
+all-missing state features. Compatibility with that newer version is unvalidated.
+
 The same command supports `daily`, `intraday`, `backtest`, `score-daily` and
 `score-intraday`. Daily and intraday forecasting require a local `--weather-csv`.
 Daily inference may download Chronos weights, but does not fetch weather or publish

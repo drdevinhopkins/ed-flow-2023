@@ -1,0 +1,4 @@
+# Reproduce the verified research environment without altering production installs.
+numpy==2.3.5
+pandas==2.2.3
+scikit-learn==1.8.0
