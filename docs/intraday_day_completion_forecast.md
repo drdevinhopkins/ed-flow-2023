@@ -140,3 +140,10 @@ python scripts/evaluation/backtests/backtest_intraday_day_completion.py \
 
 Add `--weather-csv PATH` only when the file contains hourly weather observations whose
 timestamps represent information available by the corresponding cutoff.
+
+## Original-issue prospective audit
+
+See [the October 7 prospective audit](intraday_prospective_audit.md) for original
+artifact scoring, cutoff coverage, readiness gates and the unresolved midnight
+counter convention. The frozen model remains experimental: better MAE alone does
+not satisfy the operational calibration and target-definition checks.
