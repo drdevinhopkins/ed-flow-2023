@@ -57,6 +57,20 @@ class AuditTests(unittest.TestCase):
             self.assertEqual(inventory.iloc[1].status, "quarantined_artifact")
             self.assertIn("digest mismatch", excluded[0]["reason"])
 
+    def test_interval_model_is_a_separate_target_collection(self):
+        from arrival_day_policy import INTERVAL_TARGET_VERSION, INTERVAL_QUALITY_VERSION
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            row = forecast(target_definition_version=INTERVAL_TARGET_VERSION,
+                           target_quality_version=INTERVAL_QUALITY_VERSION, model_version="interval-v2")
+            artifacts = [self.artifact(root, 1), self.artifact(root, 2, row)]
+            runs = [{"id": 1}, {"id": 2}]
+            legacy, _, _ = audit.read_artifacts(artifacts, runs, root)
+            new, _, _ = audit.read_artifacts(artifacts, runs, root, target_definition=INTERVAL_TARGET_VERSION)
+            self.assertEqual(legacy.artifact_id.tolist(), [1])
+            self.assertEqual(new.artifact_id.tolist(), [2])
+            self.assertEqual(new.target_quality_version.tolist(), [INTERVAL_QUALITY_VERSION])
+
     def test_earliest_issue_wins_not_best_error(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

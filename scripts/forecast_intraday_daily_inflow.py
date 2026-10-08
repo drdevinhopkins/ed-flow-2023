@@ -58,6 +58,7 @@ def validate_live_flow(
     *,
     now: pd.Timestamp,
     max_age_minutes: int = 90,
+    interval_day: bool = False,
 ) -> tuple[pd.Timestamp, pd.DataFrame]:
     """Return a safe current-day prefix or raise a suppressing error."""
 
@@ -75,11 +76,17 @@ def validate_live_flow(
         )
 
     latest_day = latest_ds.normalize()
+    if interval_day and latest_ds.hour == 0:
+        raise DataQualityError("closing midnight is outside the 06:00-22:00 model window")
     current = flow.loc[flow["day"].eq(latest_day)].sort_values(
         ["ds", "_source_order"]
     ).copy()
     actual_hours = current["ds"].dt.hour.astype(int).tolist()
     expected_hours = expected_local_hours(latest_day)
+    if interval_day:
+        if len(expected_hours) != 24:
+            raise DataQualityError("interval-day DST convention requires upstream verification")
+        expected_hours = list(range(1, 24))
     latest_positions = [
         position
         for position, hour in enumerate(expected_hours)
@@ -144,12 +151,14 @@ def build_intraday_forecast(
     calibration_shrinkage_days: float = 28.0,
     max_iter: int = 200,
     random_state: int = 42,
+    interval_day: bool = False,
 ) -> dict[str, object]:
     """Fit the locked ensemble and return one guarded live forecast row."""
 
-    flow = load_hourly_flow(flow_source)
+    flow = (load_hourly_flow(flow_source, interval_day=True, now=generated_at)
+            if interval_day else load_hourly_flow(flow_source))
     latest_ds, _ = validate_live_flow(
-        flow, now=generated_at, max_age_minutes=max_age_minutes
+        flow, now=generated_at, max_age_minutes=max_age_minutes, interval_day=interval_day
     )
     weather = build_weather_features(weather_source)
     live_day = latest_ds.normalize()
@@ -280,7 +289,7 @@ def build_intraday_forecast(
         f"(P80 {p10_total:.0f}-{p90_total:.0f}); "
         f"{expected_additional:.0f} additional arrivals expected."
     )
-    return {
+    row = {
         "generated_at_utc": generated_at.tz_convert("UTC").isoformat(),
         "generated_at_local": generated_at.tz_convert(LOCAL_TZ).isoformat(),
         "forecast_day": live_day.date().isoformat(),
@@ -299,6 +308,12 @@ def build_intraday_forecast(
         "forecast_text": forecast_text,
         "status": "experimental_forecast",
     }
+    if interval_day:
+        from arrival_day_policy import INTERVAL_MODEL_VERSION, INTERVAL_QUALITY_VERSION, INTERVAL_TARGET_VERSION
+        version = INTERVAL_MODEL_VERSION if max_iter == 200 else f"{INTERVAL_MODEL_VERSION}-research-iter{max_iter}"
+        row.update(model_version=version, target_quality_version=INTERVAL_QUALITY_VERSION,
+                   target_definition_version=INTERVAL_TARGET_VERSION)
+    return row
 
 
 def write_forecast(path: Path, row: dict[str, object]) -> None:
