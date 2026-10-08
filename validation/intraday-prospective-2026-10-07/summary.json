@@ -1,0 +1,52 @@
+{
+  "audit_at_utc": "2026-10-08T02:37:32+00:00",
+  "target": "sum Inflow_Total by stored naive Montreal ds date, including 00:00",
+  "window_start": "2026-09-03",
+  "window_end": "2026-10-06",
+  "artifacts": 728,
+  "artifact_status_counts": {
+    "forecast_written": 517,
+    "suppressed_data_quality": 210,
+    "suppressed_model_error": 1
+  },
+  "original_forecasts": 517,
+  "distinct_issues": 515,
+  "scored_rows": 499,
+  "operational_rows": 234,
+  "model_versions": [
+    "intraday-ensemble-v1-2026-08-28"
+  ],
+  "gates": [
+    {
+      "model_version": "intraday-ensemble-v1-2026-08-28",
+      "complete_operational_days": 27,
+      "longest_clean_streak": 15,
+      "latest_clean_streak": 1,
+      "minimum_28_complete_days": false,
+      "seven_consecutive_clean_days_observed": true,
+      "latest_seven_days_clean": false,
+      "overall_mae_improvement_at_least_5pct": true,
+      "operational_mae_improvement_at_least_5pct": true,
+      "overall_absolute_bias_at_most_2": true,
+      "every_operational_hour_absolute_bias_at_most_3": false,
+      "overall_p80_coverage_75_to_85pct": true,
+      "operational_p80_coverage_75_to_85pct": false
+    }
+  ],
+  "promotion_decision": "no-go; explicit manual review and target-boundary resolution required",
+  "boundary_days_compared": 34,
+  "boundary_counter_chain_matches": 34,
+  "boundary_days_with_different_totals": 31,
+  "source_sha256": {
+    "hourly": "e2838efed57899d1a0a24ae29946516eb7370909fab62ccf2d47fb9928fe0d78",
+    "artifacts": "2707df2fb79e3a1b34d6fe9658bc017fc45baf3fda71079dffea951c982edf6e",
+    "runs": "3059166ae57720ef8b4f9a1a94334529772cb8d4ccb7c7161ac6c811121ddd63"
+  },
+  "limitations": [
+    "Coverage applies to retained artifacts in the supplied run inventory, not inaccessible hospital logs or older unretained issues.",
+    "Missing or suppressed issues are not retrospectively recreated.",
+    "Actuals may include authoritative backfills; original forecast values and recorded baselines are unchanged.",
+    "The first archive day is left-censored; it cannot count as a complete day.",
+    "Timestamp/counter agreement is diagnostic evidence, not independent upstream confirmation."
+  ]
+}
