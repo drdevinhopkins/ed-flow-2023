@@ -252,7 +252,7 @@ def score_archive(archive: pd.DataFrame, actuals: pd.DataFrame) -> pd.DataFrame:
     return detail.sort_values(["data_cutoff", "horizon_day"]).reset_index(drop=True)
 
 
-def _summary_row(group: pd.DataFrame, horizon_label: str) -> dict[str, object]:
+def _summary_row(group: pd.DataFrame, horizon_label: str, *, quality_version=QUALITY_VERSION) -> dict[str, object]:
     n = len(group)
     n_issue_dates = int(group["data_cutoff"].nunique()) if n else 0
     first_cutoff = group["data_cutoff"].min() if n else pd.NaT
@@ -270,9 +270,9 @@ def _summary_row(group: pd.DataFrame, horizon_label: str) -> dict[str, object]:
     baseline_wape = float(group["baseline_absolute_error"].sum() / actual_sum) if actual_sum else np.nan
 
     quality_verified = (n > 0 and "actual_quality_version" in group
-                        and group["actual_quality_version"].eq(QUALITY_VERSION).all())
+                        and group["actual_quality_version"].eq(quality_version).all())
     forecast_verified = (n > 0 and "target_quality_version" in group
-                         and group["target_quality_version"].eq(QUALITY_VERSION).all())
+                         and group["target_quality_version"].eq(quality_version).all())
     versions = group["target_quality_version"].unique() if n else []
     collection_ready = n_issue_dates >= MIN_ISSUE_DATES and span_days >= MIN_PROSPECTIVE_SPAN_DAYS
     return {
@@ -303,19 +303,19 @@ def _summary_row(group: pd.DataFrame, horizon_label: str) -> dict[str, object]:
         "interval_80_mean_width": float(group["interval_80_width"].mean()) if n else np.nan,
         "collection_ready": collection_ready,
         "actual_quality_verified": quality_verified,
-        "actual_quality_version": QUALITY_VERSION if quality_verified else "unverified",
+        "actual_quality_version": quality_version if quality_verified else "unverified",
         "forecast_quality_version": str(versions[0]) if len(versions) == 1 else "mixed_or_empty",
         "forecast_quality_verified": forecast_verified,
         "evidence_ready": collection_ready and quality_verified and forecast_verified,
     }
 
 
-def summarize_by_horizon(detail: pd.DataFrame) -> pd.DataFrame:
+def summarize_by_horizon(detail: pd.DataFrame, *, quality_version=QUALITY_VERSION) -> pd.DataFrame:
     rows = []
     for horizon_day in range(1, 8):
         group = detail.loc[detail["horizon_day"].astype(int).eq(horizon_day)]
-        rows.append(_summary_row(group, f"D+{horizon_day}"))
-    rows.append(_summary_row(detail, "all"))
+        rows.append(_summary_row(group, f"D+{horizon_day}", quality_version=quality_version))
+    rows.append(_summary_row(detail, "all", quality_version=quality_version))
     return pd.DataFrame(rows)
 
 

@@ -1,0 +1,175 @@
+{
+  "target_definition_version": "arrival-day-interval-end-v2",
+  "target_quality_version": "daily-arrivals-interval-quality-v2",
+  "audit_at_utc": "2026-10-08T21:52:58+00:00",
+  "source_sha256": "8fea66749e650427cddde6dd1ad16feafbe776c1ae33a3625f6f63c3e84bc852",
+  "mode": "backtest",
+  "verified_days": 2025,
+  "unverified_days": 81,
+  "production_changed": false,
+  "operational_promotion": false,
+  "configuration": {
+    "mode": "backtest",
+    "hourly": "/workspace/scratch/9e56045841bb/boundary-inspection/allData-interval-live-2026-10-08.csv",
+    "now": "2026-10-08T21:52:58Z",
+    "output_dir": "/workspace/scratch/9e56045841bb/interval-day-backtest-smoke",
+    "weather_csv": null,
+    "archive_dir": null,
+    "artifacts": null,
+    "runs": null,
+    "zip_dir": null,
+    "context_days": 1095,
+    "min_history_days": 28,
+    "max_iter": 5,
+    "n_folds": 1,
+    "test_days": 2,
+    "calendar_context": "rich"
+  },
+  "source_sha256s": {
+    "hourly": "8fea66749e650427cddde6dd1ad16feafbe776c1ae33a3625f6f63c3e84bc852"
+  },
+  "result": {
+    "complete_training_days": 2025,
+    "predictions": 340,
+    "readiness": {
+      "candidate_model": "boosted_progress_calibrated",
+      "baseline_model": "prior_update",
+      "operational_hours": [
+        11,
+        18
+      ],
+      "candidate_overall": {
+        "n": 34,
+        "mae": 59.44281472528738,
+        "bias": -11.133425030581423,
+        "p80_coverage": 0.9117647058823529
+      },
+      "baseline_overall": {
+        "n": 34,
+        "mae": 10.956915686158549,
+        "bias": -10.77000416659472,
+        "p80_coverage": 0.8529411764705882
+      },
+      "candidate_operational": {
+        "n": 16,
+        "mae": 29.14604065291232,
+        "bias": -4.551798902734419,
+        "p80_coverage": 1.0
+      },
+      "baseline_operational": {
+        "n": 16,
+        "mae": 13.834597915657543,
+        "bias": -13.834597915657543,
+        "p80_coverage": 0.6875
+      },
+      "overall_mae_improvement_fraction": -4.425141201038829,
+      "operational_mae_improvement_fraction": -1.1067501079974136,
+      "max_absolute_operational_hour_bias": 58.19105120960043,
+      "retrospective_gates": {
+        "overall_mae_improvement_at_least_5pct": false,
+        "operational_mae_improvement_at_least_5pct": false,
+        "absolute_overall_bias_at_most_2": false,
+        "max_operational_hour_bias_at_most_3": false,
+        "overall_p80_coverage_between_75_and_85pct": false,
+        "operational_p80_coverage_between_75_and_85pct": false,
+        "forecast_and_interval_invariants": true
+      },
+      "retrospective_ready": false,
+      "production_ready": false,
+      "production_blockers": [
+        "At least 28 complete prospective shadow days are required (56 preferred).",
+        "Versioned fit/predict artifacts, freshness monitoring, fallback, and runbook are required.",
+        "An explicit go/no-go review is required before publishing forecasts."
+      ],
+      "operational_promotion": false,
+      "reason": "Retrospective research only; new-target prospective collection required"
+    }
+  },
+  "evidence_scope": "Target outputs restricted to Aug 31 onward; counts cover full source. Backtest is reduced-iteration execution smoke without weather, not full model validation.",
+  "source_pdf_sha256": "05abe1913718584d826acf50b2cd37658ae1ae18fb4e3529bf8469d57dff9bb5",
+  "report_crosschecks": [
+    {
+      "day": "2026-10-06",
+      "stored_calendar_total": 323,
+      "interval_day_total": 319,
+      "report_total": 319
+    },
+    {
+      "day": "2026-10-07",
+      "stored_calendar_total": 283,
+      "interval_day_total": 286,
+      "report_total": 286
+    }
+  ],
+  "legacy_archive_exclusion": {
+    "archived_rows": 441,
+    "v2_issue_rows": 0,
+    "scored_rows": 0,
+    "legacy_rows_not_relabelled": 441
+  },
+  "legacy_archive_sha256s": {
+    "daily_visits_forecast_20260824T105347Z.csv": "768f84d6deeec62d13258aa3f41106957b4bdf378a566fb7ebd0c064823fdd05",
+    "daily_visits_forecast_20260825T105013Z.csv": "a0d525712a090230f67e5bef69bdf8cc9acac24e8b273f3c4753b0dfa6f3af12",
+    "daily_visits_forecast_20260826T105210Z.csv": "add01f86cffb96c0f05de1dfda3466062dfb9436b765d86fd7e277637943a252",
+    "daily_visits_forecast_20260827T203026Z.csv": "9cdc0bbfa121a6f80090d850dd418da01e88df85c205aa1e4e86afc823080f21",
+    "daily_visits_forecast_20260828T211228Z.csv": "a1b8a718a3a91cecaf73f9361abef31f9d1a3f4be2d785a53f8bb0a43ee77364",
+    "daily_visits_forecast_20260829T150432Z.csv": "e69d00425f5166ee08c5fe02114f2725520dbec44556ff4f5d7d1a3441dfe9aa",
+    "daily_visits_forecast_20260830T145310Z.csv": "3ebf9b0b8f217cb36a34832a77b96d0106d4db31e439129c335370ca106c3436",
+    "daily_visits_forecast_20260831T173752Z.csv": "ebfc5f3021f6fbc9902cd1a485756c9025b00055e8e8458db7c21b813f0f3a18",
+    "daily_visits_forecast_20260901T145339Z.csv": "3e10b33f2cba97c611c375daf284667c65fb09f1fa3b971ef4787e347369e580",
+    "daily_visits_forecast_20260902T142945Z.csv": "3fbc29a7f168df91c8b887273897c54121df3495d1f7cd58f5d39aafc5dd4dfd",
+    "daily_visits_forecast_20260903T143425Z.csv": "f2363d9417546afd8c2975bf5b8ed547335b9e47f5c2688f57e9e02f2073ab28",
+    "daily_visits_forecast_20260904T142200Z.csv": "8f0d724a30f45d6f9af39d3e1d1dee09ba926229fa8e3e3a940ff354d43dad3b",
+    "daily_visits_forecast_20260905T132901Z.csv": "52bac23e2b58c7b0f46cd5ac8f8cc5e729aaa89c04d89160d5030d18bf100619",
+    "daily_visits_forecast_20260906T134142Z.csv": "e7be9eaf978b15f8c7ba29c3e345e3b10bf2787a401d502dc01ebd0f012b3d13",
+    "daily_visits_forecast_20260907T155136Z.csv": "5f260dbedd9b41d736dcdf2270ab3bb917242ef6a4942152c05aef3e109aaa47",
+    "daily_visits_forecast_20260908T143253Z.csv": "a0e4e0cf70f0abc4038c8f90ab133160aa055e6c22b340f385d276bd96ebae39",
+    "daily_visits_forecast_20260909T143611Z.csv": "8e80136598b4415c8b1da17a7330d256b8805b97e1b36c61d640372d97da74b2",
+    "daily_visits_forecast_20260910T101629Z.csv": "c36c38bf180334d0e7c808132a518a940044a5cd6a31643849822686872a7ed9",
+    "daily_visits_forecast_20260910T101702Z.csv": "50c471732232ad2ab6e8a62be3fbb0164bc6532ba4c5e06f9ab9a95913dcb12b",
+    "daily_visits_forecast_20260911T101621Z.csv": "63e0015331a2615a6ca604b4ab575f2737109c21474b1df5a947502896c98a37",
+    "daily_visits_forecast_20260912T101600Z.csv": "739f4b2de50d4efbb60900d41d42cd1babaeb74db9f480e332dd4aa9f35b2ba9",
+    "daily_visits_forecast_20260912T101605Z.csv": "201092029c196755b62e8aecd2064c6f77909d4e3d53252ba97d7b7ae3ce5413",
+    "daily_visits_forecast_20260913T101653Z.csv": "90ef5cb492af1300354117b2f425f2d73b675cc49b52f841b9a8e5a41754d0d8",
+    "daily_visits_forecast_20260913T101701Z.csv": "6cc527538e4001015a4097b6211909bfa67efc105d62fee5f3a3cd08396d8a29",
+    "daily_visits_forecast_20260914T101603Z.csv": "0384f89904fba7cfbb3866d1114e55cdb7ab66799c386e32d208960d9f99b60e",
+    "daily_visits_forecast_20260915T101644Z.csv": "b92f22231d763bfdb5518ba7b893390d7596657b3410dc08f954ad624cbc29f3",
+    "daily_visits_forecast_20260915T101646Z.csv": "781f86e2bcd2fa90251863edad0e6d2e5bea5f8e7103afe7321b6dea48f7b305",
+    "daily_visits_forecast_20260916T101624Z.csv": "dabbdafdb4b04ecaad4d891efe54eb8a7fd52c8c19f974bbe282244bacac0f96",
+    "daily_visits_forecast_20260916T101627Z.csv": "4dbc31ad868739ff1d7dd457f900350c6dfda0ff79f47b879d526fd475830b45",
+    "daily_visits_forecast_20260917T101607Z.csv": "a0cce56159af8322642cba3ea7afe6dbc8210b2b97b2367d0454ccbef404d30a",
+    "daily_visits_forecast_20260917T101609Z.csv": "19ffeb4f2db29766e9ec4e2eb35d31e31349266bd7aa232d6654cdde23bee8cc",
+    "daily_visits_forecast_20260918T101622Z.csv": "455c68a00b2bf7fb30e449fceebc9ac0c32a721de1222a7284131e3b5c1062c9",
+    "daily_visits_forecast_20260918T101623Z.csv": "455c68a00b2bf7fb30e449fceebc9ac0c32a721de1222a7284131e3b5c1062c9",
+    "daily_visits_forecast_20260919T101650Z.csv": "d05e3b6a131afe86b90b58851603389901e1b1ab4491205d1d84217c6831738c",
+    "daily_visits_forecast_20260919T101654Z.csv": "0b3271fc2d575b374cced0e15597e1a5a05b4890ac686bd6b74496484289ffc6",
+    "daily_visits_forecast_20260920T101600Z.csv": "9303f7e15d373edc85f368421c54af4615ad685ec36faf4b2f7cd23a10304189",
+    "daily_visits_forecast_20260920T101608Z.csv": "246c59d9f5c87358a189ad2b11165e7de9d52e6400bdd55086f027f5a90cb3bf",
+    "daily_visits_forecast_20260921T101620Z.csv": "992020cb22a66cd5d2dda5f41f45be16e9d218934f866e6d05a86db46f66d376",
+    "daily_visits_forecast_20260921T101625Z.csv": "b2d86ff4c30c47a644fd2422dac43b898781f619482b60c7138ece93856fceec",
+    "daily_visits_forecast_20260922T101603Z.csv": "5e5dd73b22125d965466059088a58d7bb374b071bfb3aa7f1941165c56b0c68f",
+    "daily_visits_forecast_20260922T101658Z.csv": "1c423a9b4cad1a7cc409fd976f33344fdb0411ed9822ff52045a93427f481bba",
+    "daily_visits_forecast_20260923T101636Z.csv": "ecef2491dbda1b03d86a3e5ee82dd854d845894eb1e9d3d1f800b85d122d4467",
+    "daily_visits_forecast_20260923T101650Z.csv": "a9f1d451087688f75ecfb76b7cf15875fb78198ad5468bb519ea40c8edd01e62",
+    "daily_visits_forecast_20260924T101632Z.csv": "83ea505dd44d0f6ab6dab119278fe718da354d06dbc3b624f00428a9dfbeec29",
+    "daily_visits_forecast_20260924T101649Z.csv": "32cd4cf06093e4391b3c58e97bc09aab731007e7821b96d3225f0e5efffc50b3",
+    "daily_visits_forecast_20260925T101630Z.csv": "0471b004a8141ce5e4045d458eece945acd9beec9c22b82d5eee87bf1e943862",
+    "daily_visits_forecast_20260925T101639Z.csv": "86bfd6cf918b7113f2b55c9865af68bc38bcc3638257ab2c39d83ed4c531531a",
+    "daily_visits_forecast_20260926T101621Z.csv": "9d64f829ea1a8765d829081734fb2237c0b6d1178c299620b05af53de8559341",
+    "daily_visits_forecast_20260926T101640Z.csv": "d659265c372aa58f919c7c354c524a592034812d6aa6c40432ad253a026f0e40",
+    "daily_visits_forecast_20260927T101559Z.csv": "c91ac70c75f7cbceb674ad75fa1d2c752fea4fd5a2a507a0d41e1cba59de6448",
+    "daily_visits_forecast_20260927T101711Z.csv": "11ac22d7384f66ae532ce44edc38c51400dbcce06ab9f9df45e95f31592c5bc8",
+    "daily_visits_forecast_20260928T101635Z.csv": "776a52314b0ef16ac118ae7a2155586fc167d230477138fae5bcd00e5009c669",
+    "daily_visits_forecast_20260928T101653Z.csv": "59a5f5f3a669bf963835d27f7821f195dbf3f298a6820907a62ce77bf2a9e45f",
+    "daily_visits_forecast_20260929T101621Z.csv": "4bb3226dd812917ee831ec11edf5e5868a6c0e2ebd0c0ec5bdba7027d38b0bc1",
+    "daily_visits_forecast_20260929T101645Z.csv": "34838404bb06e2cbb75c9a8de0f96d2b17945b90c586ced4ea68c0319de19d5b",
+    "daily_visits_forecast_20260930T101623Z.csv": "6d42ac9ac15b2481d64acfc269fa4ba4ee57534aed629e02f3fd0690b521a473",
+    "daily_visits_forecast_20260930T101626Z.csv": "c884392a73a0312f810433c2ef3175218e4637687418199562905ff85e506bee",
+    "daily_visits_forecast_20261001T101611Z.csv": "5524b547c793b75f62c146154c78f7d9fed02bef5fc856ac65fe7ff7e8062cbd",
+    "daily_visits_forecast_20261001T101641Z.csv": "42da40b7273f79a4fcbeb0226e4b97b416855ba4d7a5d0b78f4d1d356749bece",
+    "daily_visits_forecast_20261002T101607Z.csv": "3e5b0f2542bf2d5c11a7ebd054017827fd6c67de7fdc19fe34609fb8b868e546",
+    "daily_visits_forecast_20261002T101651Z.csv": "c90fbddde745e06dffe9ebaa776220da54c74ff3d55fbc126a4b69e10442ae1f",
+    "daily_visits_forecast_20261007T101646Z.csv": "2c6b3383db16a26318e2dbd9f103730e5f2c6780b3fdeb9f542acad1f51609f8",
+    "daily_visits_forecast_20261007T101653Z.csv": "04e999ba3b597d2daab3bba10cd17ebeba790fe7ab0308dc647a3c50d5c41d08"
+  }
+}

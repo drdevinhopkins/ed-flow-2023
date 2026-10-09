@@ -70,7 +70,16 @@ def validate_forecast(row, created_at):
             "model_version": row["model_version"]}
 
 
-def read_artifacts(artifacts, runs, zip_dir):
+def read_artifacts(artifacts, runs, zip_dir, *, target_definition=None):
+    if target_definition is None:
+        status_member = "intraday-daily-inflow-status.json"
+        forecast_member = "intraday-daily-inflow-forecast.csv"
+    else:
+        from arrival_day_policy import INTERVAL_TARGET_VERSION
+        if target_definition != INTERVAL_TARGET_VERSION:
+            raise ValueError("unrecognized target definition")
+        status_member = "intraday_status_interval_v2.json"
+        forecast_member = "intraday_forecast_interval_v2.csv"
     inventory, forecasts, excluded = [], [], []
     run_ids = {r["id"] for r in runs}
     for artifact in artifacts:
@@ -87,7 +96,7 @@ def read_artifacts(artifacts, runs, zip_dir):
             if artifact.get("expired") or artifact.get("digest") != "sha256:" + record["sha256"]:
                 raise ValueError("expired artifact or digest mismatch")
             with zipfile.ZipFile(io.BytesIO(data)) as archive:
-                status = json.loads(archive.read("intraday-daily-inflow-status.json"))
+                status = json.loads(archive.read(status_member))
                 record["status"] = status["status"]
                 record["reason"] = status.get("reason", "")
                 # A leftover latest CSV never overrides an explicit suppression.
@@ -96,7 +105,18 @@ def read_artifacts(artifacts, runs, zip_dir):
                 if status["status"] != "forecast_written":
                     raise ValueError("unknown status")
                 row = status["forecast"]
-                csv = pd.read_csv(io.BytesIO(archive.read("intraday-daily-inflow-forecast.csv")))
+                # Target changes are separate collections. The legacy audit must
+                # never score a new interval-day model against stored-calendar actuals.
+                if row.get("target_definition_version") != target_definition:
+                    record["status"] = "excluded_target_definition"
+                    record["reason"] = "forecast target differs from this audit collection"
+                    excluded.append({"artifact_id": artifact["id"], "reason": record["reason"]})
+                    continue
+                if target_definition is not None:
+                    from arrival_day_policy import INTERVAL_QUALITY_VERSION, INTERVAL_TARGET_VERSION
+                    if target_definition != INTERVAL_TARGET_VERSION or row.get("target_quality_version") != INTERVAL_QUALITY_VERSION:
+                        raise ValueError("unrecognized target definition or quality version")
+                csv = pd.read_csv(io.BytesIO(archive.read(forecast_member)))
                 if len(csv) != 1:
                     raise ValueError("forecast CSV must have exactly one row")
                 parsed = validate_forecast(row, artifact["created_at"])
@@ -114,6 +134,11 @@ def read_artifacts(artifacts, runs, zip_dir):
                     raise ValueError("CSV and status cutoff hours disagree")
                 if csv.iloc[0]["status"] != row["status"] or bool(csv.iloc[0]["within_prospective_window"]) != row["within_prospective_window"]:
                     raise ValueError("CSV and status labels disagree")
+                if target_definition is not None:
+                    for key in ["target_definition_version", "target_quality_version"]:
+                        if csv.iloc[0][key] != row[key]:
+                            raise ValueError(f"CSV and status disagree: {key}")
+                        parsed[key] = row[key]
                 forecasts.append(parsed | {"artifact_id": artifact["id"], "run_id": record["run_id"]})
         except (ValueError, KeyError, TypeError, OSError, zipfile.BadZipFile) as exc:
             record["status"] = "quarantined_artifact"
@@ -131,8 +156,8 @@ def read_artifacts(artifacts, runs, zip_dir):
     return frame.loc[~duplicates].copy(), pd.DataFrame(inventory), excluded
 
 
-def score_forecasts(forecasts, hourly, *, now):
-    daily, quality = build_daily_inflow_outputs(hourly, now=now)
+def score_forecasts(forecasts, hourly, *, now, daily_builder=build_daily_inflow_outputs):
+    daily, quality = daily_builder(hourly, now=now)
     actual = daily.rename(columns={"ds": "forecast_day", "Daily_Inflow_Total": "actual"})
     rows = forecasts.merge(actual, on="forecast_day", how="left", validate="many_to_one")
     today = pd.Timestamp(now).tz_convert(TZ).tz_localize(None).normalize()
