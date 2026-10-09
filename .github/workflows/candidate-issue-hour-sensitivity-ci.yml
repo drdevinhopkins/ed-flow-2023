@@ -1,0 +1,68 @@
+name: Candidate issue-hour sensitivity CI
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_issue_hour_sensitivity.py'
+      - '.github/workflows/candidate-issue-hour-sensitivity-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  verify-issue-hour-sensitivity:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install pandas numpy
+      - name: Verify burst runs receive one issue-hour vote
+        run: |
+          python - <<'PY'
+          import pandas as pd
+
+          rows=[]
+          runs=[
+              ('run-early','2026-08-27T16:00:00Z',8.0),
+              ('run-mid','2026-08-27T16:05:00Z',20.0),
+              ('run-late','2026-08-27T16:10:00Z',12.0),
+              ('run-next-hour','2026-08-27T17:00:00Z',9.0),
+          ]
+          for run_id,issued,candidate_abs in runs:
+              for h in (1,2):
+                  baseline_abs=10.0
+                  delta=baseline_abs-candidate_abs
+                  rows.append({
+                      'forecast_run_id':run_id,
+                      'forecast_issued_at':issued,
+                      'target_ds':f'2026-08-27T{18+h:02d}:00:00',
+                      'target_name':'Inflow_Total',
+                      'horizon_band':'h01_04',
+                      'candidate_scenario':'calendar_demand',
+                      'candidate_route_active':True,
+                      'baseline_absolute_error':baseline_abs,
+                      'candidate_absolute_error':candidate_abs,
+                      'paired_absolute_error_delta':delta,
+                      'candidate_wins':candidate_abs < baseline_abs,
+                      'baseline_error':baseline_abs,
+                      'candidate_error':candidate_abs,
+                  })
+          pd.DataFrame(rows).to_csv('/tmp/detail.csv',index=False)
+          PY
+          python scripts/evaluation/prospective/summarize_shadow_candidate_issue_hour_sensitivity.py \
+            /tmp/detail.csv --output /tmp/issue-hour.csv
+          python - <<'PY'
+          import pandas as pd
+          out=pd.read_csv('/tmp/issue-hour.csv')
+          assert len(out) == 2
+          early=out.loc[out.selection=='earliest_run_per_issue_hour'].iloc[0]
+          late=out.loc[out.selection=='latest_run_per_issue_hour'].iloc[0]
+          assert early.n_unique_issue_hours == 2
+          assert late.n_unique_issue_hours == 2
+          assert early.n_matured_rows == 4
+          assert late.n_matured_rows == 4
+          assert abs(early.mae_improvement_pct - 15.0) < 1e-9
+          assert abs(late.mae_improvement_pct - (-5.0)) < 1e-9
+          assert not bool(early.selection_direction_agrees)
+          assert not bool(late.selection_direction_agrees)
+          PY

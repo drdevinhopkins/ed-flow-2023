@@ -1,0 +1,52 @@
+name: Candidate evidence trajectory CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/candidate-trajectory-ci.yml'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_trajectory.py'
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-trajectory:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install pandas numpy
+      - name: Verify incomplete dates cannot enter trajectory
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          rows = [
+              ['Inflow_Total','h01_04','calendar_demand','2026-08-01',True,1.0,10.0],
+              ['Inflow_Total','h01_04','calendar_demand','2026-08-02',True,-0.5,-5.0],
+              ['Inflow_Total','h01_04','calendar_demand','2026-08-03',False,-100.0,-1000.0],
+          ]
+          pd.DataFrame(rows, columns=[
+              'target_name','horizon_band','candidate_scenario','forecast_issue_date',
+              'issue_date_complete','mean_paired_mae_delta','mae_improvement_pct'
+          ]).to_csv('/tmp/by-date.csv', index=False)
+          PY
+          python scripts/evaluation/prospective/summarize_shadow_candidate_trajectory.py \
+            /tmp/by-date.csv --output /tmp/trajectory.csv
+          python - <<'PY'
+          import pandas as pd
+          df = pd.read_csv('/tmp/trajectory.csv')
+          assert len(df) == 2, df
+          assert df['forecast_issue_date'].tolist() == ['2026-08-01','2026-08-02'], df
+          last = df.iloc[-1]
+          assert last['cumulative_complete_issue_dates'] == 2, last
+          assert abs(last['cumulative_mean_mae_improvement_pct'] - 2.5) < 1e-9, last
+          assert abs(last['cumulative_issue_date_win_rate'] - 0.5) < 1e-9, last
+          assert abs(last['cumulative_harmful_issue_date_rate'] - 0.5) < 1e-9, last
+          assert abs(last['cumulative_worst_issue_date_mae_improvement_pct'] - (-5.0)) < 1e-9, last
+          print('Candidate complete-date trajectory guardrail passed.')
+          PY
