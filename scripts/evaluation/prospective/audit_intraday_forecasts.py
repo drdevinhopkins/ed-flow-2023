@@ -71,6 +71,15 @@ def validate_forecast(row, created_at):
 
 
 def read_artifacts(artifacts, runs, zip_dir, *, target_definition=None):
+    if target_definition is None:
+        status_member = "intraday-daily-inflow-status.json"
+        forecast_member = "intraday-daily-inflow-forecast.csv"
+    else:
+        from arrival_day_policy import INTERVAL_TARGET_VERSION
+        if target_definition != INTERVAL_TARGET_VERSION:
+            raise ValueError("unrecognized target definition")
+        status_member = "intraday_status_interval_v2.json"
+        forecast_member = "intraday_forecast_interval_v2.csv"
     inventory, forecasts, excluded = [], [], []
     run_ids = {r["id"] for r in runs}
     for artifact in artifacts:
@@ -87,7 +96,7 @@ def read_artifacts(artifacts, runs, zip_dir, *, target_definition=None):
             if artifact.get("expired") or artifact.get("digest") != "sha256:" + record["sha256"]:
                 raise ValueError("expired artifact or digest mismatch")
             with zipfile.ZipFile(io.BytesIO(data)) as archive:
-                status = json.loads(archive.read("intraday-daily-inflow-status.json"))
+                status = json.loads(archive.read(status_member))
                 record["status"] = status["status"]
                 record["reason"] = status.get("reason", "")
                 # A leftover latest CSV never overrides an explicit suppression.
@@ -107,7 +116,7 @@ def read_artifacts(artifacts, runs, zip_dir, *, target_definition=None):
                     from arrival_day_policy import INTERVAL_QUALITY_VERSION, INTERVAL_TARGET_VERSION
                     if target_definition != INTERVAL_TARGET_VERSION or row.get("target_quality_version") != INTERVAL_QUALITY_VERSION:
                         raise ValueError("unrecognized target definition or quality version")
-                csv = pd.read_csv(io.BytesIO(archive.read("intraday-daily-inflow-forecast.csv")))
+                csv = pd.read_csv(io.BytesIO(archive.read(forecast_member)))
                 if len(csv) != 1:
                     raise ValueError("forecast CSV must have exactly one row")
                 parsed = validate_forecast(row, artifact["created_at"])

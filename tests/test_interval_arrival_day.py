@@ -1,9 +1,12 @@
 """Report-day migration safeguards, including unchanged legacy defaults."""
 import importlib.util
+import hashlib
+import io
 import json
 from pathlib import Path
 import sys
 import tempfile
+import zipfile
 from types import SimpleNamespace
 
 import numpy as np
@@ -152,6 +155,44 @@ def test_scoring_excludes_legacy_before_earliest_issue_selection():
     assert detail.actual.tolist() == [48]
     with pytest.raises(ValueError, match="v2 actuals"):
         runner.score_interval_daily(pd.DataFrame(rows), pd.DataFrame({"ds": actuals.ds, "actual": actuals.actual}))
+
+
+def test_interval_zip_runner_scores_original_values_against_corrected_actuals(tmp_path):
+    from test_intraday_prospective_audit import forecast
+    artifacts, runs = [], []
+    for hour in range(11, 19):
+        number = hour
+        row = forecast(forecast_day="2026-02-01", cutoff_hour=hour,
+                       cutoff_ds_local=f"2026-02-01T{hour:02d}:00:00",
+                       generated_at_utc=f"2026-02-01T{hour+5:02d}:20:00Z",
+                       target_definition_version=INTERVAL_TARGET_VERSION,
+                       target_quality_version=INTERVAL_QUALITY_VERSION, model_version="interval-v2")
+        payload = {"status": "forecast_written", "forecast": row,
+                   "generated_at_utc": row["generated_at_utc"]}
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr("intraday_status_interval_v2.json", json.dumps(payload))
+            archive.writestr("intraday_forecast_interval_v2.csv", pd.DataFrame([row]).to_csv(index=False))
+        data = buffer.getvalue()
+        (tmp_path/f"{number}.zip").write_bytes(data)
+        artifacts.append({"id": number, "workflow_run": {"id": number, "head_branch": "main", "head_sha": "abc"},
+                          "created_at": row["generated_at_utc"], "expired": False,
+                          "digest": "sha256:"+hashlib.sha256(data).hexdigest()})
+        runs.append({"id": number})
+    (tmp_path/"artifacts.json").write_text(json.dumps(artifacts))
+    (tmp_path/"runs.json").write_text(json.dumps(runs))
+    output = tmp_path/"scores"
+    output.mkdir()
+    result = runner.run_intraday_score(SimpleNamespace(
+        artifacts=tmp_path/"artifacts.json", runs=tmp_path/"runs.json", zip_dir=tmp_path,
+        now=NOW.isoformat(), output_dir=output), hourly())
+    scores = pd.read_csv(output/"intraday_scores_interval_v2.csv")
+    assert scores.actual.tolist() == [55]*8  # legacy stored-calendar total is 48
+    assert scores.predicted_total.tolist() == [48]*8  # never refit or relabel issues
+    assert scores.target_quality_version.eq(INTERVAL_QUALITY_VERSION).all()
+    assert result["scored_rows"] == 8
+    assert result["gates"][0]["complete_operational_days"] == 1
+    assert result["operational_promotion"] is False
 
 
 def test_no_overwrites_and_no_remote_sources():
