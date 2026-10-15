@@ -47,9 +47,16 @@ export CHRONOS_HOURLY_ENABLE_WEATHER_ROUTING=0
 run_step() {
     local started_at=$SECONDS
     local elapsed
+    local rc=0
     printf "\n=== START: %s ===\n" "$*"
-    "$@"
+    "$@" || rc=$?
     elapsed=$((SECONDS - started_at))
+    if ((rc != 0)); then
+        printf "=== FAILED [%02d:%02d:%02d] (%d): %s ===\n" \
+            "$((elapsed / 3600))" "$(((elapsed % 3600) / 60))" "$((elapsed % 60))" \
+            "$rc" "$*" >&2
+        return "$rc"
+    fi
     printf "=== DONE [%02d:%02d:%02d]: %s ===\n" \
         "$((elapsed / 3600))" "$(((elapsed % 3600) / 60))" "$((elapsed % 60))" "$*"
 }
@@ -103,6 +110,12 @@ run_step python scripts/get_current.py
 # Hard gate: do not forecast from stale/incomplete ED, staffing, or weather data.
 run_step python scripts/validate_forecast_inputs.py
 
+# Publish the dashboard forecast as soon as validated inputs are available,
+# before other models compete for the reserved GPU. Defer a failure until the
+# legacy outputs finish; never generate a blurb from a failed priority run.
+forecast_v2_1_status=0
+run_step python scripts/hourly_forecast_v2_1.py || forecast_v2_1_status=$?
+
 # Additive guarded same-day arrival-completion forecast. It writes and uploads
 # only the separate intraday artifact; stale/incomplete inputs are suppressed
 # and a model failure must not block the established hourly outputs.
@@ -122,9 +135,13 @@ run_step python scripts/forecast_oncall_probability.py
 # prevent the established pipeline outputs.
 run_optional_step python scripts/hourly_forecast_v2.py
 
-# Required production forecast for the hourly blurb pipeline. This publishes
-# forecast-v2.1.csv with canonical targets plus explainability metadata.
-run_step python scripts/hourly_forecast_v2_1.py
+# Preserve the required v2.1 gate for the hourly blurb pipeline without letting
+# an earlier v2.1 failure prevent the established legacy outputs from updating.
+if ((forecast_v2_1_status != 0)); then
+    printf "Skipping blurb publication: the priority v2.1 forecast failed (%d).\n" \
+        "$forecast_v2_1_status" >&2
+    exit "$forecast_v2_1_status"
+fi
 
 # Publish the clinician-facing blurb after all forecast inputs are available,
 # before the staffing refresh completes the workflow.
