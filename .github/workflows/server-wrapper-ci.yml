@@ -5,11 +5,17 @@ on:
     branches: [main]
     paths:
       - 'scripts/run_ed_flow_update.sh'
+      - 'tests/test_hourly_pipeline_order.py'
+      - '.github/workflows/hourly-update.yml'
+      - '.github/workflows/hourly-legacy-forecast.yml'
       - '.github/workflows/server-wrapper-ci.yml'
   pull_request:
     branches: [main]
     paths:
       - 'scripts/run_ed_flow_update.sh'
+      - 'tests/test_hourly_pipeline_order.py'
+      - '.github/workflows/hourly-update.yml'
+      - '.github/workflows/hourly-legacy-forecast.yml'
       - '.github/workflows/server-wrapper-ci.yml'
 
 permissions:
@@ -20,5 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
       - name: Validate JGH server wrapper shell syntax
         run: bash -n scripts/run_ed_flow_update.sh
+      - name: Exercise forecast ordering and failure isolation
+        run: python -m unittest tests.test_hourly_pipeline_order -v

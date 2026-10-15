@@ -1,5 +1,5 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# Publish and validate shared inputs before starting any hourly model.
+# v2, v2.1 and the legacy forecast independently follow this workflow's success.
 
 name: Hourly update
 
@@ -25,21 +25,10 @@ jobs:
       with:
         python-version: '3.12'
         cache: 'pip'
-        cache-dependency-path: |
-          requirements.txt
-          chronos-requirements.txt
-    - name: Cache HuggingFace models
-      uses: actions/cache@v5
-      with:
-        path: ~/.cache/huggingface
-        key: huggingface-chronos2-${{ runner.os }}-${{ hashFiles('chronos-requirements.txt', 'scripts/chronos_forecast.py') }}
-        restore-keys: |
-          huggingface-chronos2-${{ runner.os }}-
+        cache-dependency-path: requirements.txt
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install torch --index-url https://download.pytorch.org/whl/cpu
-        pip install -r chronos-requirements.txt
         pip install -r requirements.txt
     - name: Get current data
       run: python scripts/get_current.py
@@ -66,34 +55,6 @@ jobs:
           SHIFTADMIN_PASS: ${{ secrets.SHIFTADMIN_PASS }}
     - name: Validate forecast inputs
       run: python scripts/validate_forecast_inputs.py
-    - name: Run Chronos Forecast Scripts
-      run: python scripts/chronos_forecast.py
-      env:
-          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
-          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-    # - name: Total TBS NP Forecast
-    #   run: python scripts/total_tbs_np_forecast.py
-    #   continue-on-error: true
-    #   env:
-    #       DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-    #       DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
-    #       DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
-    - name: Calculated KPIs
-      run: python scripts/calculated_kpis.py
-      continue-on-error: true
-      env:
-          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
-          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
-    - name: Alerts
-      run: python scripts/alerts.py
-      continue-on-error: true
-      env:
-          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
-          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
     - name: Check for failed steps
       if: failure()
       run: echo "⚠️ Some steps failed, but workflow continued."

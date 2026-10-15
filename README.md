@@ -72,21 +72,32 @@ On `jgh000533svaps`, the Dropbox watcher triggers `scripts/run_ed_flow_update.sh
 
 ```text
 get_current.py
-  → update_metar.py
-  → shiftadmin.py
   → validate_forecast_inputs.py
+  → hourly_forecast_v2_1.py (priority dashboard publication)
+  → forecast_intraday_daily_inflow.py (additive/non-blocking)
   → chronos_forecast.py
   → forecast_oncall_impact.py
   → forecast_oncall_probability.py
-  → calculated_kpis.py
-  → alerts.py
-  → forecast_intraday_daily_inflow.py (additive/non-blocking)
   → hourly_forecast_v2.py  (additive/non-blocking)
+  → blurb_automation_wrapper.py
+  → llm_blurb_automation_wrapper.py (additive/non-blocking)
+  → shiftadmin.py
+  → update_weather.py
+  → daily arrivals (06:00 Montreal, once per day)
+  → prospective shadow-weather experiment (additive/non-blocking)
 ```
 
-The validation gate prevents stale or incomplete ED, staffing, or weather inputs from silently generating a forecast. The established legacy/on-call/KPI/alert outputs remain the blocking production path. `hourly_forecast_v2.py` runs last and non-blocking so a v2 failure cannot prevent those established outputs from updating.
+The validation gate prevents stale or incomplete ED, staffing, weather, or anomaly inputs from silently generating a forecast. The dashboard's `forecast-v2.1.csv` is published immediately after that gate, before the intraday, legacy, on-call and v2 models. GPU jobs remain sequential on the reserved device. A priority v2.1 failure is reported immediately, but legacy/on-call/v2 outputs are still attempted before the wrapper fails at the blurb gate. This prevents publication of a blurb after a failed v2.1 run. The separate v2 step remains non-blocking.
 
-The wrapper loads `.env` for direct/manual invocation and explicitly keeps `CHRONOS_HOURLY_ENABLE_WEATHER_ROUTING=0` until prospective hourly weather validation is sufficient. `weather.csv` continues to be refreshed by the separate 4-hour weather timer; the wrapper refreshes METAR on each hourly-report update.
+The wrapper loads `.env` for direct/manual invocation and explicitly keeps `CHRONOS_HOURLY_ENABLE_WEATHER_ROUTING=0` until prospective hourly weather validation is sufficient. It consumes already-published staffing/weather at the gate and refreshes them after the forecasts for the next cycle. The separate 4-hour weather timer also remains configured. Hospital METAR refresh is disabled because that endpoint is unreachable from the host; local KPI/alert steps are also currently disabled.
+
+### Cloud publication timing
+
+`Hourly update` publishes current ED data and staffing, then ends after the existing input validation gate. Its successful completion independently triggers **Hourly forecast v2**, **Hourly forecast v2.1**, and **Legacy hourly forecast**. The legacy workflow retains `chronos_forecast.py`, calculated KPIs and alerts in their original order and validates inputs again before forecasting. Legacy failures no longer delay or suppress the independent forecasts.
+
+Previously, v2.1 waited for the legacy forecast and KPIs before even starting its own runner. In the October 15 10:00 Montreal cycle, inputs passed validation at 10:15:37, `Hourly update` finished at 10:20:52, and v2.1 published around 10:26:31. Removing that dependency should save roughly five minutes on the cloud path, subject to runner/dependency/model runtimes. No fixed wall-clock publication time is guaranteed.
+
+The hospital wrapper also publishes `forecast-v2.1.csv`. Two revisions in one hour can therefore be the hospital upload followed by a cloud upload. Check `forecast_origin` and `generated_at_utc` when assessing freshness. The hospital priority change requires updating the active server checkout; merging changes GitHub orchestration but does not update the hospital automatically.
 
 Representative existing forecast products include:
 
@@ -236,8 +247,10 @@ Important workflows include:
 
 | Workflow | Trigger / purpose |
 | --- | --- |
-| `hourly-update.yml` | Existing hourly refresh: current ED data, weather/METAR, staffing, legacy Chronos forecast, KPIs, alerts |
+| `hourly-update.yml` | Refresh current ED data, METAR and staffing; complete the shared input gate before model workflows start |
+| `hourly-legacy-forecast.yml` | After successful input refresh: legacy Chronos forecast, KPIs and alerts |
 | `hourly-forecast-v2.yml` | Runs the independent v2 forecast after a successful `Hourly update`; also supports manual/PR validation |
+| `hourly-forecast-v2-1.yml` | Runs v2.1 and its isolated intraday companion after successful input refresh, independently of legacy forecasting |
 | `hourly-target-routing-ci.yml` | Routing regression tests and guards that legacy execution files remain unchanged |
 | `hourly-final-feature-ablation.yml` | Common-base hourly feature-family validation |
 | `hourly-weather-feature-backtest.yml` | Hourly weather representation backtesting |

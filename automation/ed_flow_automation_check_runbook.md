@@ -76,25 +76,35 @@ Current sequence:
 
 ```text
 get_current.py
-  → update_metar.py
-  → shiftadmin.py
   → validate_forecast_inputs.py
+  → hourly_forecast_v2_1.py (priority dashboard publication)
+  → forecast_intraday_daily_inflow.py (additive/non-blocking)
   → chronos_forecast.py
   → forecast_oncall_impact.py
   → forecast_oncall_probability.py
-  → calculated_kpis.py
-  → alerts.py
   → hourly_forecast_v2.py  (additive/non-blocking)
+  → blurb_automation_wrapper.py
+  → llm_blurb_automation_wrapper.py (additive/non-blocking)
+  → shiftadmin.py
+  → update_weather.py
+  → daily arrivals (06:00 Montreal, once per day)
+  → prospective shadow-weather experiment (additive/non-blocking)
 ```
 
 Important behavior:
 
 - The wrapper loads `.env` so direct/manual invocation has the same credentials as the Dropbox watcher.
 - `CHRONOS_HOURLY_ENABLE_WEATHER_ROUTING=0` is exported explicitly. Hourly weather-winning v2 routes stay disabled until prospective forecast-time validation is sufficient.
-- `validate_forecast_inputs.py` is a hard gate. If ED, staffing, or weather inputs are stale/incomplete, the established forecast pipeline stops rather than producing a misleading forecast.
-- `hourly_forecast_v2.py` runs last as an additive step. If v2 fails, the established legacy forecast, on-call, KPI, and alert outputs have already completed and the wrapper records a warning rather than failing the whole workflow.
-- The separate `ed-flow-weather.timer` remains responsible for refreshing `weather.csv`; the hourly wrapper does not duplicate `update_weather.py`.
-- `update_metar.py` does run on every hourly PDF-triggered refresh so METAR history is kept current.
+- `validate_forecast_inputs.py` is a hard gate. If ED, staffing, weather, or anomaly inputs are stale/incomplete, the forecast pipeline stops.
+- v2.1 runs immediately after that gate, before intraday/legacy/on-call/v2 inference. GPU jobs remain sequential on the reserved device. An early v2.1 failure is logged and deferred until legacy/on-call/v2 outputs finish, then the wrapper exits without publishing a blurb. Optional v2 failures remain non-blocking.
+- Already-published staffing/weather must cover the horizon. They are refreshed after forecast/blurb publication for the next cycle; the separate `ed-flow-weather.timer` also remains configured.
+- Hospital METAR refresh is currently disabled because the host cannot reach the endpoint. Local calculated-KPI and alert steps are also currently disabled.
+
+### Earlier dashboard publication rollout
+
+Update the checkout actually used by `ed-flow-dropbox-watcher.service`, not an inactive clone. No timer or service restart is required for the wrapper reorder: the next invocation reads the updated shell script. Verify the log order is `get_current` → input validation → v2.1 publication, and compare the Dropbox revision time and CSV `forecast_origin`/`generated_at_utc` with the previous roughly :20 hospital publication. Measure the result; it depends on the PDF arrival time and GPU/input runtimes.
+
+GitHub's `Hourly update` now ends after source refresh/validation. Separate v2, v2.1 and **Legacy hourly forecast** workflows independently follow its success. Check the legacy workflow for legacy forecast/KPI/alert failures; an `Hourly update` success now confirms input readiness. The cloud should save approximately five minutes compared with the former roughly :26 publication, with runner timing still variable. Hospital and cloud remain separate publishers, so a later Dropbox revision can follow an already-current earlier upload.
 
 ### Expected outputs
 
