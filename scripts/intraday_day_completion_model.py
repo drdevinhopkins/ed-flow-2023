@@ -197,7 +197,7 @@ def _complete_day_flags(frame: pd.DataFrame) -> pd.Series:
     return frame["day"].map(flags).fillna(False).astype(bool)
 
 
-def load_hourly_flow(source: str | Path) -> pd.DataFrame:
+def load_hourly_flow(source: str | Path, *, interval_day: bool = False, now=None) -> pd.DataFrame:
     """Load hourly flow without regularizing or imputing missing arrival hours."""
 
     raw = pd.read_csv(source)
@@ -205,6 +205,10 @@ def load_hourly_flow(source: str | Path) -> pd.DataFrame:
     missing = required - set(raw.columns)
     if missing:
         raise ValueError(f"Flow source missing columns: {sorted(missing)}")
+
+    if interval_day:
+        from arrival_day_policy import interval_day_flow
+        return interval_day_flow(raw, now=pd.Timestamp.now(tz="UTC") if now is None else now)
 
     # Exact duplicate source timestamps are revisions, not extra hours. Offset-distinct
     # autumn DST timestamps remain separate and become two local rows with hour == 1.
@@ -371,7 +375,8 @@ def build_snapshots(
     )
     complete["reports_remaining"] = complete["expected_reports"] - complete["report_index"]
     complete["day_progress_fraction"] = complete["report_index"] / complete["expected_reports"]
-    complete["cutoff_hour"] = complete["ds"].dt.hour.astype(float)
+    complete["cutoff_hour"] = (complete["_arrival_report_hour"] if "_arrival_report_hour" in complete
+                               else complete["ds"].dt.hour).astype(float)
     radians = 2.0 * np.pi * complete["cutoff_hour"] / 24.0
     complete["cutoff_hour_sin"] = np.sin(radians)
     complete["cutoff_hour_cos"] = np.cos(radians)
@@ -448,7 +453,10 @@ def fit_completion_curve(train: pd.DataFrame) -> pd.DataFrame:
     curve["factor_p10"] = grouped["completion_factor"].quantile(0.1)
     curve["factor_p50"] = grouped["completion_factor"].quantile(0.5)
     curve["factor_p90"] = grouped["completion_factor"].quantile(0.9)
-    curve = curve.reindex(range(24)).interpolate(limit_direction="both")
+    # V2 reports progress from 1 through closing-hour 24. Putting closing midnight
+    # at the beginning of the curve would make cummax set every fraction to 1.
+    hours = range(1, 25) if train["cutoff_hour"].max() == 24 else range(24)
+    curve = curve.reindex(hours).interpolate(limit_direction="both")
     curve["expected_fraction"] = curve["expected_fraction"].cummax().clip(1e-4, 1.0)
     return curve
 
@@ -518,7 +526,8 @@ def predict_completion_curve(
 
 def fit_prior_update(train: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, float]] = []
-    for hour in range(24):
+    hours = range(1, 25) if train["cutoff_hour"].max() == 24 else range(24)
+    for hour in hours:
         group = train.loc[train["cutoff_hour"].astype(int).eq(hour)].dropna(
             subset=["prior_total", "pace_residual", "final_total"]
         )
