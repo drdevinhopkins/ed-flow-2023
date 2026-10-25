@@ -1,0 +1,31 @@
+name: Manual anomaly refresh
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-anomaly-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install anomaly dependencies
+        run: python -m pip install pandas numpy prophet dropbox python-dotenv tqdm openpyxl
+      - name: Generate, publish and verify hourly anomaly ranges
+        run: python scripts/anomaly_detection.py --hourly-only
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+      - name: Validate all forecast inputs
+        run: python scripts/validate_forecast_inputs.py
