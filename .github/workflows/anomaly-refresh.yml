@@ -1,8 +1,6 @@
 name: Manual anomaly refresh
 
 on:
-  push:
-    branches: [fix/verified-anomaly-refresh]
   workflow_dispatch:
 
 permissions:
