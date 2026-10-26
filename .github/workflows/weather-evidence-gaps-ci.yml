@@ -1,0 +1,105 @@
+name: Weather evidence gaps CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/weather-evidence-gaps-ci.yml'
+      - 'scripts/evaluation/prospective/score_shadow_weather_forecast.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_evidence_gaps.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_scenarios.py'
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-gaps:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install pandas and numpy
+        run: pip install pandas numpy
+
+      - name: Validate evidence-gap summary
+        run: |
+          mkdir -p validation/prospective-weather/test-score
+          python - <<'PY'
+          import pandas as pd
+          pd.DataFrame([
+              {
+                  'target_name': 'Total_TBS',
+                  'horizon_band': 'h01_04',
+                  'n': 102,
+                  'n_issue_dates': 2,
+                  'n_unique_target_hours': 17,
+                  'prospective_span_days': 0.51,
+                  'directional_criteria_met': True,
+                  'promotion_evidence_ready': False,
+                  'promotion_status': 'collecting',
+              }
+          ]).to_csv('validation/prospective-weather/test-score/summary-weather-routes.csv', index=False)
+          PY
+          python scripts/evaluation/prospective/summarize_shadow_weather_evidence_gaps.py \
+            validation/prospective-weather/test-score/summary-weather-routes.csv \
+            --output-dir validation/prospective-weather/test-score
+          python - <<'PY'
+          import pandas as pd
+          f = pd.read_csv('validation/prospective-weather/test-score/weather-route-evidence-gaps.csv').iloc[0]
+          assert f['active_rows_remaining'] == 0
+          assert f['issue_dates_remaining'] == 26
+          assert f['unique_target_hours_remaining'] == 83
+          assert abs(f['span_days_remaining'] - 55.49) < 1e-6
+          expected = min(1.0, 2/28, 17/100, 0.51/56)
+          assert abs(f['overall_readiness_fraction'] - expected) < 1e-9
+          print('Evidence-gap readiness calculation validates unique realized-hour independence.')
+          PY
+
+      - name: Validate exact-scenario promotion guardrails
+        run: |
+          mkdir -p validation/prospective-weather/scenario-test
+          python - <<'PY'
+          import pandas as pd
+          rows = []
+          for i in range(100):
+              rows.append({
+                  'target_name': 'Total_TBS',
+                  'horizon_band': 'h01_04',
+                  'weather_scenario': 'weather_raw',
+                  'weather_route_active': True,
+                  'forecast_run_id': f'run-{i}',
+                  'forecast_issued_at': f'2026-01-{(i % 28) + 1:02d}T12:00:00Z' if i < 99 else '2026-03-01T12:00:00Z',
+                  'forecast_issue_date': f'2026-01-{(i % 28) + 1:02d}' if i < 99 else '2026-03-01',
+                  'baseline_absolute_error': 10.0,
+                  'weather_absolute_error': 8.0,
+                  'paired_absolute_error_delta': 2.0,
+                  'weather_wins': True,
+                  'baseline_interval_covered': True,
+                  'weather_interval_covered': i >= 10,
+              })
+          pd.DataFrame(rows).to_csv(
+              'validation/prospective-weather/scenario-test/detail.csv', index=False
+          )
+          PY
+          python scripts/evaluation/prospective/summarize_shadow_weather_scenarios.py \
+            validation/prospective-weather/scenario-test/detail.csv \
+            --output-dir validation/prospective-weather/scenario-test
+          python - <<'PY'
+          import pandas as pd
+          f = pd.read_csv(
+              'validation/prospective-weather/scenario-test/weather-route-by-scenario.csv'
+          ).iloc[0]
+          assert f['scenario_evidence_ready'] in (True, 'True')
+          assert f['scenario_directional_criteria_met'] in (False, 'False')
+          assert f['scenario_status'] == 'evaluable_fail'
+          assert abs(f['interval_coverage_delta'] - (-0.1)) < 1e-9
+          assert f['interval_coverage_ok'] in (False, 'False')
+          print('Exact-scenario interval-coverage guardrail validated.')
+          PY

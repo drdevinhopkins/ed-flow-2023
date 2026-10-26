@@ -1,0 +1,95 @@
+name: Weather unique-hour sensitivity CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/weather-unique-hour-sensitivity-ci.yml'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_unique_hour_sensitivity.py'
+
+permissions:
+  contents: read
+
+jobs:
+  unique-hour-sensitivity:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pandas numpy
+
+      - name: Verify one-vote-per-realized-hour sensitivity
+        run: |
+          python - <<'PY'
+          import sys
+          import pandas as pd
+
+          sys.path.insert(0, 'scripts/evaluation/prospective')
+          from summarize_shadow_weather_unique_hour_sensitivity import summarize_unique_hour_sensitivity
+
+          rows = []
+          # Use the exact canonical columns emitted by score_shadow_weather_forecast.py.
+          # Three realized hours are supplied; the first is duplicated heavily with later
+          # forecasts that favor weather. The one-hour-one-vote summaries must still contain
+          # exactly three unique realized hours rather than being dominated by duplicates.
+          for hour, baseline_err, weather_err in [
+              ('2026-08-25 12:00:00', 5.0, 4.0),
+              ('2026-08-25 13:00:00', 2.0, 3.0),
+              ('2026-08-25 14:00:00', 4.0, 3.0),
+          ]:
+              rows.append({
+                  'forecast_issued_at': '2026-08-25T08:00:00Z',
+                  'ds': hour,
+                  'target_name': 'Total_TBS',
+                  'horizon_band': 'h01_04',
+                  'weather_route_active': True,
+                  'baseline_absolute_error': baseline_err,
+                  'weather_absolute_error': weather_err,
+                  'paired_absolute_error_delta': baseline_err - weather_err,
+                  'weather_wins': weather_err < baseline_err,
+                  'baseline_error': baseline_err,
+                  'weather_error': weather_err,
+              })
+
+          for minute in range(1, 8):
+              rows.append({
+                  'forecast_issued_at': f'2026-08-25T08:{minute:02d}:00Z',
+                  'ds': '2026-08-25 12:00:00',
+                  'target_name': 'Total_TBS',
+                  'horizon_band': 'h01_04',
+                  'weather_route_active': True,
+                  'baseline_absolute_error': 10.0,
+                  'weather_absolute_error': 1.0,
+                  'paired_absolute_error_delta': 9.0,
+                  'weather_wins': True,
+                  'baseline_error': 10.0,
+                  'weather_error': 1.0,
+              })
+
+          summary = summarize_unique_hour_sensitivity(pd.DataFrame(rows))
+          assert set(summary['selection']) == {
+              'earliest_forecast_per_realized_hour',
+              'latest_forecast_per_realized_hour',
+          }
+          assert summary['n_unique_target_hours'].eq(3).all(), summary
+          early = summary.loc[
+              summary['selection'].eq('earliest_forecast_per_realized_hour')
+          ].iloc[0]
+          late = summary.loc[
+              summary['selection'].eq('latest_forecast_per_realized_hour')
+          ].iloc[0]
+          assert abs(early['baseline_mae'] - (11/3)) < 1e-9, early
+          assert abs(early['weather_mae'] - (10/3)) < 1e-9, early
+          assert abs(late['baseline_mae'] - (16/3)) < 1e-9, late
+          assert abs(late['weather_mae'] - (7/3)) < 1e-9, late
+          print(summary.to_string(index=False))
+          PY

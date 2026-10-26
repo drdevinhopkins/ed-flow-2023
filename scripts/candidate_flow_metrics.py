@@ -168,6 +168,52 @@ def build_experiment_flow(raw: pd.DataFrame) -> pd.DataFrame:
     return flow
 
 
+def trailing_complete_history_window(
+    flow: pd.DataFrame,
+    cutoff: pd.Timestamp,
+    *,
+    targets: Sequence[str] = ALL_EXPERIMENT_TARGETS,
+    max_history_days: int = 365,
+    min_history_days: int = 28,
+) -> tuple[int, pd.Timestamp, int]:
+    """Choose the longest trailing complete target window for prospective forecasting.
+
+    Historical ablations deliberately selected cutoffs with a complete 365-day target
+    window. A live prospective stream can contain an older isolated gap, which should not
+    invalidate today's forecast if a sufficiently long complete trailing segment remains.
+    The selected window is capped at ``max_history_days`` and must contain at least
+    ``min_history_days`` complete days. A recent gap therefore still fails closed.
+    """
+
+    cutoff = pd.Timestamp(cutoff).floor("h")
+    eligible = flow.loc[flow["ds"].le(cutoff), ["ds", *targets]].copy()
+    if eligible.empty:
+        raise ValueError(f"No candidate history available at cutoff {cutoff}")
+
+    incomplete = eligible[list(targets)].isna().any(axis=1)
+    last_bad = eligible.loc[incomplete, "ds"].max() if incomplete.any() else pd.NaT
+    if pd.isna(last_bad):
+        complete_start = pd.Timestamp(eligible["ds"].min())
+    else:
+        complete_start = pd.Timestamp(last_bad) + pd.Timedelta(hours=1)
+
+    complete_hours = int(eligible["ds"].between(complete_start, cutoff).sum())
+    complete_days = complete_hours // 24
+    history_days = min(int(max_history_days), complete_days)
+    if history_days < min_history_days:
+        raise ValueError(
+            "Insufficient trailing complete candidate history: "
+            f"{complete_hours}h ({complete_days} full days), minimum={min_history_days}d; "
+            f"last_incomplete={last_bad}, incomplete_rows_before_cutoff={int(incomplete.sum())}"
+        )
+
+    history_start = cutoff - pd.Timedelta(days=history_days) + pd.Timedelta(hours=1)
+    selected = eligible.loc[eligible["ds"].between(history_start, cutoff)]
+    if len(selected) != history_days * 24 or selected[list(targets)].isna().any().any():
+        raise RuntimeError("Selected prospective candidate history window is not complete")
+    return history_days, history_start, int(incomplete.sum())
+
+
 def candidate_quality_summary(flow: pd.DataFrame) -> pd.DataFrame:
     """Compact completeness/range diagnostics used before launching expensive backtests."""
 

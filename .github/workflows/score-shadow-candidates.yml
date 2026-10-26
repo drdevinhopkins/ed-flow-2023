@@ -1,0 +1,255 @@
+name: Score shadow candidate forecasts
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/score-shadow-candidates.yml'
+      - 'scripts/evaluation/prospective/score_shadow_candidate_forecast.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_collection_health.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_complete_issue_dates.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_confidence.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_horizon_hours.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_selective_policies.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_unique_hour_sensitivity.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_issue_hour_sensitivity.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_evidence_gaps.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_trajectory.py'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_policy_leave_one_date_out.py'
+      - 'scripts/evaluation/prospective/run_shadow_candidate_forecast.py'
+      - 'scripts/evaluation/prospective/candidate_metric_routes.py'
+      - 'scripts/evaluation/backtests/backtest_candidate_metrics_cutoff.py'
+      - 'scripts/candidate_flow_metrics.py'
+
+permissions:
+  contents: read
+
+jobs:
+  score-shadow-candidates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            chronos-requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt
+          pip install -r requirements.txt
+
+      - name: Download immutable candidate forecast archive
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        run: |
+          python - <<'PY'
+          import io
+          import os
+          from pathlib import Path
+          import dropbox
+          import pandas as pd
+          import requests
+          from dropbox.exceptions import ApiError
+
+          response = requests.post(
+              'https://api.dropboxapi.com/oauth2/token',
+              data={
+                  'grant_type': 'refresh_token',
+                  'refresh_token': os.environ['DROPBOX_REFRESH_TOKEN'],
+                  'client_id': os.environ['DROPBOX_APP_KEY'],
+                  'client_secret': os.environ['DROPBOX_APP_SECRET'],
+              },
+              timeout=30,
+          )
+          response.raise_for_status()
+          dbx = dropbox.Dropbox(response.json()['access_token'])
+          try:
+              result = dbx.files_list_folder('/validation/prospective-candidates', recursive=True)
+          except ApiError as exc:
+              if exc.error.is_path() and exc.error.get_path().is_not_found():
+                  Path('.no-candidate-forecast').write_text('No prospective candidate archive exists yet.\n')
+                  raise SystemExit(0)
+              raise
+          entries = list(result.entries)
+          while result.has_more:
+              result = dbx.files_list_folder_continue(result.cursor)
+              entries.extend(result.entries)
+          paths = sorted({
+              entry.path_lower for entry in entries
+              if isinstance(entry, dropbox.files.FileMetadata)
+              and entry.name == 'shadow-candidate-forecast.csv'
+              and '/latest-run/' not in entry.path_lower
+          })
+          if not paths:
+              Path('.no-candidate-forecast').write_text('No immutable candidate runs exist yet.\n')
+              raise SystemExit(0)
+          frames = []
+          for path in paths:
+              _metadata, payload = dbx.files_download(path)
+              frame = pd.read_csv(io.BytesIO(payload.content))
+              frame['archive_path'] = path
+              frames.append(frame)
+          archive = pd.concat(frames, ignore_index=True)
+          key = ['forecast_run_id', 'target_ds', 'target_name', 'horizon_hour']
+          before = len(archive)
+          archive = archive.drop_duplicates(key, keep='last')
+          archive.to_csv('all-shadow-candidate-forecasts.csv', index=False)
+          print(
+              f'Downloaded {len(paths)} immutable candidate run(s): '
+              f'{len(archive)} unique rows ({before - len(archive)} duplicates removed)'
+          )
+          PY
+
+      - name: Summarize candidate collection health
+        run: |
+          if [ -s all-shadow-candidate-forecasts.csv ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_collection_health.py \
+              all-shadow-candidate-forecasts.csv \
+              --output validation/prospective-candidates/latest-score/candidate-collection-health.csv
+          else
+            echo 'No archived candidate forecast available yet; collection-health diagnostic skipped.'
+          fi
+
+      - name: Score matured candidate rows
+        run: |
+          if [ -s all-shadow-candidate-forecasts.csv ]; then
+            python scripts/evaluation/prospective/score_shadow_candidate_forecast.py \
+              all-shadow-candidate-forecasts.csv \
+              --output-dir validation/prospective-candidates/latest-score
+          else
+            echo 'No archived candidate forecast available yet; nothing to score.'
+          fi
+
+      - name: Summarize candidate evidence gaps
+        run: |
+          summary='validation/prospective-candidates/latest-score/summary-candidate-routes.csv'
+          if [ -s "$summary" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_evidence_gaps.py \
+              "$summary" --output-dir validation/prospective-candidates/latest-score
+          else
+            echo 'No matured routed candidate summary yet; evidence-gap report skipped.'
+          fi
+
+      - name: Summarize complete candidate issue dates
+        run: |
+          detail='validation/prospective-candidates/latest-score/detail.csv'
+          if [ -s "$detail" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_complete_issue_dates.py \
+              "$detail" --output-dir validation/prospective-candidates/latest-score
+          else
+            echo 'No matured candidate detail rows yet; complete-date diagnostic skipped.'
+          fi
+
+      - name: Summarize candidate complete-date trajectory
+        run: |
+          by_date='validation/prospective-candidates/latest-score/candidate-by-issue-date-completeness.csv'
+          if [ -s "$by_date" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_trajectory.py \
+              "$by_date" \
+              --output validation/prospective-candidates/latest-score/candidate-complete-date-trajectory.csv
+          else
+            echo 'No candidate issue-date completeness rows yet; trajectory diagnostic skipped.'
+          fi
+
+      - name: Summarize candidate confidence
+        run: |
+          detail='validation/prospective-candidates/latest-score/detail.csv'
+          if [ -s "$detail" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_confidence.py \
+              "$detail" --output-dir validation/prospective-candidates/latest-score
+          else
+            echo 'No matured candidate detail rows yet; confidence diagnostic skipped.'
+          fi
+
+      - name: Summarize candidate performance by exact horizon hour
+        run: |
+          detail='validation/prospective-candidates/latest-score/detail.csv'
+          if [ -s "$detail" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_horizon_hours.py \
+              "$detail" \
+              --output validation/prospective-candidates/latest-score/horizon-hour-summary.csv
+          else
+            echo 'No matured candidate detail rows yet; horizon-hour diagnostic skipped.'
+          fi
+
+      - name: Summarize selective candidate-route counterfactuals
+        run: |
+          detail='validation/prospective-candidates/latest-score/detail.csv'
+          if [ -s "$detail" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_selective_policies.py \
+              "$detail" \
+              --output-dir validation/prospective-candidates/latest-score
+          else
+            echo 'No matured candidate detail rows yet; selective-policy diagnostic skipped.'
+          fi
+
+      - name: Summarize candidate policy leave-one-complete-date-out stability
+        run: |
+          by_date='validation/prospective-candidates/latest-score/selective-policy-by-issue-date.csv'
+          if [ -s "$by_date" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_policy_leave_one_date_out.py \
+              "$by_date" \
+              --output-dir validation/prospective-candidates/latest-score
+          else
+            echo 'No selective-policy issue-date rows yet; leave-one-date-out diagnostic skipped.'
+          fi
+
+      - name: Summarize candidate unique-realized-hour sensitivity
+        run: |
+          detail='validation/prospective-candidates/latest-score/detail.csv'
+          if [ -s "$detail" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_unique_hour_sensitivity.py \
+              "$detail" \
+              --output validation/prospective-candidates/latest-score/candidate-route-unique-hour-sensitivity.csv
+          else
+            echo 'No matured candidate detail rows yet; unique-hour sensitivity skipped.'
+          fi
+
+      - name: Summarize candidate equal-weight issue-hour sensitivity
+        run: |
+          detail='validation/prospective-candidates/latest-score/detail.csv'
+          if [ -s "$detail" ]; then
+            python scripts/evaluation/prospective/summarize_shadow_candidate_issue_hour_sensitivity.py \
+              "$detail" \
+              --output validation/prospective-candidates/latest-score/candidate-route-issue-hour-sensitivity.csv
+          else
+            echo 'No matured candidate detail rows yet; issue-hour sensitivity skipped.'
+          fi
+
+      - name: Verify candidate scorer safety
+        run: |
+          test ! -e forecast-v2.csv
+          test ! -e forecast-v2.1.csv
+          test ! -e chronos_forecast.csv
+          test ! -e ED_Hourly_Forecasts_Anomalies_v1.0.csv
+          if [ -s all-shadow-candidate-forecasts.csv ]; then
+            echo 'Candidate scoring remained shadow-only; production artifacts untouched.'
+          else
+            test -s .no-candidate-forecast
+          fi
+
+      - name: Upload candidate score artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prospective-candidate-score
+          path: |
+            validation/prospective-candidates/latest-score/*.csv
+            all-shadow-candidate-forecasts.csv
+            .no-candidate-forecast
+          if-no-files-found: warn
+          retention-days: 90

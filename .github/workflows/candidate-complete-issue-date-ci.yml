@@ -1,0 +1,41 @@
+name: Candidate complete issue-date CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/candidate-complete-issue-date-ci.yml'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_complete_issue_dates.py'
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-complete-issue-date:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install pandas numpy
+      - name: Run deterministic completeness smoke test
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          rows=[]
+          for date, delta in [('2026-08-25', 2.0), ('2026-08-27', -20.0)]:
+              for i in range(4):
+                  rows.append({'target_name':'Inflow_Total','horizon_band':'h01_04','candidate_scenario':'calendar_demand','forecast_issue_date':date,'candidate_route_active':True,'forecast_run_id':date+str(i),'target_ds':date+f' {i:02d}:00:00','actual':10.0,'baseline_absolute_error':5.0,'candidate_absolute_error':5.0-delta,'paired_absolute_error_delta':delta,'candidate_wins':delta>0})
+          pd.DataFrame(rows).to_csv('candidate-detail.csv', index=False)
+          PY
+          python scripts/evaluation/prospective/summarize_shadow_candidate_complete_issue_dates.py candidate-detail.csv --output-dir tmp-candidate-complete --as-of '2026-08-27T18:00:00-04:00'
+          python - <<'PY'
+          import pandas as pd
+          issue=pd.read_csv('tmp-candidate-complete/candidate-by-issue-date-completeness.csv')
+          balanced=pd.read_csv('tmp-candidate-complete/candidate-complete-issue-date-balanced.csv')
+          assert int(issue['issue_date_complete'].sum()) == 1
+          assert len(balanced) == 1
+          assert balanced.iloc[0]['mean_issue_date_mae_delta'] > 0
+          print('candidate complete-date smoke test passed')
+          PY
