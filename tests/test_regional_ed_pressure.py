@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+from unittest.mock import Mock, patch
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +15,8 @@ from regional_ed_pressure import (  # noqa: E402
     build_regional_peer_pressure,
     parse_quebec_status_html,
     persistence_future,
+    normalize_public_feed,
+    load_public_feed,
 )
 
 
@@ -145,11 +148,133 @@ def test_future_uses_only_cutoff_state() -> None:
             assert np.allclose(left.to_numpy(dtype=float), float(expected))
 
 
+
+def test_datastore_clock_uses_publication_date() -> None:
+    frame = source_frame().iloc[:4].copy()
+    frame["Heure_de_l’extraction_(image)"] = ["13:00:00", "23:00:00", "12:00", "13:00:00"]
+    frame["Mise_a_jour"] = ["2026-10-25T13:45:00", "2026-10-26T00:45:00",
+                            "2026-10-25T12:45:00", "2026-10-25T13:45:00"]
+    parsed = normalize_public_feed(frame).set_index("installation")
+    assert parsed.loc["Peer A", "ds"] == pd.Timestamp("2026-10-25 23:00")
+    assert parsed.loc["Peer B", "ds"] == pd.Timestamp("2026-10-25 12:00")
+    assert parsed.loc["Non-Montreal ED", "ds"] == pd.Timestamp("2026-10-25 13:00")
+    try:
+        normalize_public_feed(frame.drop(columns="Mise_a_jour"))
+    except ValueError as exc:
+        assert "dated Mise_a_jour" in str(exc)
+    else:
+        raise AssertionError("Clock-only timestamps must not get today's date")
+
+
+
+def test_iso_dates_and_missing_publication_dates() -> None:
+    frame = source_frame().iloc[:4].copy()
+    frame["Heure_de_l’extraction_(image)"] = [
+        "2026-10-05 13:00:00", "13:00:00", "13:00:00", "13:00:00"
+    ]
+    frame["Mise_a_jour"] = ["2026-10-05T13:45:00", "2026-10-05T13:45:00", None, None]
+    parsed = normalize_public_feed(frame)
+    assert len(parsed) == 2
+    assert parsed["ds"].eq(pd.Timestamp("2026-10-05 13:00")).all()
+
+
+def test_empty_datastore_uses_official_csv_export() -> None:
+    from quebec_ed_status import CKAN_DUMP_URL, load_official_fallback
+
+    empty = Mock()
+    empty.json.return_value = {"success": True, "result": {"records": []}}
+    export = Mock(content=source_frame().to_csv(index=False).encode("utf-8"))
+    with patch("quebec_ed_status.requests.get", side_effect=[empty, export]) as get:
+        with patch("quebec_ed_status.load_quebec_status") as status:
+            frame = load_official_fallback()
+    assert get.call_args_list[1].args[0] == CKAN_DUMP_URL
+    status.assert_not_called()
+    pressure = build_regional_peer_pressure(frame)
+    assert len(pressure) == 7
+    assert pressure.iloc[0]["regional_patients_present"] == 70
+
+
+def test_blocked_status_page_is_rejected() -> None:
+    from quebec_ed_status import load_quebec_status
+
+    blocked = Mock(text="<html><title>Verify you are human</title></html>", content=b"x" * 2015)
+    with patch("quebec_ed_status.requests.get", return_value=blocked) as get:
+        try:
+            load_quebec_status()
+        except ValueError as exc:
+            assert "no valid observation timestamp" in str(exc)
+        else:
+            raise AssertionError("Access challenge must not become an observation")
+    assert get.call_count == 1
+
+
+def test_later_blocked_page_does_not_publish_partial_region() -> None:
+    from quebec_ed_status import load_quebec_status
+
+    valid = Mock(
+        text="""
+        <p>Dernière mise à jour : lundi 26 octobre 2026 à 13 h 00</p>
+        <section><strong>Peer A</strong><span>Montréal</span>
+          <a href="?nofiche=1">Consulter l’horaire de l’installation Peer A</a>
+          <div>Nombre de personnes qui attendent de voir un médecin à l’urgence : 5</div>
+          <div>Nombre total de personnes à l’urgence : 40</div>
+          <div>Taux d’occupation des civières : 100 %</div>
+        </section>
+        """,
+        content=b"valid",
+    )
+    blocked = Mock(text="<html>Access denied</html>", content=b"blocked")
+    with patch("quebec_ed_status.requests.get", side_effect=[valid, blocked]):
+        try:
+            load_quebec_status()
+        except ValueError as exc:
+            assert "no valid observation timestamp" in str(exc)
+        else:
+            raise AssertionError("A blocked later page must fail the whole collection")
+
+
+def test_default_source_falls_back_once_and_custom_source_fails() -> None:
+    import requests
+
+    with patch("regional_ed_pressure.requests.get", side_effect=requests.HTTPError("403")):
+        with patch("quebec_ed_status.load_official_fallback", return_value=source_frame()) as fallback:
+            assert not load_public_feed().empty
+            fallback.assert_called_once()
+            try:
+                load_public_feed("https://example.org/custom.csv")
+            except requests.HTTPError:
+                pass
+            else:
+                raise AssertionError("Custom source failures must propagate")
+            fallback.assert_called_once()
+
+
+def test_failed_official_sources_report_all_errors() -> None:
+    from quebec_ed_status import load_official_fallback
+
+    with patch("quebec_ed_status.load_ckan_datastore", side_effect=ValueError("empty API")):
+        with patch("quebec_ed_status.load_ckan_dump", side_effect=ValueError("bad CSV")):
+            with patch("quebec_ed_status.load_quebec_status", side_effect=ValueError("blocked HTML")):
+                try:
+                    load_official_fallback()
+                except RuntimeError as exc:
+                    assert all(message in str(exc) for message in ("empty API", "bad CSV", "blocked HTML"))
+                else:
+                    raise AssertionError("No source should produce no archive update")
+
+
 def main() -> None:
     test_peer_aggregation_excludes_jgh_and_other_regions()
     test_quebec_status_fallback_uses_schedule_link_card()
     test_trends_are_backward_looking()
     test_future_uses_only_cutoff_state()
+    test_datastore_clock_uses_publication_date()
+    test_iso_dates_and_missing_publication_dates()
+    test_empty_datastore_uses_official_csv_export()
+    test_blocked_status_page_is_rejected()
+    test_later_blocked_page_does_not_publish_partial_region()
+    test_default_source_falls_back_once_and_custom_source_fails()
+    test_failed_official_sources_report_all_errors()
     print("regional ED pressure tests passed")
 
 
