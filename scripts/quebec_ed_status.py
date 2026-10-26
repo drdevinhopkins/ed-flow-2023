@@ -2,25 +2,36 @@
 """Robust official fallbacks for the Québec emergency-department hourly feed.
 
 The canonical MSSS CSV occasionally rejects GitHub-hosted runners.  We therefore try the
-Données Québec CKAN datastore first and, if it is unavailable, parse the official
+Données Québec CKAN datastore, its CSV export, and finally the official
 Quebec.ca CPU/MSSS emergency-status page.  Returned rows use the same normalized fields
 accepted by ``regional_ed_pressure.build_regional_peer_pressure``.
 """
 
 from __future__ import annotations
 
+import io
 import re
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from regional_ed_pressure import QUEBEC_STATUS_URL, _browser_headers, _page_timestamp, _slug
+from regional_ed_pressure import (
+    QUEBEC_STATUS_URL,
+    _browser_headers,
+    _decode_csv,
+    _page_timestamp,
+    _slug,
+    normalize_public_feed,
+)
 
 CKAN_DATASTORE_URL = "https://www.donneesquebec.ca/recherche/api/3/action/datastore_search"
 CKAN_RESOURCE_ID = "b256f87f-40ec-4c79-bdba-a23e9c50e741"
+
+CKAN_DUMP_URL = (
+    f"https://www.donneesquebec.ca/recherche/datastore/dump/{CKAN_RESOURCE_ID}?format=csv"
+)
 
 WAIT_MARKER = "nombre_de_personnes_qui_attendent_de_voir_un_medecin_a_l_urgence"
 TOTAL_MARKER = "nombre_total_de_personnes_a_l_urgence"
@@ -43,7 +54,22 @@ def load_ckan_datastore(limit: int = 50000) -> pd.DataFrame:
     if not records:
         raise ValueError("Données Québec datastore returned no emergency rows")
     frame = pd.DataFrame.from_records(records)
+    if normalize_public_feed(frame).empty:
+        raise ValueError("Données Québec source has no dated observations")
     print(f"Loaded {len(frame)} rows from Données Québec datastore", flush=True)
+    return frame
+
+
+def load_ckan_dump() -> pd.DataFrame:
+    """Read the official CSV export independently of datastore_search."""
+    response = requests.get(CKAN_DUMP_URL, headers=_browser_headers(), timeout=90)
+    response.raise_for_status()
+    frame = pd.read_csv(io.StringIO(_decode_csv(response.content)))
+    if frame.empty:
+        raise ValueError("Données Québec CSV export returned no emergency rows")
+    if normalize_public_feed(frame).empty:
+        raise ValueError("Données Québec source has no dated observations")
+    print(f"Loaded {len(frame)} rows from Données Québec CSV export", flush=True)
     return frame
 
 
@@ -131,7 +157,8 @@ def _installation_from_card(card, link) -> str:
 def parse_status_page(html: str) -> pd.DataFrame:
     """Parse a server-rendered Quebec.ca emergency-status result page."""
     soup = BeautifulSoup(html, "html.parser")
-    ds = _page_timestamp(soup.get_text(" ", strip=True))
+    page_text = soup.get_text(" ", strip=True)
+    ds = _page_timestamp(page_text)
     rows: list[dict[str, object]] = []
 
     # The official schedule links currently point to sante.gouv.qc.ca and include a
@@ -183,13 +210,13 @@ def parse_status_page(html: str) -> pd.DataFrame:
     return pd.DataFrame(rows).drop_duplicates("installation", keep="last").reset_index(drop=True)
 
 
-def load_quebec_status(max_pages: int = 13) -> pd.DataFrame:
+def load_quebec_status(max_pages: int = 13, url: str = QUEBEC_STATUS_URL) -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
     seen: set[str] = set()
     diagnostics: list[str] = []
     for page in range(max_pages):
         response = requests.get(
-            QUEBEC_STATUS_URL,
+            url,
             params={"tx_solr[page]": page},
             headers=_browser_headers(),
             timeout=60,
@@ -216,13 +243,18 @@ def load_quebec_status(max_pages: int = 13) -> pd.DataFrame:
 
 
 def load_official_fallback() -> pd.DataFrame:
-    """Try the two official fallback surfaces in order, with concise diagnostics."""
+    """Try the official API, CSV export, and status page in order, with concise diagnostics."""
     errors: list[str] = []
     try:
         return load_ckan_datastore()
     except Exception as exc:
         errors.append(f"CKAN {type(exc).__name__}: {exc}")
         print(f"Données Québec datastore unavailable: {type(exc).__name__}: {exc}", flush=True)
+    try:
+        return load_ckan_dump()
+    except Exception as exc:
+        errors.append(f"CKAN CSV {type(exc).__name__}: {exc}")
+        print(f"Données Québec CSV export unavailable: {type(exc).__name__}: {exc}", flush=True)
     try:
         return load_quebec_status()
     except Exception as exc:

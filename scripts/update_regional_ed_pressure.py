@@ -18,7 +18,6 @@ import dropbox
 import pandas as pd
 import requests
 
-from quebec_ed_status import load_official_fallback
 from regional_ed_pressure import (
     DEFAULT_JGH_PATTERNS,
     DEFAULT_REGION_CODE,
@@ -103,17 +102,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def _load_source(source: str) -> pd.DataFrame:
-    try:
-        return load_public_feed(source)
-    except Exception as exc:
-        if source != DEFAULT_SOURCE_URL:
-            raise
-        print(
-            f"Primary MSSS regional source unavailable ({type(exc).__name__}: {exc}); "
-            "trying official fallbacks",
-            flush=True,
-        )
-        return load_official_fallback()
+    return load_public_feed(source)
 
 
 def main() -> None:

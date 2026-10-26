@@ -3,7 +3,8 @@
 
 The preferred source is the official MSSS rolling seven-day hourly CSV. GitHub-hosted
 runners can receive HTTP 403 from that legacy host, so collection falls back to the
-official Quebec.ca emergency-status page (CPU/MSSS). The fallback has fewer fields but
+official Données Québec datastore/CSV export, then the Quebec.ca status page.
+The status-page fallback has fewer fields but
 still supplies patients present, waiting to see a physician, stretcher occupancy and
 regional threshold counts.
 
@@ -150,11 +151,11 @@ def _page_timestamp(text: str) -> pd.Timestamp:
         re.I,
     )
     if not match:
-        return now.floor("h")
+        raise ValueError("Quebec.ca status page has no valid observation timestamp")
     day, month_name, year, hour, minute = match.groups()
     month = _FRENCH_MONTHS.get(month_name.lower())
     if month is None:
-        return now.floor("h")
+        raise ValueError("Quebec.ca status page has no valid observation timestamp")
     candidate = pd.Timestamp(
         year=int(year or now.year),
         month=month,
@@ -185,123 +186,37 @@ def _installation_from_schedule_link(text: str) -> str:
 
 
 def parse_quebec_status_html(html: str) -> pd.DataFrame:
-    """Parse one server-rendered Quebec.ca result page.
+    """Compatibility wrapper for the shared official status-page parser."""
+    from quebec_ed_status import parse_status_page
 
-    Result-card container classes have changed over time. The schedule link is much more
-    stable, so each installation is anchored on the link whose text says
-    ``Consulter l’horaire de l’installation ...`` and the DOM is walked upward only until
-    that installation's three live ED metrics are present.
-    """
-    from bs4 import BeautifulSoup
-
-    soup = BeautifulSoup(html, "html.parser")
-    page_text = soup.get_text(" ", strip=True)
-    ds = _page_timestamp(page_text)
-    rows: list[dict[str, object]] = []
-
-    for link in soup.find_all("a"):
-        link_text = link.get_text(" ", strip=True)
-        normalized_link = _slug(link_text)
-        if "horaire_de_l_installation" not in normalized_link:
-            continue
-        installation = _installation_from_schedule_link(link_text)
-        if not installation:
-            continue
-
-        card = None
-        node = link.parent
-        for _ in range(8):
-            if node is None:
-                break
-            text = node.get_text(" ", strip=True)
-            normalized = _slug(text)
-            has_total = "nombre_total_de_personnes_a_l_urgence" in normalized
-            has_wait = "nombre_de_personnes_qui_attendent_de_voir_un_medecin_a_l_urgence" in normalized
-            has_occ = "taux_d_occupation_des_civieres" in normalized
-            if has_total and has_wait and has_occ:
-                card = node
-                break
-            node = node.parent
-        if card is None:
-            continue
-
-        text = card.get_text(" ", strip=True)
-        # Region is printed directly under the address; this filter intentionally avoids
-        # aggregating Laval/Laurentides/Montérégie installations into RSS 06.
-        if "Montréal" not in text:
-            continue
-        waiting = _metric_number(
-            text,
-            r"Nombre de personnes qui attendent de voir un médecin à l[’']urgence",
-        )
-        present = _metric_number(text, r"Nombre total de personnes à l[’']urgence")
-        occupancy_pct = _metric_number(text, r"Taux d[’']occupation des civières")
-        if not np.isfinite(present) or not np.isfinite(occupancy_pct):
-            continue
-        rows.append(
-            {
-                "rss": "06",
-                "region": "Montréal",
-                "installation": installation,
-                "stretcher_capacity": np.nan,
-                "stretcher_occupied": np.nan,
-                "stretcher_24h": np.nan,
-                "stretcher_48h": np.nan,
-                "patients_present": present,
-                "waiting_pec": waiting,
-                "installation_occupancy": occupancy_pct / 100.0,
-                "extraction_time": ds,
-            }
-        )
-    if not rows:
-        return pd.DataFrame()
-    return pd.DataFrame(rows).drop_duplicates("installation", keep="last").reset_index(drop=True)
+    return parse_status_page(html)
 
 
 def load_quebec_status_feed(url: str = QUEBEC_STATUS_URL, max_pages: int = 13) -> pd.DataFrame:
-    """Fetch all paginated Quebec.ca ED cards and retain Montréal installations."""
-    frames: list[pd.DataFrame] = []
-    seen: set[str] = set()
-    # Both page=0 and page=1 have historically represented the first result page;
-    # deduplication makes trying both harmless and protects against pagination changes.
-    for page in range(0, max_pages):
-        response = requests.get(
-            url,
-            params={"tx_solr[page]": page},
-            timeout=60,
-            headers=_browser_headers(),
-        )
-        response.raise_for_status()
-        frame = parse_quebec_status_html(response.text)
-        if frame.empty:
-            continue
-        new = frame.loc[~frame["installation"].astype(str).isin(seen)].copy()
-        if not new.empty:
-            frames.append(new)
-            seen.update(new["installation"].astype(str))
-    if not frames:
-        raise ValueError("Quebec.ca fallback returned no parsable Montréal ED cards")
-    result = pd.concat(frames, ignore_index=True)
-    print(
-        f"MSSS CSV fallback: parsed {len(result)} Montréal ED installations from Quebec.ca",
-        flush=True,
-    )
-    return result
+    """Compatibility wrapper for the shared official status-page loader."""
+    from quebec_ed_status import load_quebec_status
+
+    return load_quebec_status(max_pages=max_pages, url=url)
 
 
 def load_public_feed(source: str | Path = DEFAULT_SOURCE_URL) -> pd.DataFrame:
     source_text = str(source)
     if not source_text.startswith(("http://", "https://")):
         return pd.read_csv(source_text, sep=None, engine="python")
-    response = requests.get(source_text, timeout=60, headers=_browser_headers())
-    if response.status_code == 403 and source_text == DEFAULT_SOURCE_URL:
-        print(
-            "MSSS CSV returned HTTP 403; using official Quebec.ca status-page fallback",
-            flush=True,
-        )
-        return load_quebec_status_feed()
-    response.raise_for_status()
-    return pd.read_csv(io.StringIO(_decode_csv(response.content)), sep=None, engine="python")
+    try:
+        response = requests.get(source_text, timeout=60, headers=_browser_headers())
+        response.raise_for_status()
+        frame = pd.read_csv(io.StringIO(_decode_csv(response.content)), sep=None, engine="python")
+        normalize_public_feed(frame)
+        return frame
+    except (requests.RequestException, ValueError) as exc:
+        if source_text != DEFAULT_SOURCE_URL:
+            raise
+        from quebec_ed_status import load_official_fallback
+
+        print(f"Primary MSSS regional source unavailable ({type(exc).__name__}: {exc}); "
+              "trying official fallbacks", flush=True)
+        return load_official_fallback()
 
 
 def normalize_public_feed(frame: pd.DataFrame) -> pd.DataFrame:
@@ -345,9 +260,33 @@ def normalize_public_feed(frame: pd.DataFrame) -> pd.DataFrame:
         values = out[column].astype(str).str.replace(",", ".", regex=False)
         out[column] = pd.to_numeric(values, errors="coerce")
 
-    out["ds"] = pd.to_datetime(out["extraction_time"], errors="coerce", dayfirst=True)
+    # The datastore mirror supplies a clock time plus a dated publication timestamp.
+    # Never let pandas attach the collector's current date to a clock-only observation.
+    extraction = out["extraction_time"].astype("string").str.strip()
+    clock_only = extraction.str.fullmatch(r"\d{1,2}:\d{2}(?::\d{2})?").fillna(False)
+    iso_date = extraction.str.match(r"\d{4}-\d{2}-\d{2}").fillna(False)
+    dated = pd.to_datetime(extraction.where(iso_date), errors="coerce", format="mixed")
+    other_dates = pd.to_datetime(
+        extraction.mask(clock_only | iso_date), errors="coerce", dayfirst=True, format="mixed"
+    )
+    dated = dated.fillna(other_dates)
+    if clock_only.any():
+        if "updated_at" not in out:
+            raise ValueError("Clock-only extraction times require a dated Mise_a_jour field")
+        published = pd.to_datetime(out["updated_at"], errors="coerce", format="mixed")
+        clocks = pd.to_timedelta(
+            extraction.where(clock_only).str.replace(r"^(\d{1,2}:\d{2})$", r"\1:00", regex=True),
+            errors="coerce",
+        )
+        observed = published.dt.normalize() + clocks
+        # A 23:00 observation can be published shortly after midnight.
+        observed = observed.where(observed <= published, observed - pd.Timedelta(days=1))
+        dated = dated.where(~clock_only, observed)
+        if dated.isna().all():
+            raise ValueError("Clock-only extraction times have no valid publication date")
+    out["ds"] = dated
     if out["ds"].isna().all() and "updated_at" in out:
-        out["ds"] = pd.to_datetime(out["updated_at"], errors="coerce", dayfirst=True)
+        out["ds"] = pd.to_datetime(out["updated_at"], errors="coerce", format="mixed")
     out = out.dropna(subset=["ds"]).copy()
     out["ds"] = out["ds"].dt.floor("h")
     return out.sort_values(["ds", "installation"]).reset_index(drop=True)
