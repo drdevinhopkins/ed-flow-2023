@@ -2,14 +2,17 @@
 """Robust official fallbacks for the Québec emergency-department hourly feed.
 
 The canonical MSSS CSV occasionally rejects GitHub-hosted runners.  We therefore try the
-Données Québec CKAN datastore first and, if it is unavailable, parse the official
-Quebec.ca CPU/MSSS emergency-status page.  Returned rows use the same normalized fields
+Données Québec CKAN datastore first, then its CSV export, and finally the official
+Quebec.ca CPU/MSSS emergency-status page. Empty JSON responses receive bounded retries.
+Returned rows use the same normalized fields
 accepted by ``regional_ed_pressure.build_regional_peer_pressure``.
 """
 
 from __future__ import annotations
 
+import io
 import re
+import time
 from typing import Iterable
 
 import numpy as np
@@ -17,10 +20,17 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from regional_ed_pressure import QUEBEC_STATUS_URL, _browser_headers, _page_timestamp, _slug
+from regional_ed_pressure import (
+    QUEBEC_STATUS_URL, _browser_headers, _decode_csv, _page_timestamp, _slug,
+    build_regional_peer_pressure,
+)
 
 CKAN_DATASTORE_URL = "https://www.donneesquebec.ca/recherche/api/3/action/datastore_search"
 CKAN_RESOURCE_ID = "b256f87f-40ec-4c79-bdba-a23e9c50e741"
+CKAN_DUMP_URL = (
+    "https://www.donneesquebec.ca/recherche/fr/datastore/dump/"
+    + CKAN_RESOURCE_ID
+)
 
 WAIT_MARKER = "nombre_de_personnes_qui_attendent_de_voir_un_medecin_a_l_urgence"
 TOTAL_MARKER = "nombre_total_de_personnes_a_l_urgence"
@@ -29,21 +39,42 @@ OCC_MARKER = "taux_d_occupation_des_civieres"
 
 def load_ckan_datastore(limit: int = 50000) -> pd.DataFrame:
     """Return the Données Québec datastore mirror when the resource is datastore-active."""
-    response = requests.get(
-        CKAN_DATASTORE_URL,
-        params={"resource_id": CKAN_RESOURCE_ID, "limit": limit},
-        headers=_browser_headers(),
-        timeout=90,
-    )
-    response.raise_for_status()
-    payload = response.json()
-    if not payload.get("success"):
-        raise ValueError(f"Données Québec datastore_search failed: {payload}")
-    records = payload.get("result", {}).get("records", [])
-    if not records:
-        raise ValueError("Données Québec datastore returned no emergency rows")
+    for attempt in range(3):
+        response = requests.get(
+            CKAN_DATASTORE_URL,
+            params={"resource_id": CKAN_RESOURCE_ID, "limit": limit},
+            headers=_browser_headers(),
+            timeout=90,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if not payload.get("success"):
+            raise ValueError(f"Données Québec datastore_search failed: {payload}")
+        result = payload.get("result", {})
+        records = result.get("records", [])
+        if records:
+            if result.get("total", len(records)) > len(records):
+                raise ValueError("Données Québec datastore response is truncated")
+            break
+        if attempt == 2:
+            raise ValueError("Données Québec datastore returned no emergency rows after 3 attempts")
+        print("Données Québec datastore returned no rows; retrying", flush=True)
+        time.sleep(2 ** (attempt + 1))
     frame = pd.DataFrame.from_records(records)
     print(f"Loaded {len(frame)} rows from Données Québec datastore", flush=True)
+    return frame
+
+
+def load_ckan_csv() -> pd.DataFrame:
+    """Read the official datastore CSV export when its JSON API is unavailable."""
+    response = requests.get(
+        CKAN_DUMP_URL, params={"format": "csv"}, headers=_browser_headers(), timeout=90,
+    )
+    response.raise_for_status()
+    frame = pd.read_csv(io.StringIO(_decode_csv(response.content)))
+    # Reject HTML challenges, empty exports, and incompatible schemas before returning.
+    build_regional_peer_pressure(frame)
+    print(f"Loaded {len(frame)} rows from Données Québec CSV export", flush=True)
     return frame
 
 
@@ -216,15 +247,20 @@ def load_quebec_status(max_pages: int = 13) -> pd.DataFrame:
 
 
 def load_official_fallback() -> pd.DataFrame:
-    """Try the two official fallback surfaces in order, with concise diagnostics."""
+    """Try official structured sources before the paginated HTML status page."""
     errors: list[str] = []
-    try:
-        return load_ckan_datastore()
-    except Exception as exc:
-        errors.append(f"CKAN {type(exc).__name__}: {exc}")
-        print(f"Données Québec datastore unavailable: {type(exc).__name__}: {exc}", flush=True)
-    try:
-        return load_quebec_status()
-    except Exception as exc:
-        errors.append(f"Quebec.ca {type(exc).__name__}: {exc}")
+    for name, loader in (
+        ("CKAN", load_ckan_datastore),
+        ("CKAN CSV", load_ckan_csv),
+        ("Quebec.ca", load_quebec_status),
+    ):
+        try:
+            frame = loader()
+            build_regional_peer_pressure(frame)
+            return frame
+        except Exception as exc:
+            detail = f"{name} {type(exc).__name__}: {exc}"
+            errors.append(detail)
+            print(f"Official regional source unavailable: {detail}", flush=True)
     raise RuntimeError("All official regional ED fallbacks failed: " + " | ".join(errors))
+

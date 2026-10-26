@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+from unittest.mock import Mock, patch
 from pathlib import Path
 
 import numpy as np
@@ -12,9 +13,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from regional_ed_pressure import (  # noqa: E402
     REGIONAL_FEATURE_COLUMNS,
     build_regional_peer_pressure,
+    normalize_public_feed,
     parse_quebec_status_html,
     persistence_future,
 )
+import quebec_ed_status  # noqa: E402
 
 
 def source_frame() -> pd.DataFrame:
@@ -145,13 +148,106 @@ def test_future_uses_only_cutoff_state() -> None:
             assert np.allclose(left.to_numpy(dtype=float), float(expected))
 
 
+def test_clock_only_extraction_uses_source_date() -> None:
+    frame = source_frame().iloc[:4].copy()
+    frame["Heure_de_l’extraction_(image)"] = "23:00:00"
+    frame["Mise_a_jour"] = "2026-10-02T00:45:00"
+    normalized = normalize_public_feed(frame)
+    assert normalized["ds"].eq(pd.Timestamp("2026-10-01 23:00")).all()
+    frame["Heure_de_l’extraction_(image)"] = "13:00"
+    normalized = normalize_public_feed(frame)
+    assert normalized["ds"].eq(pd.Timestamp("2026-10-01 13:00")).all()
+    # Without an explicit source date, a clock cannot establish freshness.
+    assert normalize_public_feed(frame.drop(columns="Mise_a_jour")).empty
+
+
+def test_timestamp_fallback_is_per_row() -> None:
+    frame = source_frame().iloc[:4].copy()
+    frame["Mise_a_jour"] = "2026-08-23T10:45:00"
+    frame.loc[0, "Heure_de_l’extraction_(image)"] = None
+    normalized = normalize_public_feed(frame)
+    assert normalized["ds"].eq(pd.Timestamp("2026-08-23 10:00")).all()
+
+
+def test_ckan_retries_empty_response() -> None:
+    empty = Mock()
+    empty.json.return_value = {"success": True, "result": {"records": []}}
+    valid = Mock()
+    valid.json.return_value = {
+        "success": True, "result": {"records": [{"RSS": 6}], "total": 1},
+    }
+    with patch.object(quebec_ed_status.requests, "get", side_effect=[empty, valid]) as get:
+        with patch.object(quebec_ed_status.time, "sleep") as sleep:
+            assert len(quebec_ed_status.load_ckan_datastore()) == 1
+    assert get.call_count == 2
+    sleep.assert_called_once_with(2)
+
+
+def test_ckan_empty_retries_are_bounded() -> None:
+    empty = Mock()
+    empty.json.return_value = {"success": True, "result": {"records": []}}
+    with patch.object(quebec_ed_status.requests, "get", return_value=empty) as get:
+        with patch.object(quebec_ed_status.time, "sleep") as sleep:
+            try:
+                quebec_ed_status.load_ckan_datastore()
+            except ValueError as exc:
+                assert "after 3 attempts" in str(exc)
+            else:
+                raise AssertionError("An empty datastore must fail")
+    assert get.call_count == 3
+    assert sleep.call_count == 2
+
+
+def test_official_csv_export_and_fallback_order() -> None:
+    response = Mock(content=source_frame().to_csv(index=False).encode("utf-8"))
+    with patch.object(quebec_ed_status.requests, "get", return_value=response):
+        assert len(quebec_ed_status.load_ckan_csv()) == len(source_frame())
+    with patch.object(quebec_ed_status, "load_ckan_datastore", side_effect=ValueError("empty")):
+        with patch.object(quebec_ed_status, "load_ckan_csv", return_value=source_frame()) as csv:
+            with patch.object(quebec_ed_status, "load_quebec_status") as html:
+                assert not quebec_ed_status.load_official_fallback().empty
+    csv.assert_called_once()
+    html.assert_not_called()
+
+
+def test_official_fallback_rejects_bad_schema_and_fails_closed() -> None:
+    with patch.object(quebec_ed_status, "load_ckan_datastore", return_value=pd.DataFrame({"bad": [1]})):
+        with patch.object(quebec_ed_status, "load_ckan_csv", side_effect=ValueError("blocked")):
+            with patch.object(quebec_ed_status, "load_quebec_status", side_effect=ValueError("no cards")):
+                try:
+                    quebec_ed_status.load_official_fallback()
+                except RuntimeError as exc:
+                    assert all(name in str(exc) for name in ("CKAN", "CKAN CSV", "Quebec.ca"))
+                else:
+                    raise AssertionError("Unavailable feeds must fail without fabricated rows")
+
+
+def test_csv_export_rejects_html_challenge() -> None:
+    response = Mock(content=b"<html>JavaScript is disabled</html>")
+    with patch.object(quebec_ed_status.requests, "get", return_value=response):
+        try:
+            quebec_ed_status.load_ckan_csv()
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("A challenge page is not an ED feed")
+
+
 def main() -> None:
     test_peer_aggregation_excludes_jgh_and_other_regions()
     test_quebec_status_fallback_uses_schedule_link_card()
     test_trends_are_backward_looking()
     test_future_uses_only_cutoff_state()
+    test_clock_only_extraction_uses_source_date()
+    test_timestamp_fallback_is_per_row()
+    test_ckan_retries_empty_response()
+    test_ckan_empty_retries_are_bounded()
+    test_official_csv_export_and_fallback_order()
+    test_official_fallback_rejects_bad_schema_and_fails_closed()
+    test_csv_export_rejects_html_challenge()
     print("regional ED pressure tests passed")
 
 
 if __name__ == "__main__":
     main()
+
