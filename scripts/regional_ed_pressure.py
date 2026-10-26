@@ -2,10 +2,10 @@
 """Feature engineering for Montréal-wide emergency-department pressure.
 
 The preferred source is the official MSSS rolling seven-day hourly CSV. GitHub-hosted
-runners can receive HTTP 403 from that legacy host, so collection falls back to the
-official Quebec.ca emergency-status page (CPU/MSSS). The fallback has fewer fields but
-still supplies patients present, waiting to see a physician, stretcher occupancy and
-regional threshold counts.
+runners can receive HTTP 403 from that legacy host. The archive collector then tries
+the official Données Québec JSON datastore and CSV export before the Quebec.ca status
+page. The HTML fallback has fewer fields but still supplies patients present, waiting
+to see a physician, stretcher occupancy and regional threshold counts.
 
 JGH is explicitly excluded from peer aggregates. Regional pressure is an observed state,
 not a known-future covariate: historical forecasts may use values through their cutoff
@@ -290,16 +290,11 @@ def load_quebec_status_feed(url: str = QUEBEC_STATUS_URL, max_pages: int = 13) -
 
 
 def load_public_feed(source: str | Path = DEFAULT_SOURCE_URL) -> pd.DataFrame:
+    """Read the requested CSV; the archive collector owns fallback selection."""
     source_text = str(source)
     if not source_text.startswith(("http://", "https://")):
         return pd.read_csv(source_text, sep=None, engine="python")
     response = requests.get(source_text, timeout=60, headers=_browser_headers())
-    if response.status_code == 403 and source_text == DEFAULT_SOURCE_URL:
-        print(
-            "MSSS CSV returned HTTP 403; using official Quebec.ca status-page fallback",
-            flush=True,
-        )
-        return load_quebec_status_feed()
     response.raise_for_status()
     return pd.read_csv(io.StringIO(_decode_csv(response.content)), sep=None, engine="python")
 
@@ -345,9 +340,26 @@ def normalize_public_feed(frame: pd.DataFrame) -> pd.DataFrame:
         values = out[column].astype(str).str.replace(",", ".", regex=False)
         out[column] = pd.to_numeric(values, errors="coerce")
 
-    out["ds"] = pd.to_datetime(out["extraction_time"], errors="coerce", dayfirst=True)
-    if out["ds"].isna().all() and "updated_at" in out:
-        out["ds"] = pd.to_datetime(out["updated_at"], errors="coerce", dayfirst=True)
+    extraction = out["extraction_time"].astype(str).str.strip()
+    clock_only = extraction.str.fullmatch(r"\d{1,2}:\d{2}(?::\d{2})?")
+    out["ds"] = pd.to_datetime(
+        extraction.where(~clock_only), errors="coerce", dayfirst=True, format="mixed",
+    )
+    if "updated_at" in out:
+        updated = pd.to_datetime(out["updated_at"], errors="coerce", format="mixed")
+        clock = pd.to_timedelta(
+            extraction.where(clock_only).str.replace(
+                r"^(\d{1,2}:\d{2})$", r"\1:00", regex=True,
+            ),
+            errors="coerce",
+        )
+        dated_clock = updated.dt.normalize() + clock
+        # At midnight the last extraction may belong to the previous calendar day.
+        dated_clock = dated_clock.where(
+            dated_clock <= updated, dated_clock - pd.Timedelta(days=1),
+        )
+        out.loc[clock_only, "ds"] = dated_clock.loc[clock_only]
+        out["ds"] = out["ds"].fillna(updated)
     out = out.dropna(subset=["ds"]).copy()
     out["ds"] = out["ds"].dt.floor("h")
     return out.sort_values(["ds", "installation"]).reset_index(drop=True)
@@ -475,3 +487,4 @@ def persistence_future(
     for column in REGIONAL_FEATURE_COLUMNS:
         future[column] = latest.get(column, np.nan)
     return future
+
