@@ -26,13 +26,16 @@ def forecast(**changes):
 
 
 class AuditTests(unittest.TestCase):
-    def artifact(self, root, number, row=None, status="forecast_written", bad_hash=False):
+    def artifact(self, root, number, row=None, status="forecast_written", bad_hash=False,
+                 interval=False, csv_changes=None):
         row = row or forecast()
         payload = {"status": status, "forecast": row, "generated_at_utc": row["generated_at_utc"]}
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w") as archive:
-            archive.writestr("intraday-daily-inflow-status.json", json.dumps(payload))
-            archive.writestr("intraday-daily-inflow-forecast.csv", pd.DataFrame([row]).to_csv(index=False))
+            status_name = "intraday_status_interval_v2.json" if interval else "intraday-daily-inflow-status.json"
+            csv_name = "intraday_forecast_interval_v2.csv" if interval else "intraday-daily-inflow-forecast.csv"
+            archive.writestr(status_name, json.dumps(payload))
+            archive.writestr(csv_name, pd.DataFrame([row | (csv_changes or {})]).to_csv(index=False))
         data = buffer.getvalue()
         (root / f"{number}.zip").write_bytes(data)
         return {"id": number, "workflow_run": {"id": number, "head_branch": "main", "head_sha": "abc"},
@@ -56,6 +59,48 @@ class AuditTests(unittest.TestCase):
             self.assertEqual(len(rows), 1)
             self.assertEqual(inventory.iloc[1].status, "quarantined_artifact")
             self.assertIn("digest mismatch", excluded[0]["reason"])
+
+    def test_interval_model_is_a_separate_target_collection(self):
+        from arrival_day_policy import INTERVAL_TARGET_VERSION, INTERVAL_QUALITY_VERSION
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            row = forecast(target_definition_version=INTERVAL_TARGET_VERSION,
+                           target_quality_version=INTERVAL_QUALITY_VERSION, model_version="interval-v2")
+            artifacts = [self.artifact(root, 1), self.artifact(root, 2, row, interval=True)]
+            runs = [{"id": 1}, {"id": 2}]
+            legacy, _, _ = audit.read_artifacts(artifacts, runs, root)
+            new, _, _ = audit.read_artifacts(artifacts, runs, root, target_definition=INTERVAL_TARGET_VERSION)
+            self.assertEqual(legacy.artifact_id.tolist(), [1])
+            self.assertEqual(new.artifact_id.tolist(), [2])
+            self.assertEqual(new.target_quality_version.tolist(), [INTERVAL_QUALITY_VERSION])
+
+    def test_interval_zip_preserves_suppression_digest_and_csv_checks(self):
+        from arrival_day_policy import INTERVAL_TARGET_VERSION, INTERVAL_QUALITY_VERSION
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            row = forecast(target_definition_version=INTERVAL_TARGET_VERSION,
+                           target_quality_version=INTERVAL_QUALITY_VERSION, model_version="interval-v2")
+            artifacts = [self.artifact(root, 1, row, interval=True),
+                         self.artifact(root, 2, row, interval=True, status="suppressed_data_quality"),
+                         self.artifact(root, 3, row, interval=True, bad_hash=True),
+                         self.artifact(root, 4, row, interval=True, csv_changes={"predicted_total": 49}),
+                         self.artifact(root, 5, row, interval=True,
+                                       csv_changes={"target_quality_version": "legacy"}),
+                         self.artifact(root, 6, row)]
+            rows, inventory, excluded = audit.read_artifacts(
+                artifacts, [{"id": n} for n in range(1, 7)], root,
+                target_definition=INTERVAL_TARGET_VERSION)
+            self.assertEqual(rows.artifact_id.tolist(), [1])
+            self.assertEqual(inventory.status.tolist(), ["forecast_written", "suppressed_data_quality"]
+                             + ["quarantined_artifact"] * 4)
+            self.assertEqual([r["artifact_id"] for r in excluded], [3, 4, 5, 6])
+            self.assertIn("digest mismatch", excluded[0]["reason"])
+            self.assertIn("predicted_total", excluded[1]["reason"])
+            self.assertIn("target_quality_version", excluded[2]["reason"])
+
+    def test_unknown_collection_rejected_before_reading_archives(self):
+        with self.assertRaisesRegex(ValueError, "unrecognized target"):
+            audit.read_artifacts([], [], Path("."), target_definition="unknown")
 
     def test_earliest_issue_wins_not_best_error(self):
         with tempfile.TemporaryDirectory() as temp:

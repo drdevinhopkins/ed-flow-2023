@@ -80,13 +80,13 @@ def target_history_fingerprint(history, *, target="daily_visits"):
     return hashlib.sha256(data.encode()).hexdigest()
 
 
-def verify_explanation_context(formatted, history):
+def verify_explanation_context(formatted, history, *, quality_version=QUALITY_VERSION):
     """Do not attribute an old forecast to a rebuilt, different target context."""
     if "history_days" not in formatted or not pd.to_numeric(
         formatted["history_days"], errors="coerce").eq(len(history)).all():
         raise ValueError("Persisted forecast history length does not match verified context")
     if "target_quality_version" not in formatted or not formatted[
-        "target_quality_version"].eq(QUALITY_VERSION).all():
+        "target_quality_version"].eq(quality_version).all():
         raise ValueError("Persisted forecast predates verified daily target handling; rerun forecast")
     if "target_history_sha256" not in formatted or not formatted[
         "target_history_sha256"].eq(target_history_fingerprint(history)).all():
