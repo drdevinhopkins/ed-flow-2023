@@ -1,0 +1,68 @@
+{
+  "arguments": {
+    "input": "/tmp/ed-flow-history.csv",
+    "output": "validation/timestral-calendar-pilot-2026-10-31",
+    "timestral": "/tmp/timestral-123m",
+    "chronos": "/tmp/chronos2-model",
+    "cutoffs": 28,
+    "context": 672,
+    "spacing": 49,
+    "threads": 4,
+    "calendar": true
+  },
+  "input_sha256": "65dd8b234bef592205e2d2601247ed861795a89f43371bb3b2b32c59f25dad26",
+  "data_start": "2021-01-01 01:00:00",
+  "data_end": "2026-10-31 13:00:00",
+  "cutoffs": [
+    "2026-09-05 10:00:00",
+    "2026-09-07 11:00:00",
+    "2026-09-09 12:00:00",
+    "2026-09-11 13:00:00",
+    "2026-09-13 14:00:00",
+    "2026-09-15 15:00:00",
+    "2026-09-17 16:00:00",
+    "2026-09-19 17:00:00",
+    "2026-09-21 18:00:00",
+    "2026-09-23 19:00:00",
+    "2026-09-25 20:00:00",
+    "2026-09-27 21:00:00",
+    "2026-09-29 22:00:00",
+    "2026-10-01 23:00:00",
+    "2026-10-04 00:00:00",
+    "2026-10-06 01:00:00",
+    "2026-10-08 02:00:00",
+    "2026-10-10 03:00:00",
+    "2026-10-12 04:00:00",
+    "2026-10-14 05:00:00",
+    "2026-10-16 06:00:00",
+    "2026-10-18 07:00:00",
+    "2026-10-20 08:00:00",
+    "2026-10-22 09:00:00",
+    "2026-10-24 10:00:00",
+    "2026-10-26 11:00:00",
+    "2026-10-28 12:00:00",
+    "2026-10-30 13:00:00"
+  ],
+  "torch": "2.15.0+cpu",
+  "timezone": "America/Montreal",
+  "horizon": 24,
+  "caveat": "Exploratory baseline/calendar comparison; not a production routed-model comparison.",
+  "timestral_source_commit": "a534bdbd244d64f3d9d743f46c7bf6fc330ed4ff",
+  "local_checkpoint_sha256": {
+    "timestral": {
+      "config.json": "7bb4c042fb2d2ed6469b6758ba380dfeda3ab32df47690a87aec1527bdae79bf",
+      "model.safetensors": "599fafa73cadbbc800b5a346ca900fa741ee3e5fd22e3b4a4430e151e74f4bc2"
+    },
+    "chronos2": {
+      "config.json": "ef1143bfdc9c0376d9a056eefca46cb4b1ec3d0ffacd541ff56feb40fb708031",
+      "model.safetensors": "ddcda3c7508bf2528087723e98a20707cc04b7f370ae275a9fd88078ddba4f42"
+    }
+  },
+  "packages": {
+    "timestral": "1.0.0",
+    "chronos-forecasting": "2.3.2",
+    "transformers": "5.22.1",
+    "numpy": "2.3.5",
+    "pandas": "2.2.3"
+  }
+}
