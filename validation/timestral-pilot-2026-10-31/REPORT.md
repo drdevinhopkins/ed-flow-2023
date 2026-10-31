@@ -1,5 +1,7 @@
 # Timestral-123M versus Chronos-2: offline ED pilot
 
+Follow-up: [the four-season comparison](../timestral-seasons-calendar-2026-10-31/REPORT.md) expands this pilot to 96 cutoffs across autumn 2025 through summer 2026. Use that report when assessing whether the initial gains generalize.
+
 Evaluation date: October 31, 2026. Production is unchanged.
 
 ## Finding
