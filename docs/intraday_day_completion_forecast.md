@@ -17,11 +17,29 @@ when the source is stale, incomplete, invalid, or outside the 06:00–22:00 mode
 
 ## Training snapshots
 
-The backtest creates one row per complete calendar day and cutoff hour. A day is complete
-only when its observed local-hour labels match the expected Montreal day, including
-23-hour spring DST days and 25-hour autumn DST days. Source cumulative-arrival counters
-are not trusted because their reset conventions have varied; cumulative arrivals are
-reconstructed from hourly `Inflow_Total`.
+The backtest creates one row per complete calendar day and cutoff hour. Historical
+training requires complete ordinary-day coverage. DST transition dates remain excluded
+until the upstream reporting convention is verified, consistent with daily target quality.
+Source cumulative-arrival counters are not trusted because their reset conventions have
+varied; cumulative arrivals are reconstructed from hourly `Inflow_Total`.
+
+The live report uses one row per clock-hour label. Duplicate labels within a single
+source report are collapsed using the maximum of each column before current data and
+history are published. For example, the two 2026-11-01 02:00 rows become one with
+`Inflow_Total=8` and `TTStr=101`. Maxima may originate in different source rows. This
+is a reporting convention, not a reconstruction of distinct physical-hour observations.
+Later source revisions still replace history, including downward corrections.
+
+Live validation and progress features use this same unique-label grid: 24 report labels
+on fall-back day, and 23 on spring-forward day (no invented 02:00 observation). At 08:00
+on fall-back day there are nine observed report labels and 15 remaining. Genuine gaps,
+stale inputs and invalid values continue to suppress output. Accepting a validated live
+prefix does not make that date eligible as a historical daily training target.
+
+After deployment, rerun `scripts/get_current.py` while the duplicate rows remain in the
+source PDF to repair `current.csv`, `allData.csv` and calculated exports together. Run
+this version on both GitHub and the hospital server so an older writer cannot overwrite
+the correction. Rerun the hourly v2.1 workflow afterwards to rebuild the intraday output.
 
 Snapshot feature families are:
 

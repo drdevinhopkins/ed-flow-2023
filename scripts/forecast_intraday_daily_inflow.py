@@ -80,16 +80,8 @@ def validate_live_flow(
     ).copy()
     actual_hours = current["ds"].dt.hour.astype(int).tolist()
     expected_hours = expected_local_hours(latest_day)
-    latest_positions = [
-        position
-        for position, hour in enumerate(expected_hours)
-        if hour == int(latest_ds.hour)
-    ]
-    latest_position = min(
-        latest_positions,
-        key=lambda position: abs((position + 1) - len(actual_hours)),
-    )
-    expected_prefix = expected_hours[: latest_position + 1]
+    # Input rows use unique clock labels after the producer's per-column max.
+    expected_prefix = [hour for hour in expected_hours if hour <= int(latest_ds.hour)]
     if actual_hours != expected_prefix:
         raise DataQualityError(
             "current day has missing or out-of-order hours: "

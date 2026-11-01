@@ -178,13 +178,22 @@ def parse_local_timestamp(series: pd.Series, local_tz: str = LOCAL_TZ) -> pd.Ser
     return pd.Series(pd.to_datetime(values), index=series.index, dtype="datetime64[ns]")
 
 
-def expected_local_hours(day: pd.Timestamp, local_tz: str = LOCAL_TZ) -> list[int]:
-    """Return the 23/24/25 local hour labels expected for one Montreal day."""
+def _elapsed_local_hours(day: pd.Timestamp, local_tz: str = LOCAL_TZ) -> list[int]:
+    """Return physical-hour labels, including the repeated fall-back hour."""
 
     start = pd.Timestamp(day).normalize().tz_localize(local_tz)
     end = (pd.Timestamp(day).normalize() + pd.Timedelta(days=1)).tz_localize(local_tz)
     hours = pd.date_range(start, end, freq="h", inclusive="left")
     return hours.tz_localize(None).hour.tolist()
+
+
+def expected_local_hours(day: pd.Timestamp, local_tz: str = LOCAL_TZ) -> list[int]:
+    """Return unique clock labels for the max-collapsed report contract.
+
+    Fall-back has 24 report rows, not 25 physical-hour observations. Spring
+    retains its missing 02 label: this does not invent a zero-arrival hour.
+    """
+    return list(dict.fromkeys(_elapsed_local_hours(day, local_tz)))
 
 
 def _complete_day_flags(frame: pd.DataFrame) -> pd.Series:
@@ -193,7 +202,10 @@ def _complete_day_flags(frame: pd.DataFrame) -> pd.Series:
         expected = sorted(expected_local_hours(pd.Timestamp(day)))
         actual = sorted(group["ds"].dt.hour.astype(int).tolist())
         numeric = pd.to_numeric(group["Inflow_Total"], errors="coerce")
-        flags[pd.Timestamp(day)] = actual == expected and numeric.notna().all()
+        # A complete report grid on a transition date does not verify arrivals.
+        # Keep these historical days out of training, matching daily target policy.
+        ordinary_day = len(_elapsed_local_hours(pd.Timestamp(day))) == 24
+        flags[pd.Timestamp(day)] = ordinary_day and actual == expected and numeric.notna().all()
     return frame["day"].map(flags).fillna(False).astype(bool)
 
 

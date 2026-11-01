@@ -94,6 +94,28 @@ class IntradayDayCompletionTests(unittest.TestCase):
         self.assertFalse(bool(flow.loc[flow["day"].eq(pd.Timestamp("2026-01-03")), "is_complete_day"].any()))
         self.assertNotIn(pd.Timestamp("2026-01-03"), set(snapshots["day"]))
 
+    def test_dst_report_grid_and_snapshot_progress_use_unique_hours(self):
+        self.assertEqual(expected_local_hours(pd.Timestamp("2026-11-01")), list(range(24)))
+        self.assertEqual(expected_local_hours(pd.Timestamp("2026-03-08")),
+                         [h for h in range(24) if h != 2])
+        flow = load_hourly_flow(self._write_csv(self._flow_rows("2026-10-01", 33)))
+        dst = flow.day.eq(pd.Timestamp("2026-11-01"))
+        self.assertFalse(flow.loc[dst, "is_complete_day"].any())
+        # The live forecast marks only today's validated prefix as usable.
+        prefix = flow.loc[~dst | flow.ds.dt.hour.le(8)].copy()
+        prefix.loc[prefix.day.eq(pd.Timestamp("2026-11-01")), "is_complete_day"] = True
+        snapshots = build_snapshots(prefix, calendar_mode="basic")
+        live = snapshots.loc[snapshots.ds.eq(pd.Timestamp("2026-11-01 08:00"))].iloc[0]
+        self.assertEqual(live.expected_reports, 24)
+        self.assertEqual(live.report_index, 9)
+        self.assertEqual(live.reports_remaining, 15)
+        self.assertAlmostEqual(live.day_progress_fraction, 9 / 24)
+
+    def test_spring_transition_remains_excluded_from_training(self):
+        flow = load_hourly_flow(self._write_csv(self._flow_rows("2026-03-01", 10)))
+        self.assertFalse(flow.loc[flow.day.eq(pd.Timestamp("2026-03-08")),
+                                  "is_complete_day"].any())
+
     def test_prior_uses_only_earlier_daily_totals(self):
         original = self._flow_rows("2026-01-01", 40)
         changed = [dict(row) for row in original]

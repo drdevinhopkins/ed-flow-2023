@@ -9,6 +9,7 @@ import constants
 from utils import upload
 import dropbox
 from daily_arrival_quality import build_daily_inflow_outputs
+from hourly_report_rows import collapse_report_rows, merge_report_history
 
 load_dotenv()
 
@@ -37,6 +38,9 @@ df["ds"] = pd.to_datetime(
 ) + datetime.timedelta(hours=1)
 df = df.set_index('ds').reset_index().drop(['dateflg', 'timeflg'], axis=1)
 
+# The fallback report can repeat a timestamp. Keep each column maximum.
+df = collapse_report_rows(df)
+
 df.to_csv('current.csv', index=False)
 df.to_excel('current.xlsx', index_label="index")
 
@@ -47,8 +51,7 @@ allData = pd.read_csv(
     'https://www.dropbox.com/scl/fi/ksf0nbmmiort5khbrgr61/allData.csv?rlkey=75e735fjk4ifttjt553ukxt3k&dl=1')
 allData.ds = pd.to_datetime(allData.ds)
 
-allData = pd.concat([allData, df], ignore_index=True).drop_duplicates(subset='ds',
-                                                                      keep='last').sort_values(by='ds', ascending=True)
+allData = merge_report_history(allData, df)
 
 allData.to_csv('allData.csv', index=False)
 allData.to_excel('allData.xlsx', index_label="index")
