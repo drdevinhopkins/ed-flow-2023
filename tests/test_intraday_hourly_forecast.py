@@ -73,6 +73,29 @@ class IntradayHourlyForecastTests(unittest.TestCase):
                 now=pd.Timestamp("2026-09-03T20:30:00Z"),
             )
 
+    def test_fallback_accepts_one_row_per_clock_hour(self):
+        flow = self._live_flow(latest_hour=8)
+        flow["ds"] += pd.Timestamp("2026-11-01") - pd.Timestamp("2026-09-03")
+        flow["day"] = pd.Timestamp("2026-11-01")
+        latest, current = validate_live_flow(flow, now=pd.Timestamp("2026-11-01T13:30Z"))
+        self.assertEqual(latest, pd.Timestamp("2026-11-01 08:00"))
+        self.assertEqual(len(current), 9)
+        # A genuine missing hour must still suppress on the fall-back date.
+        with self.assertRaisesRegex(DataQualityError, "missing or out-of-order"):
+            validate_live_flow(flow.loc[flow.ds.dt.hour.ne(4)],
+                               now=pd.Timestamp("2026-11-01T13:30Z"))
+
+    def test_spring_forward_does_not_require_nonexistent_hour(self):
+        flow = self._live_flow(latest_hour=8)
+        flow["ds"] += pd.Timestamp("2026-03-08") - pd.Timestamp("2026-09-03")
+        flow["day"] = pd.Timestamp("2026-03-08")
+        flow = flow.loc[flow.ds.dt.hour.ne(2)]
+        _, current = validate_live_flow(flow, now=pd.Timestamp("2026-03-08T12:30Z"))
+        self.assertEqual(len(current), 8)
+        with self.assertRaisesRegex(DataQualityError, "missing or out-of-order"):
+            validate_live_flow(flow.loc[flow.ds.dt.hour.ne(4)],
+                               now=pd.Timestamp("2026-03-08T12:30Z"))
+
     def test_output_is_one_replaceable_snapshot(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "forecast.csv"
