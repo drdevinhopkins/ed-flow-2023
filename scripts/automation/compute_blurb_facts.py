@@ -61,6 +61,9 @@ def _localize(ts):
 
 def schedule_context(shifts: pd.DataFrame, data_hour: pd.Timestamp) -> dict:
     """Schedule evidence is separate from confirmation of on-call availability."""
+    data_hour = pd.Timestamp(data_hour)
+    if data_hour.tzinfo is not None:
+        data_hour = data_hour.tz_convert("America/Montreal").tz_localize(None)
     shifts = shifts.copy()
     for column in ("shift_start", "shift_end"):
         times = pd.to_datetime(shifts[column])
