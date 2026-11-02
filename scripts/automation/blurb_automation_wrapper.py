@@ -114,7 +114,7 @@ def forecast_origin(dbx):
     fc = pd.read_csv(io.BytesIO(download(dbx, "/forecast-v2.1.csv")))
     fc["forecast_origin"] = pd.to_datetime(fc["forecast_origin"])
     o = fc["forecast_origin"].max()
-    o = o.tz_localize("America/Montreal") if o.tz is None else o.tz_convert("America/Montreal")
+    o = o if o.tz is None else o.tz_convert("America/Montreal").tz_localize(None)
     return o.floor("h")
 
 
@@ -169,7 +169,7 @@ def download_inputs(dbx):
     fc = pd.read_csv(SCRATCH / "forecast-v2.1.csv")
     fc["forecast_origin"] = pd.to_datetime(fc["forecast_origin"])
     o = fc["forecast_origin"].max()
-    o = o.tz_localize("America/Montreal") if o.tz is None else o.tz_convert("America/Montreal")
+    o = o if o.tz is None else o.tz_convert("America/Montreal").tz_localize(None)
     return o.floor("h")
 
 
@@ -203,7 +203,7 @@ def read_daily_inflow_forecast(origin):
         if len(frame) != 1 or frame.loc[0].get("status") != "experimental_forecast":
             return None
         cutoff = pd.Timestamp(frame.loc[0]["cutoff_ds_local"])
-        cutoff = cutoff.tz_localize("America/Montreal") if cutoff.tzinfo is None else cutoff.tz_convert("America/Montreal")
+        cutoff = cutoff if cutoff.tzinfo is None else cutoff.tz_convert("America/Montreal").tz_localize(None)
         if cutoff.floor("h") != origin.floor("h"):
             return None
         predicted = pd.to_numeric(frame.loc[0]["predicted_total"], errors="coerce")

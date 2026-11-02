@@ -55,16 +55,19 @@ def _band(value: float, bucket: dict) -> str | None:
 
 
 def _localize(ts):
-    return ts.dt.tz_localize("America/Montreal") if ts.dt.tz is None else ts.dt.tz_convert("America/Montreal")
+    """Use unique Montreal wall-clock labels, matching the hourly report grid."""
+    return ts if ts.dt.tz is None else ts.dt.tz_convert("America/Montreal").dt.tz_localize(None)
 
 
 def schedule_context(shifts: pd.DataFrame, data_hour: pd.Timestamp) -> dict:
     """Schedule evidence is separate from confirmation of on-call availability."""
+    data_hour = pd.Timestamp(data_hour)
+    if data_hour.tzinfo is not None:
+        data_hour = data_hour.tz_convert("America/Montreal").tz_localize(None)
     shifts = shifts.copy()
     for column in ("shift_start", "shift_end"):
         times = pd.to_datetime(shifts[column])
-        shifts[column] = (times.dt.tz_localize("America/Montreal", ambiguous="NaT", nonexistent="NaT")
-                          if times.dt.tz is None else times.dt.tz_convert("America/Montreal"))
+        shifts[column] = _localize(times)
     is_oncall = shifts["shift_short_name"].isin(["OC1", "OC2", "WOC1", "WOC2", "WOC3"])
     is_teaching = shifts["shift_short_name"].isin(["H1"])
     now = shifts[(shifts.shift_start <= data_hour) & (shifts.shift_end > data_hour)]
@@ -128,7 +131,7 @@ def staffing_review(history: pd.DataFrame, future: pd.DataFrame,
 def compute(scratch: Path, data_hour: pd.Timestamp | None = None) -> dict:
     """Core readiness + fact computation.
 
-    `data_hour` (aware, America/Montreal) is the hour the blurb is keyed to.
+    `data_hour` (Montreal local clock hour) is the hour the blurb is keyed to.
     If None, it defaults to the forecast's own origin (the LATEST available
     data hour) — which is what the automation uses. For the manual skill
     (SKILL.md) pass the box-clock hour so a not-yet-generated hour fails the
@@ -150,6 +153,9 @@ def compute(scratch: Path, data_hour: pd.Timestamp | None = None) -> dict:
     origin = _localize(fc["forecast_origin"]).max()
     if data_hour is None:
         data_hour = origin
+    data_hour = pd.Timestamp(data_hour)
+    if data_hour.tzinfo is not None:
+        data_hour = data_hour.tz_convert("America/Montreal").tz_localize(None)
     data_hour = data_hour.floor("h")
 
     f = fc[_localize(fc["forecast_origin"]) == origin].copy()
@@ -258,7 +264,15 @@ def compute(scratch: Path, data_hour: pd.Timestamp | None = None) -> dict:
     except (OSError, ValueError):
         context = {}
         result["model_warnings"].append("Confirmed operational context is unavailable")
-    if str(context.get("data_hour")) != data_hour.isoformat():
+    try:
+        context_hour = pd.Timestamp(context.get("data_hour"))
+        if pd.isna(context_hour):
+            raise ValueError("Missing context hour")
+        if context_hour.tzinfo is not None:
+            context_hour = context_hour.tz_convert("America/Montreal").tz_localize(None)
+        if context_hour != data_hour:
+            context = {}
+    except (TypeError, ValueError):
         context = {}
     schedule_path = scratch / "all_shifts.csv"
     if schedule_path.exists():
@@ -354,7 +368,7 @@ def compute(scratch: Path, data_hour: pd.Timestamp | None = None) -> dict:
 def main(scratch: Path) -> int:
     """CLI entry for the manual skill: keys off the box-clock hour so a not-yet-
     generated data hour fails the readiness gate (do not build on stale data)."""
-    expected_hour = pd.Timestamp.now(tz="America/Montreal").floor("h")
+    expected_hour = pd.Timestamp.now(tz="America/Montreal").tz_localize(None).floor("h")
     r = compute(scratch, data_hour=expected_hour)
     print(f"expected data hour (America/Montreal): {expected_hour}")
     print(f"forecast-v2.1 origin: {r['origin']}")
