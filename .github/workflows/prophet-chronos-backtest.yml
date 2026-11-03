@@ -1,0 +1,49 @@
+name: Prophet inputs to Chronos daily arrivals
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prophet-chronos-backtest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PYTHONPATH: scripts
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface
+          key: prophet-chronos2-${{ runner.os }}
+      - name: Install experimental dependencies
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r chronos-requirements.txt 'prophet>=1.2,<2'
+      - name: Verify leakage and scoring safeguards
+        run: python tests/test_prophet_chronos_daily.py
+      - name: Backtest with at least 120 contiguous days
+        run: |
+          python scripts/evaluation/backtests/backtest_prophet_chronos_daily.py \
+            --num-cutoffs 24 --output-dir validation-output-prophet/strict
+      - name: Backtest all seasons with production minimum context
+        run: |
+          python scripts/evaluation/backtests/backtest_prophet_chronos_daily.py \
+            --daily-csv validation-output-prophet/strict/verified_daily.csv \
+            --min-history-days 28 --num-cutoffs 24 \
+            --output-dir validation-output-prophet/all-seasons
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prophet-chronos-daily-backtest
+          path: validation-output-prophet/
