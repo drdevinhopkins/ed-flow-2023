@@ -1,0 +1,91 @@
+name: Anomaly detector backtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      evaluation_days:
+        description: Scored evaluation days
+        required: true
+        default: '42'
+      calibration_days:
+        description: Prior residual calibration days
+        required: true
+        default: '90'
+  push:
+    branches:
+      - anomaly-backtest
+    paths:
+      - '.github/workflows/anomaly-backtest.yml'
+      - 'scripts/backtest_anomaly_detection.py'
+      - 'tests/test_anomaly_backtest.py'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/anomaly-backtest.yml'
+      - 'scripts/backtest_anomaly_detection.py'
+      - 'tests/test_anomaly_backtest.py'
+
+permissions:
+  contents: read
+
+jobs:
+  anomaly-backtest:
+    name: anomaly-backtest-${{ matrix.training_window }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        training_window: ['180', '365', '730', 'all']
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install backtest dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy pandas prophet
+
+      - name: Run leakage and persistence tests
+        run: python tests/test_anomaly_backtest.py
+
+      - name: Run retrospective anomaly benchmark
+        env:
+          # Each history window runs independently so one slow window cannot
+          # prevent the others from producing research artifacts. This workflow
+          # never publishes production anomaly ranges.
+          EVALUATION_DAYS: ${{ github.event.inputs.evaluation_days || '42' }}
+          CALIBRATION_DAYS: ${{ github.event.inputs.calibration_days || '90' }}
+          TRAINING_DAYS: ${{ matrix.training_window }}
+        run: |
+          python scripts/backtest_anomaly_detection.py \
+            --evaluation-days "$EVALUATION_DAYS" \
+            --calibration-days "$CALIBRATION_DAYS" \
+            --training-days "$TRAINING_DAYS" \
+            --output-dir "validation/anomaly-backtest-${TRAINING_DAYS}"
+
+      - name: Show comparison tables
+        if: always()
+        env:
+          TRAINING_DAYS: ${{ matrix.training_window }}
+        run: |
+          echo '=== Overall ==='
+          cat "validation/anomaly-backtest-${TRAINING_DAYS}/summary.csv" 2>/dev/null || true
+          echo
+          echo '=== By target ==='
+          cat "validation/anomaly-backtest-${TRAINING_DAYS}/by_target.csv" 2>/dev/null || true
+
+      - name: Upload anomaly backtest results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: anomaly-backtest-results-${{ matrix.training_window }}
+          path: validation/anomaly-backtest-${{ matrix.training_window }}/
+          if-no-files-found: warn
