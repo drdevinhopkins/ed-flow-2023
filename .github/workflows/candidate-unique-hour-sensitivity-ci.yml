@@ -1,0 +1,82 @@
+name: Candidate unique-hour sensitivity CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/candidate-unique-hour-sensitivity-ci.yml'
+      - 'scripts/evaluation/prospective/summarize_shadow_candidate_unique_hour_sensitivity.py'
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-unique-hour-sensitivity:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install lightweight dependencies
+        run: pip install pandas numpy
+
+      - name: Verify repeated forecasts count as one realized hour
+        run: |
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          import pandas as pd
+
+          sys.path.insert(0, 'scripts/evaluation/prospective')
+          from summarize_shadow_candidate_unique_hour_sensitivity import summarize_unique_hour_sensitivity
+
+          rows = []
+          # Hour A is duplicated many times and favors candidate.
+          for i in range(8):
+              rows.append({
+                  'forecast_issued_at': f'2026-08-27T{10+i:02d}:00:00Z',
+                  'target_ds': '2026-08-28 01:00:00',
+                  'target_name': 'Inflow_Total',
+                  'horizon_band': 'h01_04',
+                  'candidate_scenario': 'calendar_demand',
+                  'candidate_route_active': True,
+                  'baseline_absolute_error': 4.0,
+                  'candidate_absolute_error': 2.0,
+                  'paired_absolute_error_delta': 2.0,
+                  'candidate_wins': True,
+                  'baseline_error': 4.0,
+                  'candidate_error': 2.0,
+              })
+          # Hour B favors baseline.
+          rows.append({
+              'forecast_issued_at': '2026-08-27T18:00:00Z',
+              'target_ds': '2026-08-28 02:00:00',
+              'target_name': 'Inflow_Total',
+              'horizon_band': 'h01_04',
+              'candidate_scenario': 'calendar_demand',
+              'candidate_route_active': True,
+              'baseline_absolute_error': 1.0,
+              'candidate_absolute_error': 3.0,
+              'paired_absolute_error_delta': -2.0,
+              'candidate_wins': False,
+              'baseline_error': 1.0,
+              'candidate_error': 3.0,
+          })
+
+          summary = summarize_unique_hour_sensitivity(pd.DataFrame(rows))
+          assert len(summary) == 2, summary
+          assert summary['n_unique_target_hours'].eq(2).all(), summary
+          # The duplicated hour must not count eight times after collapse.
+          earliest = summary[summary['selection'].eq('earliest_forecast_per_realized_hour')].iloc[0]
+          assert earliest['baseline_mae'] == 2.5, earliest
+          assert earliest['candidate_mae'] == 2.5, earliest
+          assert earliest['candidate_win_rate'] == 0.5, earliest
+          assert bool(earliest['selection_direction_agrees']), earliest
+          print(summary.to_string(index=False))
+          PY

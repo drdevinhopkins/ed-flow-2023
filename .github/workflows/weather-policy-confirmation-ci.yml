@@ -1,0 +1,112 @@
+name: Weather policy confirmation CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/weather-policy-confirmation-ci.yml'
+      - 'scripts/evaluation/prospective/summarize_shadow_weather_policy_confirmation.py'
+
+permissions:
+  contents: read
+
+jobs:
+  policy-confirmation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install pandas
+        run: pip install pandas
+
+      - name: Verify discovery and confirmation are separated
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          from pathlib import Path
+
+          rows = []
+          policies = ['all_baseline', 'current_weather_policy', 'weather_hours_3_4']
+          for day in range(56):
+              date = (pd.Timestamp('2026-01-01') + pd.Timedelta(days=day)).date().isoformat()
+              for policy in policies:
+                  # Discovery strongly favors h3-4. Confirmation deliberately reverses it.
+                  if policy == 'all_baseline':
+                      imp = 0.0
+                      vs_current = -2.0 if day < 28 else 2.0
+                  elif policy == 'current_weather_policy':
+                      imp = 2.0 if day < 28 else 1.0
+                      vs_current = 0.0
+                  else:
+                      imp = 5.0 if day < 28 else -3.0
+                      vs_current = 3.0 if day < 28 else -4.0
+                  rows.append({
+                      'forecast_issue_date': date,
+                      'issue_date_complete': True,
+                      'policy': policy,
+                      'mae_improvement_pct_vs_baseline': imp,
+                      'mean_paired_mae_delta_vs_baseline': imp / 100.0,
+                      'mae_improvement_pct_vs_current_weather_policy': vs_current,
+                  })
+
+          path = Path('policy-by-date.csv')
+          pd.DataFrame(rows).to_csv(path, index=False)
+          PY
+
+          python scripts/evaluation/prospective/summarize_shadow_weather_policy_confirmation.py \
+            policy-by-date.csv --output-dir confirmation-test
+
+          python - <<'PY'
+          import pandas as pd
+          status = pd.read_csv('confirmation-test/weather-policy-confirmation-status.csv').iloc[0]
+          assert status['selected_policy'] == 'weather_hours_3_4', status
+          assert int(status['discovery_issue_dates']) == 28
+          assert int(status['confirmation_issue_dates']) == 28
+          assert bool(status['confirmation_evidence_ready'])
+          assert not bool(status['confirmation_pass'])
+          assert status['confirmation_status'] == 'confirmation_failed'
+          print('Discovery winner cannot self-confirm on the same dates.')
+          PY
+
+      - name: Verify early evidence remains collecting
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          rows = []
+          for day in range(3):
+              date = (pd.Timestamp('2026-01-01') + pd.Timedelta(days=day)).date().isoformat()
+              for policy, imp, current in [
+                  ('all_baseline', 0.0, -4.0),
+                  ('current_weather_policy', 4.0, 0.0),
+                  ('weather_hours_3_4', 5.0, 1.0),
+              ]:
+                  rows.append({
+                      'forecast_issue_date': date,
+                      'issue_date_complete': True,
+                      'policy': policy,
+                      'mae_improvement_pct_vs_baseline': imp,
+                      'mean_paired_mae_delta_vs_baseline': imp / 100.0,
+                      'mae_improvement_pct_vs_current_weather_policy': current,
+                  })
+          pd.DataFrame(rows).to_csv('early.csv', index=False)
+          PY
+
+          python scripts/evaluation/prospective/summarize_shadow_weather_policy_confirmation.py \
+            early.csv --output-dir early-test
+
+          python - <<'PY'
+          import pandas as pd
+          status = pd.read_csv('early-test/weather-policy-confirmation-status.csv').iloc[0]
+          assert status['confirmation_status'] == 'collecting_discovery'
+          assert int(status['discovery_dates_remaining']) == 25
+          assert not bool(status['confirmation_evidence_ready'])
+          print('Early policy-search evidence remains explicitly non-confirmatory.')
+          PY
