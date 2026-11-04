@@ -1,0 +1,72 @@
+Targets: Total_TBS, POD_TBS, Vertical_TBS, TTStr, Overflow, WAITINGADM
+Windows: 30d=720h, 60d=1440h, 90d=2160h, 180d=4320h, 270d=6480h, max_8192h=8192h
+Cutoffs (8): [Timestamp('2025-11-02 07:00:00'), Timestamp('2025-12-14 07:00:00'), Timestamp('2026-01-25 07:00:00'), Timestamp('2026-03-08 07:00:00'), Timestamp('2026-04-19 07:00:00'), Timestamp('2026-05-31 07:00:00'), Timestamp('2026-07-12 07:00:00'), Timestamp('2026-08-23 07:00:00')]
+Reference: Chronos-2 maximum context = 8192 hourly observations (341.3 days).
+Loading amazon/chronos-2 on cpu
+Loading weights:   0%|          | 0/170 [00:00<?, ?it/s]Loading weights: 100%|██████████| 170/170 [00:00<00:00, 4446.94it/s]
+Forecasting cutoff=2025-11-02 07:00:00 history=30d (720h)
+Forecasting cutoff=2025-11-02 07:00:00 history=60d (1440h)
+Forecasting cutoff=2025-11-02 07:00:00 history=90d (2160h)
+Forecasting cutoff=2025-11-02 07:00:00 history=180d (4320h)
+Forecasting cutoff=2025-11-02 07:00:00 history=270d (6480h)
+Forecasting cutoff=2025-11-02 07:00:00 history=max_8192h (8192h)
+Forecasting cutoff=2025-12-14 07:00:00 history=30d (720h)
+Forecasting cutoff=2025-12-14 07:00:00 history=60d (1440h)
+Forecasting cutoff=2025-12-14 07:00:00 history=90d (2160h)
+Forecasting cutoff=2025-12-14 07:00:00 history=180d (4320h)
+Forecasting cutoff=2025-12-14 07:00:00 history=270d (6480h)
+Forecasting cutoff=2025-12-14 07:00:00 history=max_8192h (8192h)
+Forecasting cutoff=2026-01-25 07:00:00 history=30d (720h)
+Forecasting cutoff=2026-01-25 07:00:00 history=60d (1440h)
+Forecasting cutoff=2026-01-25 07:00:00 history=90d (2160h)
+Forecasting cutoff=2026-01-25 07:00:00 history=180d (4320h)
+Forecasting cutoff=2026-01-25 07:00:00 history=270d (6480h)
+Forecasting cutoff=2026-01-25 07:00:00 history=max_8192h (8192h)
+Forecasting cutoff=2026-03-08 07:00:00 history=30d (720h)
+Forecasting cutoff=2026-03-08 07:00:00 history=60d (1440h)
+Forecasting cutoff=2026-03-08 07:00:00 history=90d (2160h)
+Forecasting cutoff=2026-03-08 07:00:00 history=180d (4320h)
+Forecasting cutoff=2026-03-08 07:00:00 history=270d (6480h)
+Forecasting cutoff=2026-03-08 07:00:00 history=max_8192h (8192h)
+Forecasting cutoff=2026-04-19 07:00:00 history=30d (720h)
+Forecasting cutoff=2026-04-19 07:00:00 history=60d (1440h)
+Forecasting cutoff=2026-04-19 07:00:00 history=90d (2160h)
+Forecasting cutoff=2026-04-19 07:00:00 history=180d (4320h)
+Forecasting cutoff=2026-04-19 07:00:00 history=270d (6480h)
+Forecasting cutoff=2026-04-19 07:00:00 history=max_8192h (8192h)
+Forecasting cutoff=2026-05-31 07:00:00 history=30d (720h)
+Forecasting cutoff=2026-05-31 07:00:00 history=60d (1440h)
+Forecasting cutoff=2026-05-31 07:00:00 history=90d (2160h)
+Forecasting cutoff=2026-05-31 07:00:00 history=180d (4320h)
+Forecasting cutoff=2026-05-31 07:00:00 history=270d (6480h)
+Forecasting cutoff=2026-05-31 07:00:00 history=max_8192h (8192h)
+Forecasting cutoff=2026-07-12 07:00:00 history=30d (720h)
+Forecasting cutoff=2026-07-12 07:00:00 history=60d (1440h)
+Forecasting cutoff=2026-07-12 07:00:00 history=90d (2160h)
+Forecasting cutoff=2026-07-12 07:00:00 history=180d (4320h)
+Forecasting cutoff=2026-07-12 07:00:00 history=270d (6480h)
+Forecasting cutoff=2026-07-12 07:00:00 history=max_8192h (8192h)
+Forecasting cutoff=2026-08-23 07:00:00 history=30d (720h)
+Forecasting cutoff=2026-08-23 07:00:00 history=60d (1440h)
+Forecasting cutoff=2026-08-23 07:00:00 history=90d (2160h)
+Forecasting cutoff=2026-08-23 07:00:00 history=180d (4320h)
+Forecasting cutoff=2026-08-23 07:00:00 history=270d (6480h)
+Forecasting cutoff=2026-08-23 07:00:00 history=max_8192h (8192h)
+
+=== Global ranking (normalized across targets; lower is better) ===
+history_label  history_hours  mean_relative_mae  mean_improvement_vs_max_pct  targets_beating_max
+          60d           1440           0.981383                     1.861658                    4
+         270d           6480           0.995848                     0.415197                    5
+         180d           4320           0.996497                     0.350339                    5
+          90d           2160           0.996721                     0.327905                    3
+    max_8192h           8192           1.000000                     0.000000                    0
+          30d            720           1.018455                    -1.845461                    3
+
+=== Best history window per target ===
+ target_name history_label  history_hours      mae  mae_improvement_vs_max_pct
+    Overflow           90d           2160 3.332057                    4.492714
+     POD_TBS          180d           4320 2.362140                    0.042989
+       TTStr          270d           6480 9.220572                    0.540926
+   Total_TBS           60d           1440 6.246526                    6.461892
+Vertical_TBS           60d           1440 5.471637                    6.854067
+  WAITINGADM          270d           6480 4.064473                    1.583725
