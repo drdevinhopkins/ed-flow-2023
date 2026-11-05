@@ -16,7 +16,7 @@ BLURB = "scripts/automation/blurb_automation_wrapper.py"
 
 
 class HourlyPipelineOrderTests(unittest.TestCase):
-    def run_wrapper(self, *, fail_script="", hour="12", last_run="2026-10-15", runs=1):
+    def run_wrapper(self, *, fail_script="", hour="12", last_run="2026-10-15", runs=1, hours=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             bin_dir = root / "bin"
@@ -61,7 +61,8 @@ class HourlyPipelineOrderTests(unittest.TestCase):
             if last_run is not None:
                 marker.parent.mkdir(parents=True)
                 marker.write_text(last_run + "\n")
-            for _ in range(runs):
+            for current_hour in (hours if hours is not None else [hour] * runs):
+                env["ED_FLOW_TEST_HOUR"] = current_hour
                 result = subprocess.run(
                     ["bash", str(WRAPPER)], env=env, capture_output=True,
                     text=True, timeout=10,
@@ -142,7 +143,8 @@ class DailyForecastCatchupTests(unittest.TestCase):
                                    "scripts/explain_daily_visits_forecast.py",
                                    "scripts/build_daily_arrival_outlook.py"]:
                         self.assertEqual(calls.count(script), 1)
-                    self.assertEqual(result.daily_last_run, "2026-10-15")
+                    self.assertEqual(result.daily_last_run,
+                                     "2026-10-15 " + ("evening" if int(hour) >= 18 else "morning"))
 
     def test_failed_daily_chain_can_retry_and_never_marks_success(self):
         for failed in ["scripts/forecast_daily_visits_from_daily.py",
@@ -154,6 +156,25 @@ class DailyForecastCatchupTests(unittest.TestCase):
                 self.assertEqual(result.daily_last_run, "2026-10-14")
                 self.assertEqual(calls.count("scripts/forecast_daily_visits_from_daily.py"), 2)
                 self.assertIn("additive step failed", result.stderr)
+
+    def test_legacy_morning_marker_does_not_suppress_evening(self):
+        result, calls = self.run_wrapper(hour="18", last_run="2026-10-15")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls.count("scripts/forecast_daily_visits_from_daily.py"), 1)
+        self.assertEqual(result.daily_last_run, "2026-10-15 evening")
+        self.assertIn("--issue-slot evening", result.stdout)
+
+    def test_both_windows_run_once_and_retry_is_not_hourly_republishing(self):
+        result, calls = self.run_wrapper(last_run=None, hours=["05", "06", "12", "17", "18", "19", "23"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls.count("scripts/forecast_daily_visits_from_daily.py"), 2)
+        self.assertEqual(result.daily_last_run, "2026-10-15 evening")
+
+    def test_failed_evening_keeps_morning_completion(self):
+        result, calls = self.run_wrapper(hour="18", last_run="2026-10-15 morning",
+                                        fail_script="scripts/build_daily_arrival_outlook.py", runs=2)
+        self.assertEqual(result.daily_last_run, "2026-10-15 morning")
+        self.assertEqual(calls.count("scripts/forecast_daily_visits_from_daily.py"), 2)
 
 
 if __name__ == "__main__":

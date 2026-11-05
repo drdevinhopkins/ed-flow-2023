@@ -51,6 +51,7 @@ from daily_weather_feature_set import (
 )
 from live_weather_forecast import build_operational_weather
 from utils import upload
+from daily_forecast_issues import ISSUE_SLOTS, issue_metadata
 from daily_arrival_quality import target_history_fingerprint
 from weather_features import add_weather_features, aggregate_hourly_weather, fit_climatology
 
@@ -349,6 +350,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--dropbox-name", default="daily_visits_forecast.csv")
     parser.add_argument("--no-dropbox", action="store_true")
+    parser.add_argument("--issue-slot", choices=ISSUE_SLOTS, default="manual")
     return parser.parse_args()
 
 
@@ -416,6 +418,9 @@ def main() -> None:
         history_days=history_days,
         generated_at=generated_at,
     )
+    metadata = issue_metadata(generated_at, cutoff=cutoff, slot=args.issue_slot)
+    for name, value in metadata.items():
+        output[name] = value
     output["target_quality_version"] = daily.attrs.get("target_quality_version", "unverified")
     output["target_history_sha256"] = target_history_fingerprint(history)
     weather_snapshot = build_weather_snapshot(
@@ -423,6 +428,9 @@ def main() -> None:
         cutoff=cutoff,
         generated_at=generated_at,
     )
+
+    for name, value in metadata.items():
+        weather_snapshot[name] = value
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.weather_snapshot_output.parent.mkdir(parents=True, exist_ok=True)
