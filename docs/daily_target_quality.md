@@ -23,9 +23,12 @@ source hourly cutoff and verification time. An observed partial sum is not a
 verified daily target. Eligibility requires all 24 unique ordinary clock slots,
 finite nonnegative arrivals, no duplicates and a matching daily sum.
 
-DST dates remain unverified even if all 24 naive clock slots exist. Upstream
-interval-end and repeated-hour semantics require source confirmation; this
-change does not decide them or recover older missing hours.
+Fall-back dates use the agreed report convention: ingestion collapses repeated
+clock labels by the maximum of each column. A completed fall-back day with all
+24 unique labels, valid arrivals and a matching daily sum is eligible with
+`complete_fallback_clock_coverage`. Uncollapsed duplicates, missing labels and
+invalid arrivals remain excluded. Spring-forward dates still require verification.
+This policy does not recover missing hours or change interval-end aggregation.
 
 During mixed-version rollout, consumers download both `/daily_inflow.csv` and
 `/allData.csv` and independently verify coverage and sums. They do not require
@@ -36,7 +39,7 @@ forecast from an older cutoff. Scoring can still evaluate older verified dates.
 Internal blank targets break the contiguous Chronos context. The existing
 28-day model minimum, 1,095-day maximum context, calendar/weather route and
 120-day validated-context warning threshold are preserved. Forecasts add
-`target_quality_version=daily-arrivals-quality-v1` and `target_history_sha256`.
+`target_quality_version=daily-arrivals-quality-v2` and `target_history_sha256`.
 Explanations require the same historical target fingerprint and context length,
 so an old forecast cannot be attributed to a corrected, different context.
 The explanation comparator uses the most recent eight verified same-weekday
@@ -112,3 +115,17 @@ inference and live publication are not exercised by these offline contract tests
 Keep #65 open until those checks and upstream timestamp/DST verification are
 complete. No existing historical backtest result is relabeled as validated under
 the corrected policy; rerun research separately when needed.
+
+
+## Recovery after the November 2026 fall-back
+
+The former blanket DST exclusion masked November 1, breaking the 28-day minimum
+contiguous context and leaving the November 1–7 forecast stale. Version 2 accepts
+complete fall-back clock coverage under the ingestion rule agreed November 1.
+Historical issued forecasts and their quality-version metadata remain unchanged.
+
+The hospital wrapper now attempts the daily chain once per local day at or after
+06:00, retrying on later hourly cycles until all three steps succeed. It records
+completion only after forecast, explanation and outlook publication succeed.
+After pulling this fix on the hospital host, the next successful hourly cycle
+rebuilds the daily target and catches up the forecast without waiting until 06:00.

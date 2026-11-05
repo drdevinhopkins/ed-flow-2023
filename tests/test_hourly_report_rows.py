@@ -65,14 +65,15 @@ def test_later_downward_revision_replaces_history_rather_than_taking_maximum():
     assert result.loc['2026-11-01 03:00', 'TTStr'] == 99
 
 
-def test_unverified_dst_day_remains_excluded_from_daily_training():
+def test_collapsed_fallback_day_is_eligible_for_daily_training():
     raw = pd.DataFrame({'ds': pd.date_range('2026-11-01', periods=24, freq='h'),
                         'Inflow_Total': 2})
+    raw = pd.concat([raw, raw.iloc[[1]].assign(Inflow_Total=3)], ignore_index=True)
     daily, quality = build_daily_inflow_outputs(collapse_report_rows(raw),
                                                now=pd.Timestamp('2026-11-02T18:00Z'))
-    assert pd.isna(daily.iloc[0].Daily_Inflow_Total)
-    assert quality.iloc[0].quality_status == 'dst_requires_verification'
-    assert not quality.iloc[0].audit_eligible
+    assert daily.iloc[0].Daily_Inflow_Total == 49
+    assert quality.iloc[0].quality_status == 'complete_fallback_clock_coverage'
+    assert quality.iloc[0].audit_eligible
 
 
 def test_invalid_timestamp_is_rejected():
