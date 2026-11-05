@@ -63,8 +63,8 @@ def test_row_counts_alone_do_not_prove_completeness(problem):
     assert not meta.set_index("ds").loc["2026-02-03", "audit_eligible"]
 
 
-@pytest.mark.parametrize("day", ["2026-03-08", "2026-11-01"])
-def test_dst_requires_verification_even_with_24_naive_clock_slots(day):
+def test_spring_forward_still_requires_verification_even_with_24_slots():
+    day = "2026-03-08"
     source = pd.DataFrame({"ds": pd.date_range(day, periods=24, freq="h"), "Inflow_Total": 2})
     daily, meta = quality.build_daily_inflow_outputs(source, now=pd.Timestamp(day, tz="UTC") + pd.Timedelta(days=2))
     assert daily.Daily_Inflow_Total.isna().all()
@@ -130,3 +130,46 @@ def test_source_contract_changes_fail_closed(problem):
         daily = pd.concat([daily, daily.iloc[[0]]])
     with pytest.raises(ValueError):
         quality.verified_daily_targets(daily, source, now=NOW)
+
+
+@pytest.mark.parametrize("day", ["2025-11-02", "2026-11-01"])
+def test_collapsed_fallback_day_is_verified(day):
+    source = pd.DataFrame({"ds": pd.date_range(day, periods=24, freq="h"), "Inflow_Total": 2})
+    daily, meta = quality.build_daily_inflow_outputs(
+        source, now=pd.Timestamp(day, tz="UTC") + pd.Timedelta(days=2))
+    assert daily.Daily_Inflow_Total.eq(48).all()
+    assert meta.quality_status.eq("complete_fallback_clock_coverage").all()
+    assert meta.audit_eligible.all()
+    assert meta.dst_transition.all()
+
+
+@pytest.mark.parametrize("problem", ["gap", "duplicate", "negative", "nan", "mismatch"])
+def test_fallback_still_rejects_incomplete_invalid_or_mismatched_source(problem):
+    source = pd.DataFrame({"ds": pd.date_range("2026-11-01", periods=24, freq="h"),
+                           "Inflow_Total": 2.0})
+    if problem == "gap":
+        source = source.drop(index=8)
+    elif problem == "duplicate":
+        source = pd.concat([source, source.iloc[[1]]], ignore_index=True)
+    elif problem in {"negative", "nan"}:
+        source.loc[8, "Inflow_Total"] = -1 if problem == "negative" else np.nan
+    daily = legacy_daily(source)
+    if problem == "mismatch":
+        daily.loc[0, "Daily_Inflow_Total"] = 999
+    verified, meta = quality.verified_daily_targets(
+        daily, source, now=pd.Timestamp("2026-11-02T18:00Z"))
+    assert verified.Daily_Inflow_Total.isna().all()
+    assert not meta.audit_eligible.any()
+
+
+def test_november_fallback_preserves_forecast_context():
+    from backtest_holiday_features import contiguous_history
+
+    source = pd.DataFrame({"ds": pd.date_range("2026-10-01", "2026-11-04T23:00", freq="h"),
+                           "Inflow_Total": 2.0})
+    daily, _ = quality.build_daily_inflow_outputs(source, now=pd.Timestamp("2026-11-05T18:00Z"))
+    quality.require_latest_completed_day(daily, now=pd.Timestamp("2026-11-05T18:00Z"))
+    history = contiguous_history(daily.rename(columns={"Daily_Inflow_Total": "daily_visits"}),
+                                 pd.Timestamp("2026-11-04"), context_days=1095, min_history_days=28)
+    assert len(history) == 35
+    assert history.daily_visits.eq(48).all()

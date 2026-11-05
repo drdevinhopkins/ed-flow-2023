@@ -2,8 +2,9 @@
 """Read-only audit of hourly coverage and the daily totals derived from it.
 
 Keep the established calendar-day aggregation (ds date, including 00:00).
-Naive wall-clock data cannot resolve DST or prove missing-hour arrivals. Never
-impute arrivals, overwrite history, or use this diagnostic as a replacement target.
+Fall-back reports use the agreed one-row-per-clock-label convention (duplicate
+labels are collapsed by column maximum at ingestion). Spring-forward dates still
+require verification. Never impute arrivals or use this audit to overwrite history.
 """
 
 from __future__ import annotations
@@ -62,8 +63,8 @@ def audit_history(hourly: pd.DataFrame, daily: pd.DataFrame, *, now: pd.Timestam
                  if day + pd.Timedelta(hours=hour) not in observed)
         for day in dates
     ]
-    # An offset change requires source verification even when all 24 naive
-    # slots are present. A generic 23..25-row check also hides ordinary gaps.
+    # Fall-back has an agreed reporting convention. Require 24 unique valid
+    # labels after ingestion collapsed repeats. Spring-forward stays unverified.
     tz = ZoneInfo(TIMEZONE)
     result["dst_transition"] = [
         day.to_pydatetime().replace(tzinfo=tz).utcoffset()
@@ -74,16 +75,25 @@ def audit_history(hourly: pd.DataFrame, daily: pd.DataFrame, *, now: pd.Timestam
         result["unique_hours"].eq(24) & result["observed_rows"].eq(24)
         & result["valid_inflow_rows"].eq(24) & result["duplicate_rows"].eq(0)
     )
+    fallback = pd.Series([
+        day.to_pydatetime().replace(tzinfo=tz).utcoffset()
+        > (day + pd.Timedelta(days=1)).to_pydatetime().replace(tzinfo=tz).utcoffset()
+        for day in dates
+    ], index=result.index)
     result["quality_status"] = "complete_clock_coverage"
     result.loc[~result["clock_coverage_complete"], "quality_status"] = "incomplete_or_invalid"
     result.loc[result["dst_transition"], "quality_status"] = "dst_requires_verification"
+    result.loc[fallback & result["clock_coverage_complete"],
+               "quality_status"] = "complete_fallback_clock_coverage"
     result.loc[(result["ds"].eq(dates.min())) & (h["ds"].min() > dates.min())
                & ~result["clock_coverage_complete"],
                "quality_status"] = "leading_partial"
     result.loc[result["ds"].ge(today), "quality_status"] = "current_day_partial"
     # This flag is a conservative audit eligibility rule, not a new model route.
     result["audit_eligible"] = (
-        result["quality_status"].eq("complete_clock_coverage") & result["ds"].lt(today)
+        result["quality_status"].isin([
+            "complete_clock_coverage", "complete_fallback_clock_coverage",
+        ]) & result["ds"].lt(today)
     )
 
     d = daily[["ds", "Daily_Inflow_Total"]].copy()
@@ -140,7 +150,8 @@ def audit_history(hourly: pd.DataFrame, daily: pd.DataFrame, *, now: pd.Timestam
         "latest_published_daily_date": d.loc[d["Daily_Inflow_Total"].notna(), "ds"].max().isoformat(),
         "daily_dates_without_hourly_source": int(result["quality_status"].eq("no_hourly_source").sum()),
         "interpretation": "Clock coverage audit only; no arrivals imputed or production files changed. "
-        "DST and reporting-interval conventions need source verification.",
+        "Fall-back uses collapsed clock labels; spring-forward and reporting-interval "
+        "conventions still need source verification.",
     }
     return summary, result, gaps
 

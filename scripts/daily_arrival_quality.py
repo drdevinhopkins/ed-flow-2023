@@ -1,8 +1,8 @@
 """Shared daily-arrival completeness policy; never impute unobserved arrivals.
 
-Keep the existing calendar grouping by the naive Montreal ds date. DST remains
-unverified until the upstream reporting convention is established. The established
-two-column daily contract is preserved; incomplete targets are NaN, with observed
+Keep the existing calendar grouping by the naive Montreal ds date. Fall-back uses
+the agreed collapsed clock-label convention; spring-forward stays unverified.
+The established two-column daily contract is preserved; incomplete targets are NaN, with observed
 partial sums and coverage available in a separate quality companion.
 """
 
@@ -16,7 +16,7 @@ import pandas as pd
 
 from evaluation.audit_flow_history import TIMEZONE, audit_history
 
-QUALITY_VERSION = "daily-arrivals-quality-v1"
+QUALITY_VERSION = "daily-arrivals-quality-v2"
 DAILY_PATH = "/daily_inflow.csv"
 HOURLY_PATH = "/allData.csv"
 

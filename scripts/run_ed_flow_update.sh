@@ -158,14 +158,15 @@ run_step python scripts/shiftadmin.py
 run_step python scripts/update_weather.py
 
 # The hospital host is the authoritative daily publisher. Run the expensive
-# daily Chronos/explainability chain once during the 06:00 Montreal hour rather
-# than on every hourly report. GitHub retains manual/validation execution only.
+# daily Chronos/explainability chain once per Montreal day at or after 06:00.
+# Retry on a later hourly cycle if the morning run failed or was missed.
+# GitHub retains manual/validation execution only.
 run_daily_arrival_forecast() {
     local local_hour local_day state_dir state_file last_run
     local_hour=$(TZ=America/Montreal date +%H)
     local_day=$(TZ=America/Montreal date +%F)
-    if [[ "$local_hour" != "06" ]]; then
-        printf "Skipping daily arrival forecast outside the 06:00 Montreal hour (now %s).\n" "$local_hour"
+    if [[ "$local_hour" < "06" ]]; then
+        printf "Skipping daily arrival forecast before 06:00 Montreal (now %s).\n" "$local_hour"
         return 0
     fi
 

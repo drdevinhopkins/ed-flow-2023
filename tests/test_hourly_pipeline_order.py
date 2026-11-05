@@ -16,7 +16,7 @@ BLURB = "scripts/automation/blurb_automation_wrapper.py"
 
 
 class HourlyPipelineOrderTests(unittest.TestCase):
-    def run_wrapper(self, *, fail_script=""):
+    def run_wrapper(self, *, fail_script="", hour="12", last_run="2026-10-15", runs=1):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             bin_dir = root / "bin"
@@ -36,13 +36,12 @@ class HourlyPipelineOrderTests(unittest.TestCase):
             )
             python.chmod(0o755)
 
-            # Always exercise the ordinary hourly path, regardless of the
-            # wall clock on the machine running these tests.
+            # Freeze the local clock and completion marker independently.
             date = bin_dir / "date"
             date.write_text(
                 '#!/bin/sh\n'
                 'case "$1" in\n'
-                '    +%H) printf "12\\n" ;;\n'
+                '    +%H) printf "%s\\n" "$ED_FLOW_TEST_HOUR" ;;\n'
                 '    +%F) printf "2026-10-15\\n" ;;\n'
                 '    *) exit 1 ;;\n'
                 'esac\n'
@@ -56,14 +55,18 @@ class HourlyPipelineOrderTests(unittest.TestCase):
                 ED_FLOW_TEST_BIN=str(bin_dir),
                 ED_FLOW_TEST_CALLS=str(calls_path),
                 ED_FLOW_TEST_FAIL_SCRIPT=fail_script,
+                ED_FLOW_TEST_HOUR=hour,
             )
-            result = subprocess.run(
-                ["bash", str(WRAPPER)],
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
+            marker = root / ".state/daily-arrival-forecast.last-run"
+            if last_run is not None:
+                marker.parent.mkdir(parents=True)
+                marker.write_text(last_run + "\n")
+            for _ in range(runs):
+                result = subprocess.run(
+                    ["bash", str(WRAPPER)], env=env, capture_output=True,
+                    text=True, timeout=10,
+                )
+            result.daily_last_run = marker.read_text().strip() if marker.exists() else None
             calls = calls_path.read_text().splitlines()
             return result, calls
 
@@ -113,6 +116,44 @@ class HourlyPipelineOrderTests(unittest.TestCase):
         result, calls = self.run_wrapper(fail_script=V2)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(BLURB, calls)
+
+
+class DailyForecastCatchupTests(unittest.TestCase):
+    run_wrapper = HourlyPipelineOrderTests.run_wrapper
+
+    def test_completed_day_does_not_repeat(self):
+        result, calls = self.run_wrapper()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("scripts/forecast_daily_visits_from_daily.py", calls)
+
+    def test_not_before_six(self):
+        result, calls = self.run_wrapper(hour="05", last_run=None)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("scripts/forecast_daily_visits_from_daily.py", calls)
+        self.assertIsNone(result.daily_last_run)
+
+    def test_missed_daily_run_catches_up_later_once(self):
+        for hour in ["06", "08", "13", "23"]:
+            for last_run in [None, "2026-10-14"]:
+                with self.subTest(hour=hour, last_run=last_run):
+                    result, calls = self.run_wrapper(hour=hour, last_run=last_run, runs=2)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    for script in ["scripts/forecast_daily_visits_from_daily.py",
+                                   "scripts/explain_daily_visits_forecast.py",
+                                   "scripts/build_daily_arrival_outlook.py"]:
+                        self.assertEqual(calls.count(script), 1)
+                    self.assertEqual(result.daily_last_run, "2026-10-15")
+
+    def test_failed_daily_chain_can_retry_and_never_marks_success(self):
+        for failed in ["scripts/forecast_daily_visits_from_daily.py",
+                       "scripts/explain_daily_visits_forecast.py",
+                       "scripts/build_daily_arrival_outlook.py"]:
+            with self.subTest(failed=failed):
+                result, calls = self.run_wrapper(last_run="2026-10-14", fail_script=failed, runs=2)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.daily_last_run, "2026-10-14")
+                self.assertEqual(calls.count("scripts/forecast_daily_visits_from_daily.py"), 2)
+                self.assertIn("additive step failed", result.stderr)
 
 
 if __name__ == "__main__":
