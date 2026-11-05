@@ -1,0 +1,19 @@
+{
+  "model_version": "next-day-prefix-ridge-v1",
+  "target_quality_version": "daily-arrivals-quality-v2",
+  "source_sha256": "3ea20672a2e461abb3790c3aed4625fba592e611a92aae37b6f539989708099e",
+  "audit_at_utc": "2026-11-05T19:30:00+00:00",
+  "test_days": 730,
+  "min_train_days": 365,
+  "slots": {
+    "morning": 6,
+    "evening": 18
+  },
+  "ridge_alpha": 20.0,
+  "examples": 2366,
+  "scored_issues": 568,
+  "first_scored_issue": "2024-11-04",
+  "last_scored_issue": "2026-11-03",
+  "distinct_scored_dates": 285,
+  "limitation": "Historical hourly snapshots may contain later revisions. No archived Chronos or forecast-time weather comparator; retrospective experiment only. No production publication."
+}

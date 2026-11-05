@@ -158,17 +158,23 @@ run_step python scripts/shiftadmin.py
 run_step python scripts/update_weather.py
 
 # The hospital host is the authoritative daily publisher. Run the expensive
-# daily Chronos/explainability chain once per Montreal day at or after 06:00.
-# Retry on a later hourly cycle if the morning run failed or was missed.
+# daily Chronos/explainability chain in the 06:00 and 18:00 Montreal windows.
+# Retry within each window until publication succeeds. Never backdate a missed issue.
 # GitHub retains manual/validation execution only.
 run_daily_arrival_forecast() {
-    local local_hour local_day state_dir state_file last_run
+    local local_hour local_day issue_slot issue_key state_dir state_file last_run
     local_hour=$(TZ=America/Montreal date +%H)
     local_day=$(TZ=America/Montreal date +%F)
     if [[ "$local_hour" < "06" ]]; then
         printf "Skipping daily arrival forecast before 06:00 Montreal (now %s).\n" "$local_hour"
         return 0
     fi
+
+    issue_slot="morning"
+    if [[ "$local_hour" > "17" ]]; then
+        issue_slot="evening"
+    fi
+    issue_key="$local_day $issue_slot"
 
     state_dir="${ED_FLOW_STATE_DIR:-.state}"
     state_file="$state_dir/daily-arrival-forecast.last-run"
@@ -177,12 +183,15 @@ run_daily_arrival_forecast() {
     if [[ -f "$state_file" ]]; then
         last_run=$(<"$state_file")
     fi
-    if [[ "$last_run" == "$local_day" ]]; then
-        printf "Skipping daily arrival forecast; already completed for %s.\n" "$local_day"
+    # A legacy date-only marker represents the old morning-only completion.
+    if [[ "$last_run" == "$issue_key" ]] || \
+       [[ "$issue_slot" == "morning" && "$last_run" == "$local_day" ]]; then
+        printf "Skipping daily arrival forecast; already completed for %s.\n" "$issue_key"
         return 0
     fi
 
     run_step python scripts/forecast_daily_visits_from_daily.py \
+        --issue-slot "$issue_slot" \
         --horizon-days 7 \
         --context-days 1095 \
         --min-history-days 28 \
@@ -200,7 +209,7 @@ run_daily_arrival_forecast() {
         --intraday intraday-daily-inflow-forecast.csv \
         --output daily_arrival_outlook.csv \
         --upload-dropbox || return
-    printf "%s\n" "$local_day" > "$state_file"
+    printf "%s\n" "$issue_key" > "$state_file"
 }
 run_optional_step run_daily_arrival_forecast
 

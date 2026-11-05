@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'scripts/daily_arrival_quality.py'
+      - 'scripts/daily_forecast_issues.py'
+      - 'scripts/evaluation/backtests/backtest_next_day_intraday.py'
+      - 'tests/test_next_day_intraday.py'
       - 'scripts/get_current.py'
       - 'scripts/hourly_report_rows.py'
       - 'tests/test_hourly_report_rows.py'
@@ -41,5 +44,5 @@ jobs:
           python -m pip install -r chronos-requirements.txt pytest tqdm
       - name: Verify daily contracts without credentials or model inference
         run: |
-          python -m py_compile scripts/hourly_report_rows.py scripts/get_current.py scripts/daily_arrival_quality.py scripts/forecast_daily_visits_from_daily.py
-          python -m pytest -q tests/test_hourly_report_rows.py tests/test_daily_arrival_quality.py tests/test_flow_history_audit.py tests/test_daily_visits_prospective_score.py tests/test_daily_visit_forecast.py tests/test_daily_visit_explainability.py tests/test_daily_visit_backtest.py tests/test_daily_arrival_outlook.py
+          python -m py_compile scripts/hourly_report_rows.py scripts/get_current.py scripts/daily_arrival_quality.py scripts/forecast_daily_visits_from_daily.py scripts/daily_forecast_issues.py scripts/evaluation/backtests/backtest_next_day_intraday.py
+          python -m pytest -q tests/test_hourly_report_rows.py tests/test_daily_arrival_quality.py tests/test_flow_history_audit.py tests/test_daily_visits_prospective_score.py tests/test_daily_visit_forecast.py tests/test_daily_visit_explainability.py tests/test_daily_visit_backtest.py tests/test_daily_arrival_outlook.py tests/test_daily_forecast_issues.py tests/test_next_day_intraday.py

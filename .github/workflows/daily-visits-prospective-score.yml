@@ -80,6 +80,10 @@ jobs:
               assert detail['actual'].notna().all()
               assert detail['baseline_prediction'].notna().all()
               assert detail['forecast_absolute_error'].notna().all()
+          issue_summary = pd.read_csv('daily_visits_prospective_issue_summary.csv')
+          comparison = pd.read_csv('daily_visits_prospective_refresh_comparison.csv')
+          assert set(issue_summary.forecast_issue_slot) == {'morning', 'evening'}
+          assert {'n_pairs', 'morning_mae', 'evening_mae', 'mae_improvement'}.issubset(comparison.columns)
           print(summary.to_string(index=False))
           PY
 
@@ -91,6 +95,9 @@ jobs:
             daily_visits_prospective_detail.csv
             daily_visits_prospective_horizon_summary.csv
             daily_visits_prospective_quality_summary.csv
+            daily_visits_prospective_issue_detail.csv
+            daily_visits_prospective_issue_summary.csv
+            daily_visits_prospective_refresh_comparison.csv
             daily_visits_prospective_score.log
 
       - name: Record latest branch score
@@ -101,6 +108,9 @@ jobs:
           cp daily_visits_prospective_detail.csv validation/daily-visits-prospective/latest-detail.csv
           cp daily_visits_prospective_horizon_summary.csv validation/daily-visits-prospective/latest-summary.csv
           cp daily_visits_prospective_quality_summary.csv validation/daily-visits-prospective/latest-quality-summary.csv
+          cp daily_visits_prospective_issue_detail.csv validation/daily-visits-prospective/latest-issue-detail.csv
+          cp daily_visits_prospective_issue_summary.csv validation/daily-visits-prospective/latest-issue-summary.csv
+          cp daily_visits_prospective_refresh_comparison.csv validation/daily-visits-prospective/latest-refresh-comparison.csv
           tail -n 300 daily_visits_prospective_score.log > validation/daily-visits-prospective/latest.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

@@ -124,8 +124,14 @@ contiguous context and leaving the November 1–7 forecast stale. Version 2 acce
 complete fall-back clock coverage under the ingestion rule agreed November 1.
 Historical issued forecasts and their quality-version metadata remain unchanged.
 
-The hospital wrapper now attempts the daily chain once per local day at or after
-06:00, retrying on later hourly cycles until all three steps succeed. It records
+The hospital wrapper attempts the daily chain in two local-time windows starting
+at 06:00 and 18:00, retrying within each window until all three steps succeed. It records
 completion only after forecast, explanation and outlook publication succeed.
 After pulling this fix on the hospital host, the next successful hourly cycle
 rebuilds the daily target and catches up the forecast without waiting until 06:00.
+
+
+The morning/evening schedule and separate scoring are documented in
+[twice_daily_arrivals.md](twice_daily_arrivals.md). Date-only completion markers
+from the former morning-only schedule remain compatible; they cannot suppress
+the evening refresh. The hourly same-day forecast remains unchanged.
