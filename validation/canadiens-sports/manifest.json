@@ -1,0 +1,175 @@
+{
+  "run_date": "2026-11-07",
+  "experiment_commit": "cda5d852543d74d9458560b219f82b9eda26be30",
+  "conclusion": "Do not promote: no material or consistent incremental forecast improvement.",
+  "ed_source_sha256": "59870579c782d1849ee0009c3cb71ac46d94f528ff0d3b8803906cd79033bd1f",
+  "weather_source_sha256": "05d07442443c3d1a8957627e99e699c3fc194f77268129cb96e036c8db5c37d6",
+  "weather_source": "https://archive-api.open-meteo.com/v1/archive",
+  "weather_parameters": {
+    "latitude": 45.5088,
+    "longitude": -73.5878,
+    "start_date": "2021-07-01",
+    "end_date": "2026-06-30",
+    "timezone": "America/Montreal",
+    "hourly": [
+      "temperature_2m",
+      "precipitation",
+      "rain",
+      "snowfall",
+      "snow_depth",
+      "cloud_cover",
+      "wind_speed_10m",
+      "wind_gusts_10m",
+      "apparent_temperature",
+      "relative_humidity_2m",
+      "pressure_msl"
+    ]
+  },
+  "weather_vintage": "Retrospective historical weather estimates; not archived as-issued observations.",
+  "test_start": "2024-05-19",
+  "test_end": "2026-06-27",
+  "test_days": 720,
+  "artifacts": "Aggregate metrics and metadata only; raw ED rows and issued predictions are not included.",
+  "runs": [
+    {
+      "run": "end-3h",
+      "arguments": {
+        "flow_csv": "canadiens-authorized-flow.csv",
+        "schedule_json": "data/sports/canadiens_2021_2025.json",
+        "weather_csv": null,
+        "output_dir": "end-3h",
+        "folds": 4,
+        "test_days": 180,
+        "min_train_days": 365,
+        "max_iter": 150,
+        "duration_hours": 3,
+        "calendar_mode": "rich",
+        "alignment": "interval-end"
+      },
+      "schedule_fetched_at": "2026-11-07T20:54:48.557090+00:00",
+      "schedule_vintage": "retrospective_latest",
+      "production_changed": false,
+      "promotion_status": "screening_only",
+      "limitations": [
+        "Retrospective schedule revisions can leak old reschedules.",
+        "Hourly timing convention requires sensitivity analysis.",
+        "Day completion is a boosted ablation, not the production ensemble.",
+        "Weather confounding remains when weather-csv is omitted.",
+        "Multiple cutoffs per day are correlated; use day-block uncertainty.",
+        "No causal or staffing claims; no automatic promotion."
+      ]
+    },
+    {
+      "run": "start-3h",
+      "arguments": {
+        "flow_csv": "canadiens-authorized-flow.csv",
+        "schedule_json": "data/sports/canadiens_2021_2025.json",
+        "weather_csv": null,
+        "output_dir": "start-3h",
+        "folds": 4,
+        "test_days": 180,
+        "min_train_days": 365,
+        "max_iter": 150,
+        "duration_hours": 3,
+        "calendar_mode": "rich",
+        "alignment": "interval-start"
+      },
+      "schedule_fetched_at": "2026-11-07T20:54:48.557090+00:00",
+      "schedule_vintage": "retrospective_latest",
+      "production_changed": false,
+      "promotion_status": "screening_only",
+      "limitations": [
+        "Retrospective schedule revisions can leak old reschedules.",
+        "Hourly timing convention requires sensitivity analysis.",
+        "Day completion is a boosted ablation, not the production ensemble.",
+        "Weather confounding remains when weather-csv is omitted.",
+        "Multiple cutoffs per day are correlated; use day-block uncertainty.",
+        "No causal or staffing claims; no automatic promotion."
+      ]
+    },
+    {
+      "run": "weather-end-2.5h",
+      "arguments": {
+        "flow_csv": "canadiens-authorized-flow.csv",
+        "schedule_json": "data/sports/canadiens_2021_2025.json",
+        "weather_csv": "canadiens-public-weather.csv",
+        "output_dir": "weather-end-2.5h",
+        "folds": 4,
+        "test_days": 180,
+        "min_train_days": 365,
+        "max_iter": 150,
+        "duration_hours": 2.5,
+        "calendar_mode": "rich",
+        "alignment": "interval-end"
+      },
+      "schedule_fetched_at": "2026-11-07T20:54:48.557090+00:00",
+      "schedule_vintage": "retrospective_latest",
+      "production_changed": false,
+      "promotion_status": "screening_only",
+      "limitations": [
+        "Retrospective schedule revisions can leak old reschedules.",
+        "Hourly timing convention requires sensitivity analysis.",
+        "Day completion is a boosted ablation, not the production ensemble.",
+        "Weather confounding remains when weather-csv is omitted.",
+        "Multiple cutoffs per day are correlated; use day-block uncertainty.",
+        "No causal or staffing claims; no automatic promotion."
+      ]
+    },
+    {
+      "run": "weather-end-3.5h",
+      "arguments": {
+        "flow_csv": "canadiens-authorized-flow.csv",
+        "schedule_json": "data/sports/canadiens_2021_2025.json",
+        "weather_csv": "canadiens-public-weather.csv",
+        "output_dir": "weather-end-3.5h",
+        "folds": 4,
+        "test_days": 180,
+        "min_train_days": 365,
+        "max_iter": 150,
+        "duration_hours": 3.5,
+        "calendar_mode": "rich",
+        "alignment": "interval-end"
+      },
+      "schedule_fetched_at": "2026-11-07T20:54:48.557090+00:00",
+      "schedule_vintage": "retrospective_latest",
+      "production_changed": false,
+      "promotion_status": "screening_only",
+      "limitations": [
+        "Retrospective schedule revisions can leak old reschedules.",
+        "Hourly timing convention requires sensitivity analysis.",
+        "Day completion is a boosted ablation, not the production ensemble.",
+        "Weather confounding remains when weather-csv is omitted.",
+        "Multiple cutoffs per day are correlated; use day-block uncertainty.",
+        "No causal or staffing claims; no automatic promotion."
+      ]
+    },
+    {
+      "run": "weather-end-3h",
+      "arguments": {
+        "flow_csv": "canadiens-authorized-flow.csv",
+        "schedule_json": "data/sports/canadiens_2021_2025.json",
+        "weather_csv": "canadiens-public-weather.csv",
+        "output_dir": "weather-end-3h",
+        "folds": 4,
+        "test_days": 180,
+        "min_train_days": 365,
+        "max_iter": 150,
+        "duration_hours": 3,
+        "calendar_mode": "rich",
+        "alignment": "interval-end"
+      },
+      "schedule_fetched_at": "2026-11-07T20:54:48.557090+00:00",
+      "schedule_vintage": "retrospective_latest",
+      "production_changed": false,
+      "promotion_status": "screening_only",
+      "limitations": [
+        "Retrospective schedule revisions can leak old reschedules.",
+        "Hourly timing convention requires sensitivity analysis.",
+        "Day completion is a boosted ablation, not the production ensemble.",
+        "Weather confounding remains when weather-csv is omitted.",
+        "Multiple cutoffs per day are correlated; use day-block uncertainty.",
+        "No causal or staffing claims; no automatic promotion."
+      ]
+    }
+  ]
+}

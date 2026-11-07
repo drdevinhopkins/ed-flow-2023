@@ -1,6 +1,8 @@
 # Canadiens schedule experiment
 
-Status: implemented screening experiment; **no historical JGH result yet**.
+Status: historical screening complete; **no production promotion recommended**.
+See [results](canadiens_sports_results.md) and the aggregate metrics under
+`validation/canadiens-sports/`.
 Production workflows, routing, publishing and feature flags are unchanged.
 
 ## Question and design
@@ -105,6 +107,7 @@ joins, and a synthetic end-to-end run with chronological folds and all targets.
 Synthetic data exercise the implementation; they provide **no evidence of JGH
 forecast improvement**.
 
-The initial historical ED download was blocked by automatic approval review
-because the Dropbox source required explicit authorization in this session.
-Historical scoring remains pending that access or an authorized local dataset.
+With explicit ED-feed authorization, five historical comparisons were completed
+on November 7, 2026. Weather-adjusted errors were effectively unchanged, and
+timing/duration sensitivity checks showed no consistent advantage. See the
+[historical results](canadiens_sports_results.md).
