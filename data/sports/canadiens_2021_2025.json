@@ -1,0 +1,3055 @@
+{
+  "schema_version": 1,
+  "team": "MTL",
+  "fetched_at": "2026-11-07T20:54:48.557090+00:00",
+  "coverage_start": "2021-07-01",
+  "coverage_end": "2026-07-01",
+  "schedule_vintage": "retrospective_latest",
+  "sources": [
+    "https://api-web.nhle.com/v1/club-schedule-season/MTL/20212022",
+    "https://api-web.nhle.com/v1/club-schedule-season/MTL/20222023",
+    "https://api-web.nhle.com/v1/club-schedule-season/MTL/20232024",
+    "https://api-web.nhle.com/v1/club-schedule-season/MTL/20242025",
+    "https://api-web.nhle.com/v1/club-schedule-season/MTL/20252026"
+  ],
+  "games": [
+    {
+      "game_id": 2021020003,
+      "season": 20212022,
+      "start_utc": "2021-10-13T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020007,
+      "season": 20212022,
+      "start_utc": "2021-10-14T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020023,
+      "season": 20212022,
+      "start_utc": "2021-10-16T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020040,
+      "season": 20212022,
+      "start_utc": "2021-10-19T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020052,
+      "season": 20212022,
+      "start_utc": "2021-10-21T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020066,
+      "season": 20212022,
+      "start_utc": "2021-10-23T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020096,
+      "season": 20212022,
+      "start_utc": "2021-10-27T02:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020109,
+      "season": 20212022,
+      "start_utc": "2021-10-29T02:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020125,
+      "season": 20212022,
+      "start_utc": "2021-10-30T20:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020129,
+      "season": 20212022,
+      "start_utc": "2021-10-31T20:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020136,
+      "season": 20212022,
+      "start_utc": "2021-11-02T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020150,
+      "season": 20212022,
+      "start_utc": "2021-11-04T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020164,
+      "season": 20212022,
+      "start_utc": "2021-11-06T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020183,
+      "season": 20212022,
+      "start_utc": "2021-11-10T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020196,
+      "season": 20212022,
+      "start_utc": "2021-11-12T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020213,
+      "season": 20212022,
+      "start_utc": "2021-11-14T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020224,
+      "season": 20212022,
+      "start_utc": "2021-11-15T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020235,
+      "season": 20212022,
+      "start_utc": "2021-11-17T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020249,
+      "season": 20212022,
+      "start_utc": "2021-11-19T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020262,
+      "season": 20212022,
+      "start_utc": "2021-11-21T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020296,
+      "season": 20212022,
+      "start_utc": "2021-11-25T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020305,
+      "season": 20212022,
+      "start_utc": "2021-11-27T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020319,
+      "season": 20212022,
+      "start_utc": "2021-11-28T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020334,
+      "season": 20212022,
+      "start_utc": "2021-11-30T00:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020352,
+      "season": 20212022,
+      "start_utc": "2021-12-03T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020374,
+      "season": 20212022,
+      "start_utc": "2021-12-05T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020390,
+      "season": 20212022,
+      "start_utc": "2021-12-08T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020403,
+      "season": 20212022,
+      "start_utc": "2021-12-10T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020424,
+      "season": 20212022,
+      "start_utc": "2021-12-12T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020442,
+      "season": 20212022,
+      "start_utc": "2021-12-15T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020454,
+      "season": 20212022,
+      "start_utc": "2021-12-17T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020537,
+      "season": 20212022,
+      "start_utc": "2021-12-29T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020554,
+      "season": 20212022,
+      "start_utc": "2021-12-31T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020568,
+      "season": 20212022,
+      "start_utc": "2022-01-01T18:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021000,
+      "season": 20212022,
+      "start_utc": "2022-01-13T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020655,
+      "season": 20212022,
+      "start_utc": "2022-01-14T01:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020687,
+      "season": 20212022,
+      "start_utc": "2022-01-17T21:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020697,
+      "season": 20212022,
+      "start_utc": "2022-01-19T01:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020710,
+      "season": 20212022,
+      "start_utc": "2022-01-21T03:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020729,
+      "season": 20212022,
+      "start_utc": "2022-01-23T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020741,
+      "season": 20212022,
+      "start_utc": "2022-01-25T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020757,
+      "season": 20212022,
+      "start_utc": "2022-01-28T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020772,
+      "season": 20212022,
+      "start_utc": "2022-01-30T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020783,
+      "season": 20212022,
+      "start_utc": "2022-01-31T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020666,
+      "season": 20212022,
+      "start_utc": "2022-02-09T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020587,
+      "season": 20212022,
+      "start_utc": "2022-02-11T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020630,
+      "season": 20212022,
+      "start_utc": "2022-02-12T17:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020614,
+      "season": 20212022,
+      "start_utc": "2022-02-13T17:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020796,
+      "season": 20212022,
+      "start_utc": "2022-02-18T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020491,
+      "season": 20212022,
+      "start_utc": "2022-02-20T19:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020601,
+      "season": 20212022,
+      "start_utc": "2022-02-22T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021273,
+      "season": 20212022,
+      "start_utc": "2022-02-24T00:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020830,
+      "season": 20212022,
+      "start_utc": "2022-02-27T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020856,
+      "season": 20212022,
+      "start_utc": "2022-03-02T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020870,
+      "season": 20212022,
+      "start_utc": "2022-03-04T02:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020887,
+      "season": 20212022,
+      "start_utc": "2022-03-06T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020914,
+      "season": 20212022,
+      "start_utc": "2022-03-10T03:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020933,
+      "season": 20212022,
+      "start_utc": "2022-03-13T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020944,
+      "season": 20212022,
+      "start_utc": "2022-03-13T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020954,
+      "season": 20212022,
+      "start_utc": "2022-03-15T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020969,
+      "season": 20212022,
+      "start_utc": "2022-03-17T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020983,
+      "season": 20212022,
+      "start_utc": "2022-03-19T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020646,
+      "season": 20212022,
+      "start_utc": "2022-03-21T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021020,
+      "season": 20212022,
+      "start_utc": "2022-03-24T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021035,
+      "season": 20212022,
+      "start_utc": "2022-03-26T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021047,
+      "season": 20212022,
+      "start_utc": "2022-03-27T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021061,
+      "season": 20212022,
+      "start_utc": "2022-03-29T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021078,
+      "season": 20212022,
+      "start_utc": "2022-03-31T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021091,
+      "season": 20212022,
+      "start_utc": "2022-04-02T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021114,
+      "season": 20212022,
+      "start_utc": "2022-04-05T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020512,
+      "season": 20212022,
+      "start_utc": "2022-04-07T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021142,
+      "season": 20212022,
+      "start_utc": "2022-04-09T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021162,
+      "season": 20212022,
+      "start_utc": "2022-04-11T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021178,
+      "season": 20212022,
+      "start_utc": "2022-04-13T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021193,
+      "season": 20212022,
+      "start_utc": "2022-04-15T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021198,
+      "season": 20212022,
+      "start_utc": "2022-04-16T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021221,
+      "season": 20212022,
+      "start_utc": "2022-04-19T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021233,
+      "season": 20212022,
+      "start_utc": "2022-04-21T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021250,
+      "season": 20212022,
+      "start_utc": "2022-04-23T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020471,
+      "season": 20212022,
+      "start_utc": "2022-04-24T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021020505,
+      "season": 20212022,
+      "start_utc": "2022-04-27T23:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2021021300,
+      "season": 20212022,
+      "start_utc": "2022-04-29T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020007,
+      "season": 20222023,
+      "start_utc": "2022-10-12T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020022,
+      "season": 20222023,
+      "start_utc": "2022-10-14T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020029,
+      "season": 20222023,
+      "start_utc": "2022-10-15T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020042,
+      "season": 20222023,
+      "start_utc": "2022-10-17T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020060,
+      "season": 20222023,
+      "start_utc": "2022-10-20T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020078,
+      "season": 20222023,
+      "start_utc": "2022-10-22T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020101,
+      "season": 20222023,
+      "start_utc": "2022-10-25T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020114,
+      "season": 20222023,
+      "start_utc": "2022-10-27T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020133,
+      "season": 20222023,
+      "start_utc": "2022-10-29T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020151,
+      "season": 20222023,
+      "start_utc": "2022-11-02T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020165,
+      "season": 20222023,
+      "start_utc": "2022-11-04T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020184,
+      "season": 20222023,
+      "start_utc": "2022-11-05T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020203,
+      "season": 20222023,
+      "start_utc": "2022-11-09T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020209,
+      "season": 20222023,
+      "start_utc": "2022-11-10T00:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020229,
+      "season": 20222023,
+      "start_utc": "2022-11-13T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020249,
+      "season": 20222023,
+      "start_utc": "2022-11-16T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020263,
+      "season": 20222023,
+      "start_utc": "2022-11-18T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020280,
+      "season": 20222023,
+      "start_utc": "2022-11-20T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020301,
+      "season": 20222023,
+      "start_utc": "2022-11-23T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020306,
+      "season": 20222023,
+      "start_utc": "2022-11-24T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020321,
+      "season": 20222023,
+      "start_utc": "2022-11-25T19:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020354,
+      "season": 20222023,
+      "start_utc": "2022-11-30T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020372,
+      "season": 20222023,
+      "start_utc": "2022-12-02T02:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020381,
+      "season": 20222023,
+      "start_utc": "2022-12-04T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020402,
+      "season": 20222023,
+      "start_utc": "2022-12-06T03:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020411,
+      "season": 20222023,
+      "start_utc": "2022-12-07T03:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020439,
+      "season": 20222023,
+      "start_utc": "2022-12-11T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020448,
+      "season": 20222023,
+      "start_utc": "2022-12-13T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020466,
+      "season": 20222023,
+      "start_utc": "2022-12-15T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020469,
+      "season": 20222023,
+      "start_utc": "2022-12-16T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020490,
+      "season": 20222023,
+      "start_utc": "2022-12-18T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020508,
+      "season": 20222023,
+      "start_utc": "2022-12-20T03:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020520,
+      "season": 20222023,
+      "start_utc": "2022-12-22T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020541,
+      "season": 20222023,
+      "start_utc": "2022-12-24T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020559,
+      "season": 20222023,
+      "start_utc": "2022-12-29T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020564,
+      "season": 20222023,
+      "start_utc": "2022-12-30T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020580,
+      "season": 20222023,
+      "start_utc": "2022-12-31T21:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020604,
+      "season": 20222023,
+      "start_utc": "2023-01-04T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020613,
+      "season": 20222023,
+      "start_utc": "2023-01-06T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020633,
+      "season": 20222023,
+      "start_utc": "2023-01-08T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020646,
+      "season": 20222023,
+      "start_utc": "2023-01-10T00:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020664,
+      "season": 20222023,
+      "start_utc": "2023-01-13T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020679,
+      "season": 20222023,
+      "start_utc": "2023-01-15T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020691,
+      "season": 20222023,
+      "start_utc": "2023-01-15T22:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020708,
+      "season": 20222023,
+      "start_utc": "2023-01-18T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020720,
+      "season": 20222023,
+      "start_utc": "2023-01-20T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020737,
+      "season": 20222023,
+      "start_utc": "2023-01-22T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020755,
+      "season": 20222023,
+      "start_utc": "2023-01-25T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020772,
+      "season": 20222023,
+      "start_utc": "2023-01-27T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020791,
+      "season": 20222023,
+      "start_utc": "2023-01-29T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020803,
+      "season": 20222023,
+      "start_utc": "2023-02-01T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020835,
+      "season": 20222023,
+      "start_utc": "2023-02-11T17:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020846,
+      "season": 20222023,
+      "start_utc": "2023-02-12T17:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020856,
+      "season": 20222023,
+      "start_utc": "2023-02-15T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020871,
+      "season": 20222023,
+      "start_utc": "2023-02-17T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020888,
+      "season": 20222023,
+      "start_utc": "2023-02-19T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020910,
+      "season": 20222023,
+      "start_utc": "2023-02-22T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020932,
+      "season": 20222023,
+      "start_utc": "2023-02-25T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020940,
+      "season": 20222023,
+      "start_utc": "2023-02-26T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020967,
+      "season": 20222023,
+      "start_utc": "2023-03-01T03:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020982,
+      "season": 20222023,
+      "start_utc": "2023-03-03T03:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022020987,
+      "season": 20222023,
+      "start_utc": "2023-03-04T03:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021003,
+      "season": 20222023,
+      "start_utc": "2023-03-05T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021012,
+      "season": 20222023,
+      "start_utc": "2023-03-08T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021028,
+      "season": 20222023,
+      "start_utc": "2023-03-10T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021044,
+      "season": 20222023,
+      "start_utc": "2023-03-12T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021062,
+      "season": 20222023,
+      "start_utc": "2023-03-13T23:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021064,
+      "season": 20222023,
+      "start_utc": "2023-03-14T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021081,
+      "season": 20222023,
+      "start_utc": "2023-03-16T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021101,
+      "season": 20222023,
+      "start_utc": "2023-03-18T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021126,
+      "season": 20222023,
+      "start_utc": "2023-03-21T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021137,
+      "season": 20222023,
+      "start_utc": "2023-03-23T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021158,
+      "season": 20222023,
+      "start_utc": "2023-03-25T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021171,
+      "season": 20222023,
+      "start_utc": "2023-03-27T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021177,
+      "season": 20222023,
+      "start_utc": "2023-03-28T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021190,
+      "season": 20222023,
+      "start_utc": "2023-03-30T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021207,
+      "season": 20222023,
+      "start_utc": "2023-04-01T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021231,
+      "season": 20222023,
+      "start_utc": "2023-04-04T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021247,
+      "season": 20222023,
+      "start_utc": "2023-04-06T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021262,
+      "season": 20222023,
+      "start_utc": "2023-04-08T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021295,
+      "season": 20222023,
+      "start_utc": "2023-04-12T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2022021298,
+      "season": 20222023,
+      "start_utc": "2023-04-13T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020005,
+      "season": 20232024,
+      "start_utc": "2023-10-11T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020024,
+      "season": 20232024,
+      "start_utc": "2023-10-14T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020041,
+      "season": 20232024,
+      "start_utc": "2023-10-17T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020069,
+      "season": 20232024,
+      "start_utc": "2023-10-21T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020082,
+      "season": 20232024,
+      "start_utc": "2023-10-23T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020087,
+      "season": 20232024,
+      "start_utc": "2023-10-24T23:15:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020103,
+      "season": 20232024,
+      "start_utc": "2023-10-26T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020121,
+      "season": 20232024,
+      "start_utc": "2023-10-28T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020138,
+      "season": 20232024,
+      "start_utc": "2023-10-31T02:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020153,
+      "season": 20232024,
+      "start_utc": "2023-11-03T02:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020164,
+      "season": 20232024,
+      "start_utc": "2023-11-04T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020181,
+      "season": 20232024,
+      "start_utc": "2023-11-08T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020195,
+      "season": 20232024,
+      "start_utc": "2023-11-10T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020212,
+      "season": 20232024,
+      "start_utc": "2023-11-12T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020224,
+      "season": 20232024,
+      "start_utc": "2023-11-13T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020231,
+      "season": 20232024,
+      "start_utc": "2023-11-15T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020244,
+      "season": 20232024,
+      "start_utc": "2023-11-17T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020258,
+      "season": 20232024,
+      "start_utc": "2023-11-19T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020290,
+      "season": 20232024,
+      "start_utc": "2023-11-23T03:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020300,
+      "season": 20232024,
+      "start_utc": "2023-11-24T20:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020309,
+      "season": 20232024,
+      "start_utc": "2023-11-25T21:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020337,
+      "season": 20232024,
+      "start_utc": "2023-11-30T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020343,
+      "season": 20232024,
+      "start_utc": "2023-12-01T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020361,
+      "season": 20232024,
+      "start_utc": "2023-12-03T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020376,
+      "season": 20232024,
+      "start_utc": "2023-12-05T00:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020394,
+      "season": 20232024,
+      "start_utc": "2023-12-08T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020411,
+      "season": 20232024,
+      "start_utc": "2023-12-10T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020423,
+      "season": 20232024,
+      "start_utc": "2023-12-11T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020442,
+      "season": 20232024,
+      "start_utc": "2023-12-14T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020464,
+      "season": 20232024,
+      "start_utc": "2023-12-17T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020481,
+      "season": 20232024,
+      "start_utc": "2023-12-19T00:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020506,
+      "season": 20232024,
+      "start_utc": "2023-12-22T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020513,
+      "season": 20232024,
+      "start_utc": "2023-12-23T01:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020542,
+      "season": 20232024,
+      "start_utc": "2023-12-29T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020558,
+      "season": 20232024,
+      "start_utc": "2023-12-31T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020568,
+      "season": 20232024,
+      "start_utc": "2024-01-01T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020577,
+      "season": 20232024,
+      "start_utc": "2024-01-03T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020590,
+      "season": 20232024,
+      "start_utc": "2024-01-05T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020610,
+      "season": 20232024,
+      "start_utc": "2024-01-07T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020635,
+      "season": 20232024,
+      "start_utc": "2024-01-11T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020642,
+      "season": 20232024,
+      "start_utc": "2024-01-12T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020660,
+      "season": 20232024,
+      "start_utc": "2024-01-14T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020678,
+      "season": 20232024,
+      "start_utc": "2024-01-16T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020690,
+      "season": 20232024,
+      "start_utc": "2024-01-18T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020693,
+      "season": 20232024,
+      "start_utc": "2024-01-19T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020710,
+      "season": 20232024,
+      "start_utc": "2024-01-21T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020731,
+      "season": 20232024,
+      "start_utc": "2024-01-24T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020748,
+      "season": 20232024,
+      "start_utc": "2024-01-26T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020766,
+      "season": 20232024,
+      "start_utc": "2024-01-28T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020789,
+      "season": 20232024,
+      "start_utc": "2024-02-07T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020806,
+      "season": 20232024,
+      "start_utc": "2024-02-10T18:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020817,
+      "season": 20232024,
+      "start_utc": "2024-02-11T18:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020825,
+      "season": 20232024,
+      "start_utc": "2024-02-14T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020840,
+      "season": 20232024,
+      "start_utc": "2024-02-16T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020857,
+      "season": 20232024,
+      "start_utc": "2024-02-18T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020884,
+      "season": 20232024,
+      "start_utc": "2024-02-22T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020893,
+      "season": 20232024,
+      "start_utc": "2024-02-23T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020903,
+      "season": 20232024,
+      "start_utc": "2024-02-24T19:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020929,
+      "season": 20232024,
+      "start_utc": "2024-02-28T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020944,
+      "season": 20232024,
+      "start_utc": "2024-03-01T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020963,
+      "season": 20232024,
+      "start_utc": "2024-03-03T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020985,
+      "season": 20232024,
+      "start_utc": "2024-03-06T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023020994,
+      "season": 20232024,
+      "start_utc": "2024-03-08T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021014,
+      "season": 20232024,
+      "start_utc": "2024-03-10T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021033,
+      "season": 20232024,
+      "start_utc": "2024-03-12T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021049,
+      "season": 20232024,
+      "start_utc": "2024-03-14T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021066,
+      "season": 20232024,
+      "start_utc": "2024-03-16T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021090,
+      "season": 20232024,
+      "start_utc": "2024-03-20T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021106,
+      "season": 20232024,
+      "start_utc": "2024-03-22T02:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021133,
+      "season": 20232024,
+      "start_utc": "2024-03-25T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021144,
+      "season": 20232024,
+      "start_utc": "2024-03-27T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021152,
+      "season": 20232024,
+      "start_utc": "2024-03-28T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021172,
+      "season": 20232024,
+      "start_utc": "2024-03-30T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021190,
+      "season": 20232024,
+      "start_utc": "2024-04-02T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021204,
+      "season": 20232024,
+      "start_utc": "2024-04-04T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021223,
+      "season": 20232024,
+      "start_utc": "2024-04-06T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021234,
+      "season": 20232024,
+      "start_utc": "2024-04-07T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021242,
+      "season": 20232024,
+      "start_utc": "2024-04-09T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021261,
+      "season": 20232024,
+      "start_utc": "2024-04-11T23:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021276,
+      "season": 20232024,
+      "start_utc": "2024-04-13T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021287,
+      "season": 20232024,
+      "start_utc": "2024-04-15T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2023021298,
+      "season": 20232024,
+      "start_utc": "2024-04-16T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020006,
+      "season": 20242025,
+      "start_utc": "2024-10-09T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020011,
+      "season": 20242025,
+      "start_utc": "2024-10-10T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020027,
+      "season": 20242025,
+      "start_utc": "2024-10-12T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020046,
+      "season": 20242025,
+      "start_utc": "2024-10-14T23:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020061,
+      "season": 20242025,
+      "start_utc": "2024-10-17T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020081,
+      "season": 20242025,
+      "start_utc": "2024-10-19T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020096,
+      "season": 20242025,
+      "start_utc": "2024-10-22T23:15:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020126,
+      "season": 20242025,
+      "start_utc": "2024-10-26T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020138,
+      "season": 20242025,
+      "start_utc": "2024-10-27T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020149,
+      "season": 20242025,
+      "start_utc": "2024-10-29T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020164,
+      "season": 20242025,
+      "start_utc": "2024-10-31T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020180,
+      "season": 20242025,
+      "start_utc": "2024-11-02T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020196,
+      "season": 20242025,
+      "start_utc": "2024-11-06T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020212,
+      "season": 20242025,
+      "start_utc": "2024-11-08T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020227,
+      "season": 20242025,
+      "start_utc": "2024-11-10T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020239,
+      "season": 20242025,
+      "start_utc": "2024-11-11T17:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020263,
+      "season": 20242025,
+      "start_utc": "2024-11-15T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020275,
+      "season": 20242025,
+      "start_utc": "2024-11-17T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020290,
+      "season": 20242025,
+      "start_utc": "2024-11-19T00:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020322,
+      "season": 20242025,
+      "start_utc": "2024-11-24T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020346,
+      "season": 20242025,
+      "start_utc": "2024-11-27T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020355,
+      "season": 20242025,
+      "start_utc": "2024-11-28T00:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020376,
+      "season": 20242025,
+      "start_utc": "2024-11-30T18:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020389,
+      "season": 20242025,
+      "start_utc": "2024-12-01T20:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020398,
+      "season": 20242025,
+      "start_utc": "2024-12-04T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020411,
+      "season": 20242025,
+      "start_utc": "2024-12-06T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020430,
+      "season": 20242025,
+      "start_utc": "2024-12-08T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020445,
+      "season": 20242025,
+      "start_utc": "2024-12-10T00:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020460,
+      "season": 20242025,
+      "start_utc": "2024-12-13T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020482,
+      "season": 20242025,
+      "start_utc": "2024-12-15T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020497,
+      "season": 20242025,
+      "start_utc": "2024-12-18T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020522,
+      "season": 20242025,
+      "start_utc": "2024-12-21T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020533,
+      "season": 20242025,
+      "start_utc": "2024-12-22T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020551,
+      "season": 20242025,
+      "start_utc": "2024-12-24T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020566,
+      "season": 20242025,
+      "start_utc": "2024-12-28T18:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020580,
+      "season": 20242025,
+      "start_utc": "2024-12-29T22:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020591,
+      "season": 20242025,
+      "start_utc": "2024-12-31T20:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020616,
+      "season": 20242025,
+      "start_utc": "2025-01-04T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020626,
+      "season": 20242025,
+      "start_utc": "2025-01-05T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020638,
+      "season": 20242025,
+      "start_utc": "2025-01-07T00:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020665,
+      "season": 20242025,
+      "start_utc": "2025-01-11T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020673,
+      "season": 20242025,
+      "start_utc": "2025-01-12T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020704,
+      "season": 20242025,
+      "start_utc": "2025-01-15T02:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020715,
+      "season": 20242025,
+      "start_utc": "2025-01-17T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020726,
+      "season": 20242025,
+      "start_utc": "2025-01-19T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020738,
+      "season": 20242025,
+      "start_utc": "2025-01-20T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020749,
+      "season": 20242025,
+      "start_utc": "2025-01-22T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020762,
+      "season": 20242025,
+      "start_utc": "2025-01-24T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020779,
+      "season": 20242025,
+      "start_utc": "2025-01-26T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020800,
+      "season": 20242025,
+      "start_utc": "2025-01-29T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020813,
+      "season": 20242025,
+      "start_utc": "2025-01-31T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020837,
+      "season": 20242025,
+      "start_utc": "2025-02-02T21:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020858,
+      "season": 20242025,
+      "start_utc": "2025-02-05T03:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020861,
+      "season": 20242025,
+      "start_utc": "2025-02-06T03:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020876,
+      "season": 20242025,
+      "start_utc": "2025-02-08T18:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020891,
+      "season": 20242025,
+      "start_utc": "2025-02-09T18:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020901,
+      "season": 20242025,
+      "start_utc": "2025-02-23T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020920,
+      "season": 20242025,
+      "start_utc": "2025-02-26T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020934,
+      "season": 20242025,
+      "start_utc": "2025-02-28T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020953,
+      "season": 20242025,
+      "start_utc": "2025-03-02T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020968,
+      "season": 20242025,
+      "start_utc": "2025-03-04T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024020995,
+      "season": 20242025,
+      "start_utc": "2025-03-07T02:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021008,
+      "season": 20242025,
+      "start_utc": "2025-03-09T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021032,
+      "season": 20242025,
+      "start_utc": "2025-03-12T02:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021039,
+      "season": 20242025,
+      "start_utc": "2025-03-13T02:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021060,
+      "season": 20242025,
+      "start_utc": "2025-03-15T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021078,
+      "season": 20242025,
+      "start_utc": "2025-03-18T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021094,
+      "season": 20242025,
+      "start_utc": "2025-03-20T23:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021112,
+      "season": 20242025,
+      "start_utc": "2025-03-22T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021133,
+      "season": 20242025,
+      "start_utc": "2025-03-26T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021146,
+      "season": 20242025,
+      "start_utc": "2025-03-27T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021154,
+      "season": 20242025,
+      "start_utc": "2025-03-28T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021170,
+      "season": 20242025,
+      "start_utc": "2025-03-30T17:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021183,
+      "season": 20242025,
+      "start_utc": "2025-04-01T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021197,
+      "season": 20242025,
+      "start_utc": "2025-04-03T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021217,
+      "season": 20242025,
+      "start_utc": "2025-04-05T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021228,
+      "season": 20242025,
+      "start_utc": "2025-04-06T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021236,
+      "season": 20242025,
+      "start_utc": "2025-04-08T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021260,
+      "season": 20242025,
+      "start_utc": "2025-04-11T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021269,
+      "season": 20242025,
+      "start_utc": "2025-04-12T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021285,
+      "season": 20242025,
+      "start_utc": "2025-04-14T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024021301,
+      "season": 20242025,
+      "start_utc": "2025-04-16T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2024030131,
+      "season": 20242025,
+      "start_utc": "2025-04-21T23:00:00Z",
+      "home": 0,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2024030132,
+      "season": 20242025,
+      "start_utc": "2025-04-23T23:00:00Z",
+      "home": 0,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2024030133,
+      "season": 20242025,
+      "start_utc": "2025-04-25T23:00:00Z",
+      "home": 1,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2024030134,
+      "season": 20242025,
+      "start_utc": "2025-04-27T22:30:00Z",
+      "home": 1,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2024030135,
+      "season": 20242025,
+      "start_utc": "2025-04-30T23:00:00Z",
+      "home": 0,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025020004,
+      "season": 20252026,
+      "start_utc": "2025-10-08T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020010,
+      "season": 20252026,
+      "start_utc": "2025-10-09T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020031,
+      "season": 20252026,
+      "start_utc": "2025-10-11T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020050,
+      "season": 20252026,
+      "start_utc": "2025-10-14T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020062,
+      "season": 20252026,
+      "start_utc": "2025-10-16T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020080,
+      "season": 20252026,
+      "start_utc": "2025-10-18T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020095,
+      "season": 20252026,
+      "start_utc": "2025-10-20T23:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020110,
+      "season": 20252026,
+      "start_utc": "2025-10-23T00:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020122,
+      "season": 20252026,
+      "start_utc": "2025-10-24T01:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020136,
+      "season": 20252026,
+      "start_utc": "2025-10-25T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020164,
+      "season": 20252026,
+      "start_utc": "2025-10-29T02:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020187,
+      "season": 20252026,
+      "start_utc": "2025-11-01T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020204,
+      "season": 20252026,
+      "start_utc": "2025-11-05T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020220,
+      "season": 20252026,
+      "start_utc": "2025-11-07T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020235,
+      "season": 20252026,
+      "start_utc": "2025-11-09T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020257,
+      "season": 20252026,
+      "start_utc": "2025-11-12T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020270,
+      "season": 20252026,
+      "start_utc": "2025-11-14T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020285,
+      "season": 20252026,
+      "start_utc": "2025-11-16T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020305,
+      "season": 20252026,
+      "start_utc": "2025-11-18T00:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020320,
+      "season": 20252026,
+      "start_utc": "2025-11-21T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020337,
+      "season": 20252026,
+      "start_utc": "2025-11-23T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020372,
+      "season": 20252026,
+      "start_utc": "2025-11-27T02:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020383,
+      "season": 20252026,
+      "start_utc": "2025-11-28T21:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020392,
+      "season": 20252026,
+      "start_utc": "2025-11-29T20:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020411,
+      "season": 20252026,
+      "start_utc": "2025-12-03T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020422,
+      "season": 20252026,
+      "start_utc": "2025-12-04T00:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020444,
+      "season": 20252026,
+      "start_utc": "2025-12-07T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020457,
+      "season": 20252026,
+      "start_utc": "2025-12-08T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020466,
+      "season": 20252026,
+      "start_utc": "2025-12-10T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020484,
+      "season": 20252026,
+      "start_utc": "2025-12-12T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020500,
+      "season": 20252026,
+      "start_utc": "2025-12-14T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020512,
+      "season": 20252026,
+      "start_utc": "2025-12-15T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020521,
+      "season": 20252026,
+      "start_utc": "2025-12-17T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020536,
+      "season": 20252026,
+      "start_utc": "2025-12-19T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020556,
+      "season": 20252026,
+      "start_utc": "2025-12-21T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020566,
+      "season": 20252026,
+      "start_utc": "2025-12-22T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020577,
+      "season": 20252026,
+      "start_utc": "2025-12-24T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020602,
+      "season": 20252026,
+      "start_utc": "2025-12-28T22:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020618,
+      "season": 20252026,
+      "start_utc": "2025-12-31T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020636,
+      "season": 20252026,
+      "start_utc": "2026-01-02T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020648,
+      "season": 20252026,
+      "start_utc": "2026-01-03T21:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020657,
+      "season": 20252026,
+      "start_utc": "2026-01-04T19:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020678,
+      "season": 20252026,
+      "start_utc": "2026-01-08T00:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020683,
+      "season": 20252026,
+      "start_utc": "2026-01-09T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020703,
+      "season": 20252026,
+      "start_utc": "2026-01-11T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020720,
+      "season": 20252026,
+      "start_utc": "2026-01-13T00:30:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020727,
+      "season": 20252026,
+      "start_utc": "2026-01-14T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020740,
+      "season": 20252026,
+      "start_utc": "2026-01-16T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020758,
+      "season": 20252026,
+      "start_utc": "2026-01-18T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020780,
+      "season": 20252026,
+      "start_utc": "2026-01-21T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020795,
+      "season": 20252026,
+      "start_utc": "2026-01-23T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020812,
+      "season": 20252026,
+      "start_utc": "2026-01-25T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020832,
+      "season": 20252026,
+      "start_utc": "2026-01-28T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020845,
+      "season": 20252026,
+      "start_utc": "2026-01-30T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020865,
+      "season": 20252026,
+      "start_utc": "2026-02-01T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020879,
+      "season": 20252026,
+      "start_utc": "2026-02-03T00:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020895,
+      "season": 20252026,
+      "start_utc": "2026-02-05T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020919,
+      "season": 20252026,
+      "start_utc": "2026-02-27T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020940,
+      "season": 20252026,
+      "start_utc": "2026-03-01T00:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020969,
+      "season": 20252026,
+      "start_utc": "2026-03-04T03:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020987,
+      "season": 20252026,
+      "start_utc": "2026-03-07T02:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025020997,
+      "season": 20252026,
+      "start_utc": "2026-03-08T00:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021014,
+      "season": 20252026,
+      "start_utc": "2026-03-10T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021025,
+      "season": 20252026,
+      "start_utc": "2026-03-11T23:30:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021048,
+      "season": 20252026,
+      "start_utc": "2026-03-14T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021059,
+      "season": 20252026,
+      "start_utc": "2026-03-15T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021069,
+      "season": 20252026,
+      "start_utc": "2026-03-17T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021085,
+      "season": 20252026,
+      "start_utc": "2026-03-19T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021105,
+      "season": 20252026,
+      "start_utc": "2026-03-21T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021121,
+      "season": 20252026,
+      "start_utc": "2026-03-24T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021137,
+      "season": 20252026,
+      "start_utc": "2026-03-26T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021161,
+      "season": 20252026,
+      "start_utc": "2026-03-28T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021169,
+      "season": 20252026,
+      "start_utc": "2026-03-29T21:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021180,
+      "season": 20252026,
+      "start_utc": "2026-03-31T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021195,
+      "season": 20252026,
+      "start_utc": "2026-04-02T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021212,
+      "season": 20252026,
+      "start_utc": "2026-04-04T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021226,
+      "season": 20252026,
+      "start_utc": "2026-04-05T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021233,
+      "season": 20252026,
+      "start_utc": "2026-04-07T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021248,
+      "season": 20252026,
+      "start_utc": "2026-04-09T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021271,
+      "season": 20252026,
+      "start_utc": "2026-04-11T23:00:00Z",
+      "home": 1,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021277,
+      "season": 20252026,
+      "start_utc": "2026-04-12T22:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025021294,
+      "season": 20252026,
+      "start_utc": "2026-04-14T23:00:00Z",
+      "home": 0,
+      "playoffs": 0
+    },
+    {
+      "game_id": 2025030121,
+      "season": 20252026,
+      "start_utc": "2026-04-19T21:45:00Z",
+      "home": 0,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030122,
+      "season": 20252026,
+      "start_utc": "2026-04-21T23:00:00Z",
+      "home": 0,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030123,
+      "season": 20252026,
+      "start_utc": "2026-04-24T23:00:00Z",
+      "home": 1,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030124,
+      "season": 20252026,
+      "start_utc": "2026-04-26T23:00:00Z",
+      "home": 1,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030125,
+      "season": 20252026,
+      "start_utc": "2026-04-29T23:00:00Z",
+      "home": 0,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030126,
+      "season": 20252026,
+      "start_utc": "2026-05-01T23:00:00Z",
+      "home": 1,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030127,
+      "season": 20252026,
+      "start_utc": "2026-05-03T22:00:00Z",
+      "home": 0,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030211,
+      "season": 20252026,
+      "start_utc": "2026-05-06T23:00:00Z",
+      "home": 0,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030212,
+      "season": 20252026,
+      "start_utc": "2026-05-08T23:00:00Z",
+      "home": 0,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030213,
+      "season": 20252026,
+      "start_utc": "2026-05-10T23:00:00Z",
+      "home": 1,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030214,
+      "season": 20252026,
+      "start_utc": "2026-05-12T23:00:00Z",
+      "home": 1,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030215,
+      "season": 20252026,
+      "start_utc": "2026-05-14T23:00:00Z",
+      "home": 0,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030216,
+      "season": 20252026,
+      "start_utc": "2026-05-17T00:00:00Z",
+      "home": 1,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030217,
+      "season": 20252026,
+      "start_utc": "2026-05-18T23:30:00Z",
+      "home": 0,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030311,
+      "season": 20252026,
+      "start_utc": "2026-05-22T00:00:00Z",
+      "home": 0,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030312,
+      "season": 20252026,
+      "start_utc": "2026-05-23T23:00:00Z",
+      "home": 0,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030313,
+      "season": 20252026,
+      "start_utc": "2026-05-26T00:00:00Z",
+      "home": 1,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030314,
+      "season": 20252026,
+      "start_utc": "2026-05-28T00:00:00Z",
+      "home": 1,
+      "playoffs": 1
+    },
+    {
+      "game_id": 2025030315,
+      "season": 20252026,
+      "start_utc": "2026-05-30T00:00:00Z",
+      "home": 0,
+      "playoffs": 1
+    }
+  ]
+}
